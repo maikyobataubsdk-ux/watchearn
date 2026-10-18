@@ -2,92 +2,328 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="color-scheme" content="dark light">
   <title>Channel Access</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    :root { color-scheme: dark; --bg:#0e1421; --panel:#172235; --line:#2b3b54; --text:#f4f7fb; --muted:#a9b7ca; --accent:#52a8ff; --good:#42c99a; --warn:#ffcc70; }
-    * { box-sizing:border-box; }
-    body { margin:0; padding:20px 16px calc(24px + env(safe-area-inset-bottom)); min-height:100vh; background:var(--bg); color:var(--text); font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
-    main { max-width:520px; margin:0 auto; }
-    .brand { color:var(--accent); font-size:13px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; margin:8px 0 10px; }
-    h1 { font-size:28px; line-height:1.12; margin:0 0 12px; letter-spacing:-.03em; }
-    .subtitle { color:var(--muted); margin:0 0 22px; }
-    .card { background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:18px; margin:14px 0; }
-    .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.09em; font-weight:800; margin-bottom:5px; }
-    .target { font-size:19px; font-weight:750; overflow-wrap:anywhere; }
-    .status { margin:14px 0 0; color:var(--muted); font-size:14px; min-height:22px; }
-    .status.good { color:var(--good); } .status.warn { color:var(--warn); }
-    button, a.button { width:100%; display:flex; align-items:center; justify-content:center; min-height:48px; padding:13px 16px; border:0; border-radius:14px; color:#071424; background:var(--accent); font-size:16px; font-weight:800; text-decoration:none; cursor:pointer; text-align:center; margin-top:12px; }
-    button.secondary, a.button.secondary { background:#26364e; border:1px solid #3b506c; color:var(--text); }
-    button:disabled { opacity:.55; cursor:not-allowed; }
-    .steps { display:grid; gap:12px; margin:0; padding:0; list-style:none; }
-    .steps li { display:flex; gap:10px; color:var(--muted); font-size:14px; }
-    .num { flex:0 0 25px; height:25px; border-radius:50%; display:grid; place-items:center; background:#23364f; color:var(--text); font-weight:800; font-size:12px; }
-    .fineprint { color:var(--muted); font-size:12px; margin-top:18px; }
-    .hidden { display:none !important; }
+    :root {
+      --bg: var(--tg-theme-bg-color, #0f172a);
+      --secondary-bg: var(--tg-theme-secondary-bg-color, #1e293b);
+      --text: var(--tg-theme-text-color, #f8fafc);
+      --hint: var(--tg-theme-hint-color, #94a3b8);
+      --link: var(--tg-theme-link-color, #38bdf8);
+      --btn: var(--tg-theme-button-color, #0284c7);
+      --btn-text: var(--tg-theme-button-text-color, #ffffff);
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --good: #10b981;
+      --warn: #f59e0b;
+      --error: #ef4444;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      margin: 0;
+      padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+
+    main {
+      max-width: 480px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .header {
+      text-align: center;
+      padding: 12px 0 4px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(56, 189, 248, 0.12);
+      color: var(--link);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 6px 12px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1.25;
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      color: var(--hint);
+      font-size: 14px;
+      margin: 0;
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+    }
+
+    .label {
+      color: var(--hint);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .target-title {
+      font-size: 20px;
+      font-weight: 750;
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    .status-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 14px;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--hint);
+      border-top-color: var(--link);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .status-text {
+      color: var(--hint);
+      flex: 1;
+    }
+
+    .status-text.good { color: var(--good); font-weight: 600; }
+    .status-text.warn { color: var(--warn); font-weight: 600; }
+    .status-text.error { color: var(--error); font-weight: 600; }
+
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 52px;
+      padding: 14px 20px;
+      border: 0;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--btn);
+      color: var(--btn-text);
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.25);
+    }
+
+    button:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+
+    button.secondary {
+      background: var(--secondary-bg);
+      color: var(--text);
+      border: 1px solid var(--card-border);
+      box-shadow: none;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin: 12px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      color: var(--hint);
+      font-size: 14px;
+    }
+
+    .step-num {
+      flex-shrink: 0;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--secondary-bg);
+      border: 1px solid var(--card-border);
+      color: var(--link);
+      font-weight: 700;
+      font-size: 13px;
+      display: grid;
+      place-items: center;
+    }
+
+    .fineprint {
+      color: var(--hint);
+      font-size: 12px;
+      margin-top: 14px;
+      line-height: 1.4;
+      opacity: 0.85;
+    }
+
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
 <main>
-  <div class="brand">Channel Access</div>
-  <h1>Watch an ad.<br>Unlock your invite.</h1>
-  <p class="subtitle">The bot verifies channel membership and the ad network confirms eligible ad events before access is granted.</p>
+  <div class="header">
+    <div class="badge">
+      <span>✨ Channel Gate</span>
+    </div>
+    <h1>Unlock Channel Link</h1>
+    <p class="subtitle">Complete the simple task below to receive your exclusive invite link.</p>
+  </div>
 
   <section class="card" aria-live="polite">
-    <div class="label">Your destination</div>
-    <div id="targetTitle" class="target">Checking campaign…</div>
-    <div id="status" class="status">Connecting securely to Telegram…</div>
-    <button id="joinButton" class="hidden" type="button">Join required channel</button>
-    <button id="recheckButton" class="secondary hidden" type="button">I joined — check again</button>
-    <button id="watchButton" class="hidden" type="button" disabled>Watch ad to unlock</button>
-    <button id="returnButton" class="secondary hidden" type="button">Return to Telegram bot</button>
+    <div class="label">Destination Channel</div>
+    <div id="targetTitle" class="target-title">Loading destination…</div>
+
+    <div class="status-container">
+      <div id="spinner" class="spinner"></div>
+      <div id="status" class="status-text">Connecting securely to Telegram…</div>
+    </div>
+
+    <div class="btn-group">
+      <button id="joinButton" class="hidden" type="button">📢 Join Required Channel</button>
+      <button id="recheckButton" class="secondary hidden" type="button">🔄 I Joined — Check Again</button>
+      <button id="watchButton" class="hidden" type="button" disabled>🎬 Watch Ad to Unlock</button>
+      <button id="returnButton" class="secondary hidden" type="button">🚀 Return to Telegram Bot</button>
+    </div>
   </section>
 
   <section class="card">
     <div class="label">How it works</div>
-    <ol class="steps">
-      <li><span class="num">1</span><span>Join the required channel if the owner has enabled force-subscription.</span></li>
-      <li><span class="num">2</span><span>Tap the rewarded-ad button. Do not click ads unless you genuinely want to visit the advertiser.</span></li>
-      <li><span class="num">3</span><span>Wait for the ad network’s server-side confirmation, then return to the bot and tap “Get Channel Link”.</span></li>
+    <ol class="steps-list">
+      <li class="step-item">
+        <span class="step-num">1</span>
+        <span>Join the required force-sub channel if requested.</span>
+      </li>
+      <li class="step-item">
+        <span class="step-num">2</span>
+        <span>Tap "Watch Ad to Unlock" and view the rewarded ad completely.</span>
+      </li>
+      <li class="step-item">
+        <span class="step-num">3</span>
+        <span>After verification, return to the bot and tap "Get Channel Link".</span>
+      </li>
     </ol>
-    <p class="fineprint">Reward verification may take a short time. If no rewarded ad is available, retry later. This app does not promise a reward for an unconfirmed or non-valued event.</p>
+    <p class="fineprint">Note: Access is granted automatically once the ad network confirms a qualifying view. Non-valued or uncompleted ads will not unlock access.</p>
   </section>
 </main>
+
 <script>
 (() => {
   const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
   const $ = (id) => document.getElementById(id);
   const statusEl = $('status');
+  const spinnerEl = $('spinner');
   const targetEl = $('targetTitle');
   const joinButton = $('joinButton');
   const recheckButton = $('recheckButton');
   const watchButton = $('watchButton');
   const returnButton = $('returnButton');
   const campaign = new URLSearchParams(window.location.search).get('campaign') || '';
+
   let session = null;
   let config = null;
   let sdkReady = false;
   let busy = false;
 
-  function setStatus(text, kind='') {
-    statusEl.textContent = text;
-    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+  function haptic(type = 'light') {
+    if (!tg || !tg.HapticFeedback) return;
+    if (type === 'success' || type === 'error' || type === 'warning') {
+      tg.HapticFeedback.notificationOccurred(type);
+    } else {
+      tg.HapticFeedback.impactOccurred(type);
+    }
   }
+
+  function setStatus(text, kind = '', showSpinner = false) {
+    statusEl.textContent = text;
+    statusEl.className = 'status-text' + (kind ? ' ' + kind : '');
+    if (showSpinner) {
+      spinnerEl.classList.remove('hidden');
+    } else {
+      spinnerEl.classList.add('hidden');
+    }
+  }
+
   function hideAllActions() {
     joinButton.classList.add('hidden');
     recheckButton.classList.add('hidden');
     watchButton.classList.add('hidden');
     returnButton.classList.add('hidden');
   }
+
   function getInitData() {
     return tg && typeof tg.initData === 'string' ? tg.initData : '';
   }
-  async function api(path, options={}) {
+
+  async function api(path, options = {}) {
     const response = await fetch(path, {
       method: options.method || 'GET',
-      headers: {'Content-Type':'application/json', ...(options.headers || {})},
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
       body: options.body ? JSON.stringify(options.body) : undefined,
       cache: 'no-store'
     });
@@ -95,6 +331,7 @@
     if (!response.ok) throw new Error(data.detail || data.message || 'Request failed');
     return data;
   }
+
   function loadAdSdk() {
     if (!config || !config.adsConfigured) return;
     const script = document.createElement('script');
@@ -104,97 +341,133 @@
     script.dataset.sdk = 'show_' + String(config.zoneId);
     script.onload = () => {
       sdkReady = typeof window['show_' + String(config.zoneId)] === 'function';
-      if (sdkReady && session && session.forceSubscribed && !session.unlocked) watchButton.disabled = false;
-      if (!sdkReady) setStatus('The ad SDK did not initialize. Please retry later.', 'warn');
+      if (sdkReady && session && session.forceSubscribed && !session.unlocked) {
+        watchButton.disabled = false;
+      }
+      if (!sdkReady) setStatus('Ad SDK initialization incomplete.', 'warn', false);
     };
-    script.onerror = () => setStatus('Could not load the ad provider. Please retry later.', 'warn');
+    script.onerror = () => setStatus('Could not connect to ad provider.', 'error', false);
     document.head.appendChild(script);
   }
+
   async function refreshSession() {
-    if (!campaign || campaign.length > 32) throw new Error('This campaign link is invalid. Open the link from the bot again.');
-    if (!getInitData()) throw new Error('Open this page inside Telegram using the bot’s Watch Ad button.');
-    session = await api('/api/session', {method:'POST', body:{initData:getInitData(), campaign}});
+    if (!campaign || campaign.length > 32) {
+      throw new Error('Invalid campaign link. Please reopen from Telegram bot.');
+    }
+    if (!getInitData()) {
+      throw new Error('Please open this Mini App inside Telegram.');
+    }
+    session = await api('/api/session', { method: 'POST', body: { initData: getInitData(), campaign } });
     targetEl.textContent = session.targetTitle || 'Channel';
     hideAllActions();
+
     if (!session.forceSubscribed) {
-      setStatus('Join ' + (session.forceTitle || 'the required channel') + ' first.', 'warn');
+      haptic('warning');
+      setStatus('Please join ' + (session.forceTitle || 'the required channel') + ' first.', 'warn', false);
       if (session.forceJoinUrl) {
         joinButton.classList.remove('hidden');
         joinButton.onclick = () => {
+          haptic('light');
           if (tg && tg.openTelegramLink) tg.openTelegramLink(session.forceJoinUrl);
           else window.open(session.forceJoinUrl, '_blank', 'noopener');
         };
       }
       recheckButton.classList.remove('hidden');
       recheckButton.onclick = async () => {
+        haptic('light');
         recheckButton.disabled = true;
-        try { await refreshSession(); } catch (error) { setStatus(error.message, 'warn'); }
-        finally { recheckButton.disabled = false; }
+        try {
+          await refreshSession();
+        } catch (error) {
+          setStatus(error.message, 'warn', false);
+        } finally {
+          recheckButton.disabled = false;
+        }
       };
       return;
     }
+
     if (session.unlocked) {
-      setStatus('Reward confirmed. Return to the bot and tap “Get Channel Link”.', 'good');
+      haptic('success');
+      setStatus('Reward confirmed! Return to the bot to get your link.', 'good', false);
       returnButton.classList.remove('hidden');
-      returnButton.onclick = () => { if (tg) tg.close(); };
+      returnButton.onclick = () => {
+        haptic('light');
+        if (tg) tg.close();
+      };
       return;
     }
+
     if (!session.adsConfigured) {
-      setStatus('The publisher has not finished configuring the approved rewarded-ad integration.', 'warn');
+      setStatus('Rewarded ads setup in progress by admin.', 'warn', false);
       return;
     }
-    setStatus(sdkReady ? 'Ready. Tap below when you are ready to watch.' : 'Preparing rewarded ad…');
+
+    setStatus(sdkReady ? 'Ready! Tap below to watch the ad.' : 'Preparing rewarded ad…', '', !sdkReady);
     watchButton.classList.remove('hidden');
     watchButton.disabled = !sdkReady;
   }
+
   async function watchAd() {
     if (busy || !session || !sdkReady || !config) return;
+    haptic('medium');
     busy = true;
     watchButton.disabled = true;
-    setStatus('Preparing a verified ad session…');
+    setStatus('Preparing verified ad session…', '', true);
+
     try {
-      const intent = await api('/api/ad-intent', {method:'POST', body:{initData:getInitData(), campaign}});
+      const intent = await api('/api/ad-intent', { method: 'POST', body: { initData: getInitData(), campaign } });
       if (intent.alreadyUnlocked) {
-        setStatus('Reward already confirmed. Return to the bot and tap “Get Channel Link”.', 'good');
+        haptic('success');
+        setStatus('Reward already confirmed! Return to the bot.', 'good', false);
         returnButton.classList.remove('hidden');
         returnButton.onclick = () => { if (tg) tg.close(); };
         watchButton.classList.add('hidden');
         return;
       }
+
       const showAd = window['show_' + String(config.zoneId)];
-      if (typeof showAd !== 'function') throw new Error('The ad is not available right now. Try again later.');
-      setStatus('Ad opening… keep this Mini App open until it closes.');
+      if (typeof showAd !== 'function') throw new Error('Ad is currently unavailable. Try again shortly.');
+
+      setStatus('Ad playing… Please wait until it finishes.', '', true);
       let result;
       try {
-        result = await showAd({ymid:intent.ymid, requestVar:'channel_gate_unlock'});
+        result = await showAd({ ymid: intent.ymid, requestVar: 'channel_gate_unlock' });
       } catch (adError) {
-        throw new Error('No ad could be shown or verified. Please try again later.');
+        throw new Error('Ad was closed or could not be verified.');
       }
+
       if (!result || result.reward_event_type !== 'valued') {
-        setStatus('The provider did not confirm a payable rewarded event. No access was unlocked. You can try again later.', 'warn');
+        haptic('error');
+        setStatus('Non-qualifying ad view. Please try again.', 'warn', false);
         return;
       }
-      setStatus('Ad provider confirmed the event. Waiting for server-side verification…');
+
+      setStatus('Ad completed! Verifying with server…', '', true);
       for (let attempt = 0; attempt < 24; attempt++) {
         await new Promise(resolve => setTimeout(resolve, 1500));
-        const state = await api('/api/ad-status?'+new URLSearchParams({initData:getInitData(), ymid:intent.ymid}));
+        const state = await api('/api/ad-status?' + new URLSearchParams({ initData: getInitData(), ymid: intent.ymid }));
         if (state.status === 'rewarded') {
-          setStatus('Reward confirmed! Return to the bot and tap “Get Channel Link”.', 'good');
+          haptic('success');
+          setStatus('Reward verified! Return to the bot to claim link.', 'good', false);
           watchButton.classList.add('hidden');
           returnButton.classList.remove('hidden');
           returnButton.onclick = () => { if (tg) tg.close(); };
           return;
         }
         if (state.status === 'non_valued') {
-          setStatus('This event was not valued by the ad provider, so access was not unlocked. Please try again later.', 'warn');
+          haptic('error');
+          setStatus('Ad event was non-valued. Try again later.', 'warn', false);
           return;
         }
       }
-      setStatus('The provider confirmation is still pending. Return to the bot and tap “Get Channel Link” in a few moments.', 'warn');
+
+      setStatus('Verification pending. Return to bot and check status.', 'warn', false);
       returnButton.classList.remove('hidden');
       returnButton.onclick = () => { if (tg) tg.close(); };
     } catch (error) {
-      setStatus(error.message || 'Something went wrong. Please try again.', 'warn');
+      haptic('error');
+      setStatus(error.message || 'Something went wrong. Try again.', 'error', false);
     } finally {
       busy = false;
       if (watchButton && !watchButton.classList.contains('hidden')) watchButton.disabled = !sdkReady;
@@ -214,9 +487,10 @@
       await refreshSession();
     } catch (error) {
       targetEl.textContent = 'Unable to load campaign';
-      setStatus(error.message || 'Could not initialize this Mini App.', 'warn');
+      setStatus(error.message || 'Initialization failed.', 'error', false);
     }
   }
+
   init();
 })();
 </script>
