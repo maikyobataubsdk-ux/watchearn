@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <title>Channel Access</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root { color-scheme: dark; --bg:#0e1421; --panel:#172235; --line:#2b3b54; --text:#f4f7fb; --muted:#a9b7ca; --accent:#52a8ff; --good:#42c99a; --warn:#ffcc70; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:20px 16px calc(24px + env(safe-area-inset-bottom)); min-height:100vh; background:var(--bg); color:var(--text); font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+    main { max-width:520px; margin:0 auto; }
+    .brand { color:var(--accent); font-size:13px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; margin:8px 0 10px; }
+    h1 { font-size:28px; line-height:1.12; margin:0 0 12px; letter-spacing:-.03em; }
+    .subtitle { color:var(--muted); margin:0 0 22px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:18px; margin:14px 0; }
+    .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.09em; font-weight:800; margin-bottom:5px; }
+    .target { font-size:19px; font-weight:750; overflow-wrap:anywhere; }
+    .status { margin:14px 0 0; color:var(--muted); font-size:14px; min-height:22px; }
+    .status.good { color:var(--good); } .status.warn { color:var(--warn); }
+    button, a.button { width:100%; display:flex; align-items:center; justify-content:center; min-height:48px; padding:13px 16px; border:0; border-radius:14px; color:#071424; background:var(--accent); font-size:16px; font-weight:800; text-decoration:none; cursor:pointer; text-align:center; margin-top:12px; }
+    button.secondary, a.button.secondary { background:#26364e; border:1px solid #3b506c; color:var(--text); }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    .steps { display:grid; gap:12px; margin:0; padding:0; list-style:none; }
+    .steps li { display:flex; gap:10px; color:var(--muted); font-size:14px; }
+    .num { flex:0 0 25px; height:25px; border-radius:50%; display:grid; place-items:center; background:#23364f; color:var(--text); font-weight:800; font-size:12px; }
+    .fineprint { color:var(--muted); font-size:12px; margin-top:18px; }
+    .hidden { display:none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="brand">Channel Access</div>
+  <h1>Watch an ad.<br>Unlock your invite.</h1>
+  <p class="subtitle">The bot verifies channel membership and the ad network confirms eligible ad events before access is granted.</p>
+
+  <section class="card" aria-live="polite">
+    <div class="label">Your destination</div>
+    <div id="targetTitle" class="target">Checking campaign…</div>
+    <div id="status" class="status">Connecting securely to Telegram…</div>
+    <button id="joinButton" class="hidden" type="button">Join required channel</button>
+    <button id="recheckButton" class="secondary hidden" type="button">I joined — check again</button>
+    <button id="watchButton" class="hidden" type="button" disabled>Watch ad to unlock</button>
+    <button id="returnButton" class="secondary hidden" type="button">Return to Telegram bot</button>
+  </section>
+
+  <section class="card">
+    <div class="label">How it works</div>
+    <ol class="steps">
+      <li><span class="num">1</span><span>Join the required channel if the owner has enabled force-subscription.</span></li>
+      <li><span class="num">2</span><span>Tap the rewarded-ad button. Do not click ads unless you genuinely want to visit the advertiser.</span></li>
+      <li><span class="num">3</span><span>Wait for the ad network’s server-side confirmation, then return to the bot and tap “Get Channel Link”.</span></li>
+    </ol>
+    <p class="fineprint">Reward verification may take a short time. If no rewarded ad is available, retry later. This app does not promise a reward for an unconfirmed or non-valued event.</p>
+  </section>
+</main>
+<script>
+(() => {
+  const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $('status');
+  const targetEl = $('targetTitle');
+  const joinButton = $('joinButton');
+  const recheckButton = $('recheckButton');
+  const watchButton = $('watchButton');
+  const returnButton = $('returnButton');
+  const campaign = new URLSearchParams(window.location.search).get('campaign') || '';
+  let session = null;
+  let config = null;
+  let sdkReady = false;
+  let busy = false;
+
+  function setStatus(text, kind='') {
+    statusEl.textContent = text;
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+  }
+  function hideAllActions() {
+    joinButton.classList.add('hidden');
+    recheckButton.classList.add('hidden');
+    watchButton.classList.add('hidden');
+    returnButton.classList.add('hidden');
+  }
+  function getInitData() {
+    return tg && typeof tg.initData === 'string' ? tg.initData : '';
+  }
+  async function api(path, options={}) {
+    const response = await fetch(path, {
+      method: options.method || 'GET',
+      headers: {'Content-Type':'application/json', ...(options.headers || {})},
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      cache: 'no-store'
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.detail || data.message || 'Request failed');
+    return data;
+  }
+  function loadAdSdk() {
+    if (!config || !config.adsConfigured) return;
+    const script = document.createElement('script');
+    script.src = config.sdkUrl;
+    script.async = true;
+    script.dataset.zone = String(config.zoneId);
+    script.dataset.sdk = 'show_' + String(config.zoneId);
+    script.onload = () => {
+      sdkReady = typeof window['show_' + String(config.zoneId)] === 'function';
+      if (sdkReady && session && session.forceSubscribed && !session.unlocked) watchButton.disabled = false;
+      if (!sdkReady) setStatus('The ad SDK did not initialize. Please retry later.', 'warn');
+    };
+    script.onerror = () => setStatus('Could not load the ad provider. Please retry later.', 'warn');
+    document.head.appendChild(script);
+  }
+  async function refreshSession() {
+    if (!campaign || campaign.length > 32) throw new Error('This campaign link is invalid. Open the link from the bot again.');
+    if (!getInitData()) throw new Error('Open this page inside Telegram using the bot’s Watch Ad button.');
+    session = await api('/api/session', {method:'POST', body:{initData:getInitData(), campaign}});
+    targetEl.textContent = session.targetTitle || 'Channel';
+    hideAllActions();
+    if (!session.forceSubscribed) {
+      setStatus('Join ' + (session.forceTitle || 'the required channel') + ' first.', 'warn');
+      if (session.forceJoinUrl) {
+        joinButton.classList.remove('hidden');
+        joinButton.onclick = () => {
+          if (tg && tg.openTelegramLink) tg.openTelegramLink(session.forceJoinUrl);
+          else window.open(session.forceJoinUrl, '_blank', 'noopener');
+        };
+      }
+      recheckButton.classList.remove('hidden');
+      recheckButton.onclick = async () => {
+        recheckButton.disabled = true;
+        try { await refreshSession(); } catch (error) { setStatus(error.message, 'warn'); }
+        finally { recheckButton.disabled = false; }
+      };
+      return;
+    }
+    if (session.unlocked) {
+      setStatus('Reward confirmed. Return to the bot and tap “Get Channel Link”.', 'good');
+      returnButton.classList.remove('hidden');
+      returnButton.onclick = () => { if (tg) tg.close(); };
+      return;
+    }
+    if (!session.adsConfigured) {
+      setStatus('The publisher has not finished configuring the approved rewarded-ad integration.', 'warn');
+      return;
+    }
+    setStatus(sdkReady ? 'Ready. Tap below when you are ready to watch.' : 'Preparing rewarded ad…');
+    watchButton.classList.remove('hidden');
+    watchButton.disabled = !sdkReady;
+  }
+  async function watchAd() {
+    if (busy || !session || !sdkReady || !config) return;
+    busy = true;
+    watchButton.disabled = true;
+    setStatus('Preparing a verified ad session…');
+    try {
+      const intent = await api('/api/ad-intent', {method:'POST', body:{initData:getInitData(), campaign}});
+      if (intent.alreadyUnlocked) {
+        setStatus('Reward already confirmed. Return to the bot and tap “Get Channel Link”.', 'good');
+        returnButton.classList.remove('hidden');
+        returnButton.onclick = () => { if (tg) tg.close(); };
+        watchButton.classList.add('hidden');
+        return;
+      }
+      const showAd = window['show_' + String(config.zoneId)];
+      if (typeof showAd !== 'function') throw new Error('The ad is not available right now. Try again later.');
+      setStatus('Ad opening… keep this Mini App open until it closes.');
+      let result;
+      try {
+        result = await showAd({ymid:intent.ymid, requestVar:'channel_gate_unlock'});
+      } catch (adError) {
+        throw new Error('No ad could be shown or verified. Please try again later.');
+      }
+      if (!result || result.reward_event_type !== 'valued') {
+        setStatus('The provider did not confirm a payable rewarded event. No access was unlocked. You can try again later.', 'warn');
+        return;
+      }
+      setStatus('Ad provider confirmed the event. Waiting for server-side verification…');
+      for (let attempt = 0; attempt < 24; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const state = await api('/api/ad-status?'+new URLSearchParams({initData:getInitData(), ymid:intent.ymid}));
+        if (state.status === 'rewarded') {
+          setStatus('Reward confirmed! Return to the bot and tap “Get Channel Link”.', 'good');
+          watchButton.classList.add('hidden');
+          returnButton.classList.remove('hidden');
+          returnButton.onclick = () => { if (tg) tg.close(); };
+          return;
+        }
+        if (state.status === 'non_valued') {
+          setStatus('This event was not valued by the ad provider, so access was not unlocked. Please try again later.', 'warn');
+          return;
+        }
+      }
+      setStatus('The provider confirmation is still pending. Return to the bot and tap “Get Channel Link” in a few moments.', 'warn');
+      returnButton.classList.remove('hidden');
+      returnButton.onclick = () => { if (tg) tg.close(); };
+    } catch (error) {
+      setStatus(error.message || 'Something went wrong. Please try again.', 'warn');
+    } finally {
+      busy = false;
+      if (watchButton && !watchButton.classList.contains('hidden')) watchButton.disabled = !sdkReady;
+    }
+  }
+
+  watchButton.addEventListener('click', watchAd);
+
+  async function init() {
+    if (tg) {
+      tg.ready();
+      if (typeof tg.expand === 'function') tg.expand();
+    }
+    try {
+      config = await api('/api/config');
+      loadAdSdk();
+      await refreshSession();
+    } catch (error) {
+      targetEl.textContent = 'Unable to load campaign';
+      setStatus(error.message || 'Could not initialize this Mini App.', 'warn');
+    }
+  }
+  init();
+})();
+</script>
+</body>
+</html>
