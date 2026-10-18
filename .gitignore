@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+data.sqlite3
+test_data.sqlite3
+verify_ui.py
+.env
+.venv/
+.pytest_cache/
+/home/jules/verification/

@@ -1,0 +1,17 @@
+name = "telegram-channel-gate"
+compatibility_date = "2024-01-01"
+
+# Cloudflare Tunnel Configuration
+# Tunneling routes HTTPS traffic from Cloudflare Edge directly to your Python backend/Mini App.
+# To pair with cloudflared:
+# 1. Run: cloudflared tunnel create telegram-gate
+# 2. Assign tunnel id below and update ingress rules.
+#
+# tunnel = "YOUR_TUNNEL_UUID"
+# credentials-file = "/etc/cloudflared/YOUR_TUNNEL_UUID.json"
+
+# Example ingress rules for cloudflared config.yml:
+# ingress:
+#   - hostname: miniapp.yourdomain.com
+#     service: http://localhost:8000
+#   - service: http_status:404

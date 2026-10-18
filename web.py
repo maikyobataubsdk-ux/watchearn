@@ -7,6 +7,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from aiogram import Bot
@@ -27,7 +28,25 @@ from telegram_auth import validate_init_data, TelegramAuthError
 
 BASE_DIR = Path(__file__).resolve().parent
 app = FastAPI(title="Telegram Channel Gate Mini App", docs_url=None, redoc_url=None)
+
+# Add CORS middleware for Cloudflare proxy and Telegram webview support
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 tg_bot: Bot | None = None
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
 
 
 class SessionRequest(BaseModel):
@@ -89,13 +108,15 @@ async def shutdown() -> None:
 
 @app.get("/", response_class=HTMLResponse)
 async def index() -> HTMLResponse:
-    html = (BASE_DIR / "static" / "index.html").read_text(encoding="utf-8")
+    html_file = BASE_DIR / "static" / "Index.html"
+    if not html_file.exists():
+        html_file = BASE_DIR / "static" / "index.html"
+    html = html_file.read_text(encoding="utf-8")
     return HTMLResponse(html, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/config")
 async def public_config() -> dict:
-    # SDK URL and zone ID are public integration settings; never expose the postback secret.
     return {
         "zoneId": MONETAG_ZONE_ID,
         "sdkUrl": MONETAG_SDK_URL,
@@ -133,7 +154,7 @@ async def new_ad_intent(body: AdIntentRequest) -> dict:
     if has_unlock(auth["user_id"], body.campaign) or has_rewarded_intent(auth["user_id"], body.campaign):
         return {"ok": True, "alreadyUnlocked": True}
     if not (MONETAG_ZONE_ID and MONETAG_SDK_URL and MONETAG_POSTBACK_SECRET):
-        raise HTTPException(status_code=503, detail="Rewarded ads are not configured yet. Add the approved Monetag SDK URL, zone ID, and postback secret in .env.")
+        raise HTTPException(status_code=503, detail="Rewarded ads are not configured yet. Add Monetag credentials in .env.")
     recent = get_recent_pending_intent(auth["user_id"], body.campaign)
     if recent:
         return {"ok": True, "ymid": recent["ymid"], "status": "pending"}
@@ -172,7 +193,6 @@ async def monetag_postback(
         raise HTTPException(status_code=400, detail="Missing ymid")
     processed = handle_postback(ymid, event_type, reward_event_type, estimated_price or None)
     if not processed:
-        # Unknown ymid can result from a stale or invalid request; do not issue any reward.
         return PlainTextResponse("ignored", status_code=200)
     return PlainTextResponse("ok", status_code=200)
 
