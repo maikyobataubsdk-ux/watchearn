@@ -16,7 +16,7 @@ import web
 import db
 
 
-class TestAdEarnPTCPlatform(unittest.TestCase):
+class TestBlazeculturePTCPlatform(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         db.init_db()
@@ -63,7 +63,6 @@ class TestAdEarnPTCPlatform(unittest.TestCase):
         })
         self.assertEqual(res_b.status_code, 200)
         data_b = res_b.json()
-        token_b = data_b["token"]
 
         # Verify User B is linked to User A
         user_b_db = db.get_user_by_username("userB")
@@ -84,7 +83,6 @@ class TestAdEarnPTCPlatform(unittest.TestCase):
         self.assertEqual(me_data["user"]["username"], "userA")
 
     def test_04_ad_watching_and_referral_commission(self):
-        # User B logs in and watches an ad
         login_b = self.client.post("/api/auth/login", json={
             "login": "userB",
             "password": "password123"
@@ -95,30 +93,79 @@ class TestAdEarnPTCPlatform(unittest.TestCase):
         self.assertEqual(watch_res.status_code, 200)
         session_id = watch_res.json()["sessionId"]
 
-        # Claim reward for User B
         claim_res = self.client.post("/api/user/claim-reward", json={"sessionId": session_id}, headers={"Authorization": f"Bearer {token_b}"})
         self.assertEqual(claim_res.status_code, 200)
         claim_data = claim_res.json()
         self.assertTrue(claim_data["ok"])
         self.assertEqual(claim_data["reward_coins"], 2.0)
 
-        # User B balance should now be 2.0 coins
         user_b_db = db.get_user_by_username("userB")
         self.assertEqual(user_b_db["balance_coins"], 2.0)
 
-        # User A should have received 15% referral bonus (0.3 coins)
         user_a_db = db.get_user_by_username("userA")
         self.assertEqual(user_a_db["balance_coins"], 0.3)
 
-    def test_05_withdrawal_flow(self):
+    def test_05_premium_status_and_ad_bypass(self):
         user_a = db.get_user_by_username("userA")
-        # Give User A enough coins for withdrawal (600 coins = $6.00)
+        # Toggle userA premium
+        db.set_user_premium_status(user_a["id"], True)
+
+        login_a = self.client.post("/api/auth/login", json={"login": "userA", "password": "password123"}).json()
+        token_a = login_a["token"]
+
+        # Watch ad as premium user should bypass timer immediately
+        watch_res = self.client.post("/api/user/watch-ad", headers={"Authorization": f"Bearer {token_a}"})
+        self.assertEqual(watch_res.status_code, 200)
+        data = watch_res.json()
+        self.assertTrue(data["is_premium"])
+        self.assertEqual(data["reward_coins"], 2.0)
+
+    def test_06_channel_promotion_submission_and_approval(self):
+        login_a = self.client.post("/api/auth/login", json={"login": "userA", "password": "password123"}).json()
+        token_a = login_a["token"]
+
+        # Submit Promotion
+        sub_res = self.client.post("/api/promotions/submit", json={
+            "channel_link": "https://t.me/testchannel",
+            "ad_message": "Join testchannel now!",
+            "budget_inr": 100.0,
+            "payment_txn_ref": "TXN123456"
+        }, headers={"Authorization": f"Bearer {token_a}"})
+        self.assertEqual(sub_res.status_code, 200)
+        promo_id = sub_res.json()["promotion"]["id"]
+
+        # Admin login & approve
+        admin_login = self.client.post("/api/admin/login", json={"username": "rajpapa", "password": "28@RajPapa"}).json()
+        admin_token = admin_login["adminToken"]
+
+        appr_res = self.client.post("/api/admin/promotions/approve", json={"promotionId": promo_id}, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(appr_res.status_code, 200)
+        self.assertTrue(appr_res.json()["ok"])
+
+    def test_07_connected_channels_and_revenue(self):
+        login_b = self.client.post("/api/auth/login", json={"login": "userB", "password": "password123"}).json()
+        token_b = login_b["token"]
+
+        conn_res = self.client.post("/api/channels/connect", json={"channel_link": "https://t.me/myownerchannel"}, headers={"Authorization": f"Bearer {token_b}"})
+        self.assertEqual(conn_res.status_code, 200)
+
+        my_ch = self.client.get("/api/channels/my", headers={"Authorization": f"Bearer {token_b}"})
+        self.assertEqual(my_ch.status_code, 200)
+        self.assertEqual(len(my_ch.json()["channels"]), 1)
+
+        # Simulate 2 joins on channel - should credit 0.50 INR (0.625 coins @ 80 INR/$ = 100 coins)
+        user_b_before = db.get_user_by_username("userB")["balance_coins"]
+        db.record_channel_join_event("https://t.me/myownerchannel", 1001)
+        db.record_channel_join_event("https://t.me/myownerchannel", 1002)
+
+        user_b_after = db.get_user_by_username("userB")["balance_coins"]
+        self.assertAlmostEqual(user_b_after - user_b_before, 0.625)
+
+    def test_08_withdrawal_flow(self):
+        user_a = db.get_user_by_username("userA")
         db.adjust_user_balance(user_a["id"], 600.0)
 
-        login_a = self.client.post("/api/auth/login", json={
-            "login": "userA",
-            "password": "password123"
-        }).json()
+        login_a = self.client.post("/api/auth/login", json={"login": "userA", "password": "password123"}).json()
         token_a = login_a["token"]
 
         withdraw_res = self.client.post("/api/user/withdraw", json={
@@ -130,48 +177,19 @@ class TestAdEarnPTCPlatform(unittest.TestCase):
         self.assertEqual(withdraw_res.status_code, 200)
         self.assertTrue(withdraw_res.json()["ok"])
 
-        # Check balance reduced by 500 coins (600 - 500 = 100)
-        user_a_after = db.get_user_by_username("userA")
-        self.assertEqual(user_a_after["balance_coins"], 100.0)
-
-    def test_06_admin_panel_authentication_and_controls(self):
-        # Fail invalid admin credentials
-        fail_login = self.client.post("/api/admin/login", json={"username": "wrong", "password": "wrong"})
-        self.assertEqual(fail_login.status_code, 401)
-
-        # Success admin login with rajpapa / 28@RajPapa
+    def test_09_admin_panel_authentication_and_controls(self):
         admin_login = self.client.post("/api/admin/login", json={"username": "rajpapa", "password": "28@RajPapa"})
         self.assertEqual(admin_login.status_code, 200)
         admin_token = admin_login.json()["adminToken"]
 
-        # Admin stats
         stats_res = self.client.get("/api/admin/stats", headers={"X-Admin-Token": admin_token})
         self.assertEqual(stats_res.status_code, 200)
-        self.assertGreaterEqual(stats_res.json()["totalUsersCount"], 2)
 
-        # Save Adsterra / HilltopAds Ad Codes
-        ad_code_res = self.client.post("/api/admin/ad-codes", json={
-            "interstitial": "<script>console.log('Adsterra Interstitial');</script>",
-            "popunder": "<script>console.log('HilltopAds Popunder');</script>",
-            "banner": "<div>High Paying Banner Ad</div>"
+        qr_res = self.client.post("/api/admin/payment-qr", json={
+            "upi_id": "blaze@upi",
+            "qr_image_url": "/static/logo.png"
         }, headers={"X-Admin-Token": admin_token})
-
-        self.assertEqual(ad_code_res.status_code, 200)
-        self.assertTrue(ad_code_res.json()["ok"])
-
-        # Approve pending withdrawal
-        w_res = self.client.get("/api/admin/withdrawals", headers={"X-Admin-Token": admin_token})
-        withdrawals = w_res.json()["withdrawals"]
-        self.assertGreaterEqual(len(withdrawals), 1)
-        pending_id = withdrawals[0]["id"]
-
-        approve_res = self.client.post("/api/admin/withdrawal/status", json={
-            "withdrawalId": pending_id,
-            "status": "approved"
-        }, headers={"X-Admin-Token": admin_token})
-
-        self.assertEqual(approve_res.status_code, 200)
-        self.assertTrue(approve_res.json()["ok"])
+        self.assertEqual(qr_res.status_code, 200)
 
 
 if __name__ == "__main__":

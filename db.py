@@ -49,8 +49,10 @@ def _sync_json_backup(conn: sqlite3.Connection) -> None:
     try:
         data = {
             "updated_at": utcnow(),
-            "users": [dict(r) for r in conn.execute("SELECT id, email, username, balance_coins, total_earned_coins, total_ads_watched, is_banned, created_at FROM users").fetchall()],
+            "users": [dict(r) for r in conn.execute("SELECT id, email, username, balance_coins, total_earned_coins, total_ads_watched, is_premium, is_banned, created_at FROM users").fetchall()],
             "withdrawals": [dict(r) for r in conn.execute("SELECT * FROM withdrawals ORDER BY id DESC LIMIT 100").fetchall()],
+            "promotions": [dict(r) for r in conn.execute("SELECT * FROM promotions ORDER BY id DESC LIMIT 100").fetchall()],
+            "connected_channels": [dict(r) for r in conn.execute("SELECT * FROM connected_channels ORDER BY id DESC LIMIT 100").fetchall()],
             "settings": {r["key"]: r["value"] for r in conn.execute("SELECT * FROM settings").fetchall()},
             "ad_codes": {r["key"]: r["value"] for r in conn.execute("SELECT * FROM ad_codes").fetchall()}
         }
@@ -72,6 +74,7 @@ def init_db() -> None:
                 balance_coins REAL DEFAULT 0.0,
                 total_earned_coins REAL DEFAULT 0.0,
                 total_ads_watched INTEGER DEFAULT 0,
+                is_premium INTEGER DEFAULT 0,
                 referred_by INTEGER,
                 referral_code TEXT UNIQUE NOT NULL,
                 is_banned INTEGER DEFAULT 0,
@@ -120,6 +123,68 @@ def init_db() -> None:
                 FOREIGN KEY(user_id) REFERENCES users(id)
             );
 
+            CREATE TABLE IF NOT EXISTS promotions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                channel_url TEXT NOT NULL,
+                channel_id TEXT NOT NULL,
+                channel_title TEXT NOT NULL,
+                price_inr REAL NOT NULL,
+                target_joins INTEGER DEFAULT 0,
+                current_joins INTEGER DEFAULT 0,
+                current_views INTEGER DEFAULT 0,
+                status TEXT DEFAULT 'pending_approval',
+                transaction_ref TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS connected_channels (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                owner_user_id INTEGER NOT NULL,
+                channel_id TEXT UNIQUE NOT NULL,
+                channel_title TEXT NOT NULL,
+                channel_username TEXT,
+                total_joins INTEGER DEFAULT 0,
+                total_lefts INTEGER DEFAULT 0,
+                total_views INTEGER DEFAULT 0,
+                total_earned_inr REAL DEFAULT 0.0,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(owner_user_id) REFERENCES users(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS join_analytics (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                channel_id TEXT NOT NULL,
+                user_id INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS campaigns (
+                token TEXT PRIMARY KEY,
+                target_chat_id TEXT NOT NULL,
+                target_title TEXT NOT NULL,
+                invite_mode TEXT NOT NULL,
+                created_by INTEGER NOT NULL,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS rewarded_intents (
+                user_id INTEGER NOT NULL,
+                token TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (user_id, token)
+            );
+
+            CREATE TABLE IF NOT EXISTS unlocks (
+                user_id INTEGER NOT NULL,
+                token TEXT NOT NULL,
+                invite_link TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (user_id, token)
+            );
+
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
@@ -132,6 +197,11 @@ def init_db() -> None:
             """
         )
 
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN is_premium INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
+
         # Default settings if not set
         default_settings = {
             "coins_per_ad": "2.0",
@@ -140,6 +210,10 @@ def init_db() -> None:
             "min_withdrawal_inr": "400.0",
             "coins_per_usd": "100.0",
             "referral_commission_pct": "15.0",
+            "payment_upi_id": "blazeculture@upi",
+            "payment_qr_url": "/static/logo.png",
+            "cost_per_2_joins_inr": "1.0",
+            "payout_per_2_joins_inr": "0.50",
         }
         for k, v in default_settings.items():
             conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
@@ -148,7 +222,7 @@ def init_db() -> None:
         default_ad_codes = {
             "interstitial": "<!-- Adsterra / HilltopAds / Monetag Interstitial Script Placeholder -->\n<script type=\"text/javascript\">\n  // Paste your High-Paying Interstitial Script here\n  console.log('Adsterra / HilltopAds Interstitial Loaded');\n</script>",
             "popunder": "<!-- Adsterra / HilltopAds / Monetag Popunder Script Placeholder -->\n<script type=\"text/javascript\">\n  // Paste your High-Paying Popunder Script here\n  console.log('Adsterra / HilltopAds Popunder Loaded');\n</script>",
-            "banner": "<div style=\"background: rgba(0,255,136,0.1); border: 1px dashed #00ff88; color: #00ff88; padding: 15px; text-align: center; border-radius: 10px;\"><strong>High-Paying Banner Ad Slot</strong><br/>Paste your Adsterra / HilltopAds Banner Code here</div>",
+            "banner": "<div style=\"background: rgba(0,255,136,0.1); border: 1px dashed #00ff88; color: #00ff88; padding: 15px; text-align: center; border-radius: 10px;\"><strong>Blazeculture High-Paying Banner Ad Slot</strong><br/>Paste your Adsterra / HilltopAds Banner Code here</div>",
             "direct_link": "https://www.google.com"
         }
         for k, v in default_ad_codes.items():
@@ -160,6 +234,23 @@ def get_settings() -> dict:
     with db() as conn:
         rows = conn.execute("SELECT key, value FROM settings").fetchall()
         return {r["key"]: r["value"] for r in rows}
+
+
+def get_setting(key: str) -> str | None:
+    with db() as conn:
+        row = conn.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+        return row["value"] if row else None
+
+
+def set_setting(key: str, value: str | None) -> None:
+    with db() as conn:
+        if value is None:
+            conn.execute("DELETE FROM settings WHERE key=?", (key,))
+        else:
+            conn.execute(
+                "INSERT INTO settings(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (key, str(value)),
+            )
 
 
 def update_settings(new_settings: dict) -> None:
@@ -203,8 +294,8 @@ def create_user(email: str, username: str, password: str, referral_code_used: st
     with db() as conn:
         cursor = conn.execute(
             """
-            INSERT INTO users (email, username, password_hash, referral_code, referred_by, ip_address, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO users (email, username, password_hash, referral_code, referred_by, ip_address, is_premium, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?)
             """,
             (email_clean, username_clean, pass_hash, my_ref_code, referred_by_id, ip_address, utcnow()),
         )
@@ -241,7 +332,7 @@ def get_user_by_referral_code(code: str) -> dict | None:
 
 def get_all_users() -> list[dict]:
     with db() as conn:
-        rows = conn.execute("SELECT id, email, username, balance_coins, total_earned_coins, total_ads_watched, is_banned, ip_address, created_at FROM users ORDER BY id DESC").fetchall()
+        rows = conn.execute("SELECT id, email, username, balance_coins, total_earned_coins, total_ads_watched, is_premium, is_banned, ip_address, created_at FROM users ORDER BY id DESC").fetchall()
         return [dict(r) for r in rows]
 
 
@@ -250,9 +341,218 @@ def set_user_ban_status(user_id: int, is_banned: bool) -> None:
         conn.execute("UPDATE users SET is_banned=? WHERE id=?", (1 if is_banned else 0, user_id))
 
 
+def set_user_premium_status(user_id: int, is_premium: bool) -> None:
+    with db() as conn:
+        conn.execute("UPDATE users SET is_premium=? WHERE id=?", (1 if is_premium else 0, user_id))
+
+
 def adjust_user_balance(user_id: int, new_balance: float) -> None:
     with db() as conn:
         conn.execute("UPDATE users SET balance_coins=? WHERE id=?", (float(new_balance), user_id))
+
+
+# Campaign & Unlock Deep Link Functions
+def create_campaign(token: str, target_chat_id: str, target_title: str, invite_mode: str, created_by: int) -> dict:
+    with db() as conn:
+        conn.execute(
+            """
+            INSERT INTO campaigns (token, target_chat_id, target_title, invite_mode, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (token, str(target_chat_id), target_title, invite_mode, created_by, utcnow()),
+        )
+        return get_campaign(token)  # type: ignore
+
+
+def get_campaign(token: str) -> dict | None:
+    with db() as conn:
+        row = conn.execute("SELECT * FROM campaigns WHERE token=?", (token,)).fetchone()
+        return dict(row) if row else None
+
+
+def record_rewarded_intent(user_id: int, token: str) -> None:
+    with db() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO rewarded_intents (user_id, token, created_at) VALUES (?, ?, ?)",
+            (user_id, token, utcnow()),
+        )
+
+
+def has_rewarded_intent(user_id: int, token: str) -> bool:
+    with db() as conn:
+        # Check if user is premium
+        u = conn.execute("SELECT is_premium FROM users WHERE id=?", (user_id,)).fetchone()
+        if u and u["is_premium"]:
+            return True
+        row = conn.execute("SELECT * FROM rewarded_intents WHERE user_id=? AND token=?", (user_id, token)).fetchone()
+        return bool(row)
+
+
+def save_unlock(user_id: int, token: str, invite_link: str) -> None:
+    with db() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO unlocks (user_id, token, invite_link, created_at) VALUES (?, ?, ?, ?)",
+            (user_id, token, invite_link, utcnow()),
+        )
+
+
+def get_unlock(user_id: int, token: str) -> dict | None:
+    with db() as conn:
+        row = conn.execute("SELECT * FROM unlocks WHERE user_id=? AND token=?", (user_id, token)).fetchone()
+        return dict(row) if row else None
+
+
+# Promotion & Analytics Functions
+def create_promotion(user_id: int, channel_url: str, channel_id: str, channel_title: str, price_inr: float, target_joins: int, transaction_ref: str) -> dict:
+    with db() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO promotions (user_id, channel_url, channel_id, channel_title, price_inr, target_joins, current_joins, current_views, status, transaction_ref, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 0, 0, 'pending_approval', ?, ?)
+            """,
+            (user_id, channel_url, str(channel_id), channel_title, price_inr, target_joins, transaction_ref, utcnow()),
+        )
+        promo_id = cursor.lastrowid
+        row = conn.execute("SELECT * FROM promotions WHERE id=?", (promo_id,)).fetchone()
+        return dict(row)
+
+
+def get_user_promotions(user_id: int) -> list[dict]:
+    with db() as conn:
+        rows = conn.execute("SELECT * FROM promotions WHERE user_id=? ORDER BY id DESC", (user_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_all_promotions() -> list[dict]:
+    with db() as conn:
+        rows = conn.execute(
+            """
+            SELECT p.*, u.username, u.email
+            FROM promotions p
+            JOIN users u ON p.user_id = u.id
+            ORDER BY p.id DESC
+            """
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def update_promotion_status(promo_id: int, status: str) -> dict:
+    with db() as conn:
+        p = conn.execute("SELECT * FROM promotions WHERE id=?", (promo_id,)).fetchone()
+        if not p:
+            return {"ok": False, "error": "Promotion campaign not found"}
+        conn.execute("UPDATE promotions SET status=? WHERE id=?", (status, promo_id))
+        return {"ok": True}
+
+
+def connect_channel(owner_user_id: int, channel_id: str, channel_title: str, channel_username: str = "") -> dict:
+    with db() as conn:
+        conn.execute(
+            """
+            INSERT INTO connected_channels (owner_user_id, channel_id, channel_title, channel_username, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(channel_id) DO UPDATE SET
+                owner_user_id=excluded.owner_user_id,
+                channel_title=excluded.channel_title,
+                channel_username=excluded.channel_username
+            """,
+            (owner_user_id, str(channel_id), channel_title, channel_username, utcnow()),
+        )
+        row = conn.execute("SELECT * FROM connected_channels WHERE channel_id=?", (str(channel_id),)).fetchone()
+        return dict(row)
+
+
+def get_user_connected_channels(owner_user_id: int) -> list[dict]:
+    with db() as conn:
+        rows = conn.execute("SELECT * FROM connected_channels WHERE owner_user_id=? ORDER BY id DESC", (owner_user_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_all_connected_channels() -> list[dict]:
+    with db() as conn:
+        rows = conn.execute(
+            """
+            SELECT c.*, u.username as owner_username, u.email as owner_email
+            FROM connected_channels c
+            JOIN users u ON c.owner_user_id = u.id
+            ORDER BY c.id DESC
+            """
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def record_channel_join_event(channel_id: str, user_id: int) -> dict:
+    settings = get_settings()
+    payout_per_2_joins = float(settings.get("payout_per_2_joins_inr", "0.50"))
+    payout_per_join = payout_per_2_joins / 2.0  # 0.25 INR per user join
+
+    with db() as conn:
+        conn.execute(
+            "INSERT INTO join_analytics (channel_id, user_id, status, created_at) VALUES (?, ?, 'joined', ?)",
+            (str(channel_id), user_id, utcnow()),
+        )
+
+        # Update connected channel stats
+        ch = conn.execute("SELECT * FROM connected_channels WHERE channel_id=?", (str(channel_id),)).fetchone()
+        if ch:
+            earned_bonus = payout_per_join
+            conn.execute(
+                """
+                UPDATE connected_channels
+                SET total_joins = total_joins + 1,
+                    total_earned_inr = total_earned_inr + ?
+                WHERE channel_id = ?
+                """,
+                (earned_bonus, str(channel_id)),
+            )
+
+            # Credit channel owner coins balance (using 1 USD = 80 INR, coins per USD = 100)
+            coins_per_usd = float(settings.get("coins_per_usd", "100.0"))
+            coins_earned = (earned_bonus / 80.0) * coins_per_usd
+            conn.execute(
+                """
+                UPDATE users
+                SET balance_coins = balance_coins + ?,
+                    total_earned_coins = total_earned_coins + ?
+                WHERE id = ?
+                """,
+                (coins_earned, coins_earned, ch["owner_user_id"]),
+            )
+
+        # Update active promotions for this target channel_id
+        conn.execute(
+            "UPDATE promotions SET current_joins = current_joins + 1 WHERE channel_id=? AND status='active'",
+            (str(channel_id),),
+        )
+
+        return {"ok": True}
+
+
+def record_channel_left_event(channel_id: str, user_id: int) -> dict:
+    with db() as conn:
+        conn.execute(
+            "INSERT INTO join_analytics (channel_id, user_id, status, created_at) VALUES (?, ?, 'left', ?)",
+            (str(channel_id), user_id, utcnow()),
+        )
+
+        conn.execute(
+            "UPDATE connected_channels SET total_lefts = total_lefts + 1 WHERE channel_id=?",
+            (str(channel_id),),
+        )
+
+        return {"ok": True}
+
+
+def record_channel_view_event(channel_id: str) -> None:
+    with db() as conn:
+        conn.execute(
+            "UPDATE connected_channels SET total_views = total_views + 1 WHERE channel_id=?",
+            (str(channel_id),),
+        )
+        conn.execute(
+            "UPDATE promotions SET current_views = current_views + 1 WHERE channel_id=? AND status='active'",
+            (str(channel_id),),
+        )
 
 
 # Ad View & Anti-Cheat Functions
@@ -445,11 +745,23 @@ def get_global_stats() -> dict:
         total_paid_row = conn.execute("SELECT SUM(amount_usd) as total FROM withdrawals WHERE status='approved'").fetchone()
         total_paid_usd = total_paid_row["total"] if total_paid_row and total_paid_row["total"] else 0.0
 
+        total_joins_row = conn.execute("SELECT COUNT(*) as cnt FROM join_analytics WHERE status='joined'").fetchone()
+        total_joins = total_joins_row["cnt"] if total_joins_row else 0
+
+        total_lefts_row = conn.execute("SELECT COUNT(*) as cnt FROM join_analytics WHERE status='left'").fetchone()
+        total_lefts = total_lefts_row["cnt"] if total_lefts_row else 0
+
+        active_promos_row = conn.execute("SELECT COUNT(*) as cnt FROM promotions WHERE status='active'").fetchone()
+        active_promos = active_promos_row["cnt"] if active_promos_row else 0
+
         return {
             "total_users": total_users,
             "total_ads_watched": total_ads,
             "total_paid_usd": round(float(total_paid_usd), 2),
             "total_paid_inr": round(float(total_paid_usd) * 80.0, 2),
+            "total_joins": total_joins,
+            "total_lefts": total_lefts,
+            "active_promotions": active_promos,
         }
 
 
