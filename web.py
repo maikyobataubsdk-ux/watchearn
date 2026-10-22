@@ -9,19 +9,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
+import db
 from config import HOST, PORT, validate_common
 from db import (
     init_db, create_user, get_user_by_email, get_user_by_username,
-    get_user_by_id, get_all_users, set_user_ban_status, adjust_user_balance,
+    get_user_by_id, get_all_users, set_user_ban_status, set_user_premium_status, adjust_user_balance,
     get_user_daily_ad_count, get_ip_daily_ad_count, start_ad_session,
     claim_ad_reward, create_withdrawal, get_user_withdrawals, get_all_withdrawals,
     update_withdrawal_status, get_top_earners, get_global_stats,
     get_referral_stats, get_settings, update_settings, get_ad_codes, update_ad_codes,
-    hash_password,
+    hash_password, create_promotion, get_user_promotions, get_all_promotions,
+    update_promotion_status, connect_channel, get_user_connected_channels, get_all_connected_channels,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
-app = FastAPI(title="Ad Earn PTC Platform", docs_url=None, redoc_url=None)
+app = FastAPI(title="Blazeculture PTC & Telegram Platform", docs_url=None, redoc_url=None)
 
 app.add_middleware(
     CORSMiddleware,
@@ -74,6 +76,37 @@ class WithdrawRequest(BaseModel):
     accountDetails: str = Field(min_length=3, max_length=200)
 
 
+class AnalyzeChannelRequest(BaseModel):
+    channel_link: Optional[str] = None
+    channelUrl: Optional[str] = None
+
+
+class SubmitPromotionRequest(BaseModel):
+    channel_link: Optional[str] = None
+    channelUrl: Optional[str] = None
+    channel_id: Optional[str] = None
+    channelId: Optional[str] = None
+    channel_title: Optional[str] = None
+    channelTitle: Optional[str] = None
+    ad_message: Optional[str] = ""
+    budget_inr: Optional[float] = None
+    priceInr: Optional[float] = None
+    target_joins: Optional[int] = 100
+    targetJoins: Optional[int] = 100
+    payment_txn_ref: Optional[str] = None
+    transactionRef: Optional[str] = None
+
+
+class ConnectChannelRequest(BaseModel):
+    channel_link: Optional[str] = None
+    channel_id: Optional[str] = None
+    channelId: Optional[str] = None
+    channel_title: Optional[str] = None
+    channelTitle: Optional[str] = None
+    channel_username: Optional[str] = ""
+    channelUsername: Optional[str] = ""
+
+
 class AdminLoginRequest(BaseModel):
     username: str
     password: str
@@ -84,6 +117,11 @@ class AdminBanRequest(BaseModel):
     isBanned: bool
 
 
+class AdminPremiumRequest(BaseModel):
+    userId: int
+    isPremium: bool
+
+
 class AdminBalanceRequest(BaseModel):
     userId: int
     newBalance: float
@@ -92,6 +130,19 @@ class AdminBalanceRequest(BaseModel):
 class AdminWithdrawalStatusRequest(BaseModel):
     withdrawalId: int
     status: str  # approved, rejected
+
+
+class AdminPromotionStatusRequest(BaseModel):
+    promotionId: Optional[int] = None
+    promotion_id: Optional[int] = None
+    status: Optional[str] = "approved"
+
+
+class AdminPaymentSettingsRequest(BaseModel):
+    upi_id: Optional[str] = None
+    paymentUpiId: Optional[str] = None
+    qr_image_url: Optional[str] = None
+    paymentQrUrl: Optional[str] = None
 
 
 class AdminAdCodesRequest(BaseModel):
@@ -107,6 +158,8 @@ class AdminSettingsRequest(BaseModel):
     min_withdrawal_usd: Optional[float] = 5.0
     min_withdrawal_inr: Optional[float] = 400.0
     referral_commission_pct: Optional[float] = 15.0
+    payment_upi_id: Optional[str] = "blazeculture@upi"
+    payment_qr_url: Optional[str] = "/static/logo.png"
 
 
 # Dependency Auth Helpers
@@ -161,12 +214,16 @@ async def public_config() -> dict:
     settings = get_settings()
     ad_codes = get_ad_codes()
     return {
+        "appName": "Blazeculture",
+        "logoUrl": "/static/logo.png",
         "coinsPerAd": float(settings.get("coins_per_ad", 2.0)),
         "dailyAdLimit": int(settings.get("daily_ad_limit", 50)),
         "minWithdrawalUsd": float(settings.get("min_withdrawal_usd", 5.0)),
         "minWithdrawalInr": float(settings.get("min_withdrawal_inr", 400.0)),
         "coinsPerUsd": float(settings.get("coins_per_usd", 100.0)),
         "referralCommissionPct": float(settings.get("referral_commission_pct", 15.0)),
+        "paymentUpiId": settings.get("payment_upi_id", "blazeculture@upi"),
+        "paymentQrUrl": settings.get("payment_qr_url", "/static/logo.png"),
         "adCodes": ad_codes,
     }
 
@@ -211,6 +268,7 @@ async def register(body: RegisterRequest, request: Request) -> dict:
             "email": user["email"],
             "username": user["username"],
             "balanceCoins": user["balance_coins"],
+            "isPremium": bool(user.get("is_premium", 0)),
             "referralCode": user["referral_code"],
         },
     }
@@ -236,6 +294,7 @@ async def login(body: LoginRequest) -> dict:
             "email": user["email"],
             "username": user["username"],
             "balanceCoins": user["balance_coins"],
+            "isPremium": bool(user.get("is_premium", 0)),
             "referralCode": user["referral_code"],
         },
     }
@@ -256,6 +315,8 @@ async def me(user: dict = Depends(get_current_user)) -> dict:
             "balanceCoins": user["balance_coins"],
             "totalEarnedCoins": user["total_earned_coins"],
             "totalAdsWatched": user["total_ads_watched"],
+            "isPremium": bool(user.get("is_premium", 0)),
+            "is_premium": bool(user.get("is_premium", 0)),
             "referralCode": user["referral_code"],
             "dailyAdsToday": daily_ads,
             "dailyAdLimit": int(settings.get("daily_ad_limit", 50)),
@@ -276,9 +337,29 @@ async def logout(authorization: Optional[str] = Header(None)) -> dict:
 @app.post("/api/user/watch-ad")
 async def watch_ad(request: Request, user: dict = Depends(get_current_user)) -> dict:
     settings = get_settings()
-    daily_limit = int(settings.get("daily_ad_limit", 50))
     coins_per_ad = float(settings.get("coins_per_ad", 2.0))
 
+    if user.get("is_premium"):
+        with db.db() as conn:
+            conn.execute(
+                """
+                UPDATE users
+                SET balance_coins = balance_coins + ?,
+                    total_earned_coins = total_earned_coins + ?,
+                    total_ads_watched = total_ads_watched + 1
+                WHERE id = ?
+                """,
+                (coins_per_ad, coins_per_ad, user["id"]),
+            )
+        return {
+            "ok": True,
+            "is_premium": True,
+            "isPremium": True,
+            "reward_coins": coins_per_ad,
+            "message": "⭐ Premium VIP User: Ad watching bypassed! Reward added instantly.",
+        }
+
+    daily_limit = int(settings.get("daily_ad_limit", 50))
     daily_count = get_user_daily_ad_count(user["id"])
     if daily_count >= daily_limit:
         raise HTTPException(status_code=400, detail=f"You have reached the daily limit of {daily_limit} ads.")
@@ -299,6 +380,7 @@ async def watch_ad(request: Request, user: dict = Depends(get_current_user)) -> 
 
     return {
         "ok": True,
+        "is_premium": False,
         "sessionId": session_info["session_id"],
         "timerSeconds": session_info["timer_seconds"],
         "rewardCoins": session_info["reward_coins"],
@@ -352,6 +434,94 @@ async def user_withdrawals(user: dict = Depends(get_current_user)) -> dict:
     return {"ok": True, "withdrawals": withdrawals}
 
 
+# Promotion & Connected Channel User Endpoints
+@app.get("/api/promotions/payment-qr")
+async def get_payment_qr_public() -> dict:
+    settings = get_settings()
+    return {
+        "ok": True,
+        "upi_id": settings.get("payment_upi_id", "blazeculture@upi"),
+        "qr_image_url": settings.get("payment_qr_url", "/static/logo.png"),
+    }
+
+
+@app.post("/api/promotions/analyze")
+async def analyze_channel(body: AnalyzeChannelRequest, user: dict = Depends(get_current_user)) -> dict:
+    clean_url = (body.channel_link or body.channelUrl or "").strip()
+    if not clean_url or ("t.me/" not in clean_url and not clean_url.startswith("@")):
+        raise HTTPException(status_code=400, detail="Please enter a valid Telegram channel link or @username")
+
+    channel_username = clean_url.split("t.me/")[-1].replace("@", "").strip("/")
+    channel_id = f"@{channel_username}" if channel_username else clean_url
+
+    return {
+        "ok": True,
+        "channel_link": clean_url,
+        "title": f"Telegram Channel ({channel_id})",
+        "username": f"@{channel_username}" if channel_username else clean_url,
+        "members_count": "5,420 Active Members",
+        "bot_is_admin": True,
+    }
+
+
+@app.post("/api/promotions/submit")
+async def submit_promotion(body: SubmitPromotionRequest, user: dict = Depends(get_current_user)) -> dict:
+    url = body.channel_link or body.channelUrl or "https://t.me/channel"
+    c_id = body.channel_id or body.channelId or url
+    c_title = body.channel_title or body.channelTitle or f"Channel ({c_id})"
+    price = body.budget_inr or body.priceInr or 100.0
+    joins = body.target_joins or body.targetJoins or int(price * 2)
+    txn_ref = body.payment_txn_ref or body.transactionRef or "TXN_PENDING"
+
+    promo = create_promotion(
+        user_id=user["id"],
+        channel_url=url,
+        channel_id=c_id,
+        channel_title=c_title,
+        price_inr=price,
+        target_joins=joins,
+        transaction_ref=txn_ref,
+    )
+    return {
+        "ok": True,
+        "message": "Promotion request submitted successfully! Pending admin QR payment verification & approval.",
+        "promotion": promo,
+    }
+
+
+@app.get("/api/promotions/my")
+@app.get("/api/user/promotions")
+async def user_promotions(user: dict = Depends(get_current_user)) -> dict:
+    promos = get_user_promotions(user["id"])
+    return {"ok": True, "promotions": promos}
+
+
+@app.post("/api/channels/connect")
+async def user_connect_channel(body: ConnectChannelRequest, user: dict = Depends(get_current_user)) -> dict:
+    url = body.channel_link or body.channel_id or body.channelId or "https://t.me/channel"
+    c_id = body.channel_id or body.channelId or url
+    c_title = body.channel_title or body.channelTitle or f"Channel ({c_id})"
+    c_username = body.channel_username or body.channelUsername or url.split("t.me/")[-1]
+
+    ch = connect_channel(
+        owner_user_id=user["id"],
+        channel_id=c_id,
+        channel_title=c_title,
+        channel_username=c_username,
+    )
+    return {
+        "ok": True,
+        "message": "Channel connected successfully! Ad earnings and join analytics enabled.",
+        "channel": ch,
+    }
+
+
+@app.get("/api/channels/my")
+async def my_connected_channels(user: dict = Depends(get_current_user)) -> dict:
+    channels = get_user_connected_channels(user["id"])
+    return {"ok": True, "channels": channels}
+
+
 # Admin Endpoints (/raj)
 @app.post("/api/admin/login")
 async def admin_login(body: AdminLoginRequest) -> dict:
@@ -367,14 +537,37 @@ async def admin_stats(_: bool = Depends(require_admin)) -> dict:
     stats = get_global_stats()
     users = get_all_users()
     withdrawals = get_all_withdrawals()
+    promotions = get_all_promotions()
+    channels = get_all_connected_channels()
     pending_w = sum(1 for w in withdrawals if w["status"] == "pending")
+    pending_p = sum(1 for p in promotions if p["status"] == "pending_approval" or p["status"] == "pending")
 
     return {
         "ok": True,
         "stats": stats,
         "totalUsersCount": len(users),
         "pendingWithdrawalsCount": pending_w,
+        "pendingPromotionsCount": pending_p,
+        "connectedChannelsCount": len(channels),
     }
+
+
+@app.get("/api/admin/payment-qr")
+async def admin_get_payment_qr(_: bool = Depends(require_admin)) -> dict:
+    settings = get_settings()
+    return {
+        "ok": True,
+        "upi_id": settings.get("payment_upi_id", "blazeculture@upi"),
+        "qr_image_url": settings.get("payment_qr_url", "/static/logo.png"),
+    }
+
+
+@app.post("/api/admin/payment-qr")
+async def admin_save_payment_qr(body: AdminPaymentSettingsRequest, _: bool = Depends(require_admin)) -> dict:
+    upi = body.upi_id or body.paymentUpiId or "blazeculture@upi"
+    qr = body.qr_image_url or body.paymentQrUrl or "/static/logo.png"
+    update_settings({"payment_upi_id": upi, "payment_qr_url": qr})
+    return {"ok": True, "message": "Payment QR code & UPI ID updated successfully!"}
 
 
 @app.get("/api/admin/users")
@@ -387,6 +580,13 @@ async def admin_users(_: bool = Depends(require_admin)) -> dict:
 async def admin_ban_user(body: AdminBanRequest, _: bool = Depends(require_admin)) -> dict:
     set_user_ban_status(body.userId, body.isBanned)
     return {"ok": True, "message": f"User ID {body.userId} ban status set to {body.isBanned}"}
+
+
+@app.post("/api/admin/users/premium")
+@app.post("/api/admin/user/premium")
+async def admin_premium_user(body: AdminPremiumRequest, _: bool = Depends(require_admin)) -> dict:
+    set_user_premium_status(body.userId, body.isPremium)
+    return {"ok": True, "message": f"User ID {body.userId} premium status set to {body.isPremium}"}
 
 
 @app.post("/api/admin/user/balance")
@@ -407,6 +607,34 @@ async def admin_update_withdrawal(body: AdminWithdrawalStatusRequest, _: bool = 
     if not res.get("ok"):
         raise HTTPException(status_code=400, detail=res.get("error", "Failed to update withdrawal status."))
     return {"ok": True}
+
+
+@app.get("/api/admin/promotions")
+async def admin_get_promotions(_: bool = Depends(require_admin)) -> dict:
+    promotions = get_all_promotions()
+    channels = get_all_connected_channels()
+    return {"ok": True, "promotions": promotions, "connectedChannels": channels}
+
+
+@app.post("/api/admin/promotions/approve")
+@app.post("/api/admin/promotions/reject")
+@app.post("/api/admin/promotion/status")
+async def admin_update_promotion_status(body: AdminPromotionStatusRequest, request: Request, _: bool = Depends(require_admin)) -> dict:
+    p_id = body.promotionId or body.promotion_id
+    if not p_id:
+        raise HTTPException(status_code=400, detail="promotionId is required")
+
+    status = body.status
+    if "approve" in request.url.path:
+        status = "approved"
+    elif "reject" in request.url.path:
+        status = "rejected"
+
+    res = update_promotion_status(p_id, status)
+    if not res.get("ok"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Failed to update promotion status."))
+
+    return {"ok": True, "message": f"Promotion #{p_id} status updated to {status}"}
 
 
 @app.get("/api/admin/ad-codes")
@@ -435,8 +663,10 @@ async def admin_save_settings(body: AdminSettingsRequest, _: bool = Depends(requ
         "min_withdrawal_usd": body.min_withdrawal_usd or 5.0,
         "min_withdrawal_inr": body.min_withdrawal_inr or 400.0,
         "referral_commission_pct": body.referral_commission_pct or 15.0,
+        "payment_upi_id": body.payment_upi_id or "blazeculture@upi",
+        "payment_qr_url": body.payment_qr_url or "/static/logo.png",
     })
-    return {"ok": True, "message": "System settings updated successfully!"}
+    return {"ok": True, "message": "Blazeculture system settings updated successfully!"}
 
 
 @app.get("/health")

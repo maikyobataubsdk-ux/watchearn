@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>AdEarn - Watch Ads & Earn Real Money Daily</title>
+  <title>Blazeculture - Premium Ad Earn & Telegram Channel Promotions Hub</title>
   <!-- Google Fonts & FontAwesome Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,6 +22,7 @@
       --text-muted: #9ca3af;
       --gold: #f59e0b;
       --error: #ef4444;
+      --purple: #a855f7;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -33,7 +34,8 @@
       overflow-x: hidden;
       background-image:
         radial-gradient(circle at 15% 15%, rgba(0, 255, 136, 0.08) 0%, transparent 40%),
-        radial-gradient(circle at 85% 85%, rgba(0, 229, 255, 0.08) 0%, transparent 40%);
+        radial-gradient(circle at 85% 85%, rgba(0, 229, 255, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.05) 0%, transparent 60%);
       background-attachment: fixed;
     }
 
@@ -95,6 +97,12 @@
       box-shadow: 0 4px 20px rgba(0, 229, 255, 0.3);
     }
 
+    .btn-purple {
+      background: linear-gradient(135deg, var(--purple), #7c3aed);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(168, 85, 247, 0.3);
+    }
+
     .btn-secondary {
       background: rgba(255, 255, 255, 0.08);
       color: #fff;
@@ -113,7 +121,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 16px 24px;
+      padding: 14px 24px;
       max-width: 1200px;
       margin: 0 auto;
       position: sticky;
@@ -122,21 +130,29 @@
       backdrop-filter: blur(12px);
     }
 
-    .logo {
+    .logo-brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       font-size: 22px;
       font-weight: 800;
       color: #fff;
       text-decoration: none;
     }
-    .logo span { color: var(--neon-green); }
+    .logo-brand img {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+      object-fit: cover;
+    }
+    .logo-brand span { color: var(--neon-green); }
 
     .nav-actions {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
     .lang-btn {
@@ -166,8 +182,8 @@
     /* Hero Section */
     .hero {
       text-align: center;
-      padding: 50px 20px 30px;
-      max-width: 800px;
+      padding: 40px 20px 25px;
+      max-width: 850px;
       margin: 0 auto;
     }
 
@@ -187,19 +203,19 @@
     }
 
     .hero h1 {
-      font-size: 42px;
+      font-size: 40px;
       font-weight: 800;
       line-height: 1.2;
       margin-bottom: 16px;
-      background: linear-gradient(to right, #fff, var(--text-muted));
+      background: linear-gradient(to right, #fff, #a1a1aa, var(--neon-green));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
 
     .hero p {
-      font-size: 18px;
+      font-size: 17px;
       color: var(--text-muted);
-      margin-bottom: 30px;
+      margin-bottom: 28px;
     }
 
     /* Progress bar */
@@ -275,6 +291,7 @@
     .text-green { color: var(--neon-green); }
     .text-cyan { color: var(--neon-cyan); }
     .text-gold { color: var(--gold); }
+    .text-purple { color: var(--purple); }
     .text-muted { color: var(--text-muted); }
 
     /* Modals */
@@ -305,9 +322,25 @@
       position: relative;
     }
 
+    /* QR Code Container */
+    .qr-frame {
+      background: #fff;
+      padding: 15px;
+      border-radius: 16px;
+      display: inline-block;
+      box-shadow: 0 10px 25px rgba(0, 255, 136, 0.2);
+    }
+    .qr-frame img {
+      max-width: 200px;
+      height: auto;
+      display: block;
+    }
+
     @media (max-width: 640px) {
-      .hero h1 { font-size: 30px; }
-      .navbar { padding: 12px 16px; }
+      .hero h1 { font-size: 28px; }
+      .navbar { padding: 12px 14px; }
+      .logo-brand { font-size: 18px; }
+      .logo-brand img { width: 32px; height: 32px; }
     }
   </style>
 </head>
@@ -315,8 +348,9 @@
 
   <!-- Navigation Bar -->
   <nav class="navbar">
-    <a href="#" class="logo" onclick="nav('home')">
-      <i class="fa-solid fa-bolt text-green"></i> Ad<span>Earn</span>
+    <a href="#" class="logo-brand" onclick="nav('home')">
+      <img src="/static/logo.png" alt="Blazeculture Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2583/2583163.png'">
+      Blazeculture <span>PTC</span>
     </a>
     <div class="nav-actions">
       <button class="lang-btn" id="langToggleBtn" onclick="toggleLang()">
@@ -324,16 +358,20 @@
       </button>
 
       <div id="navGuestActions" class="nav-actions">
-        <button class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px;" onclick="openAuthModal('login')" data-i18n="login">Login</button>
-        <button class="btn btn-primary" style="padding: 8px 16px; font-size: 14px;" onclick="openAuthModal('register')" data-i18n="register">Register</button>
+        <button class="btn btn-secondary" style="padding: 8px 14px; font-size: 13px;" onclick="openAuthModal('login')" data-i18n="login">Login</button>
+        <button class="btn btn-primary" style="padding: 8px 14px; font-size: 13px;" onclick="openAuthModal('register')" data-i18n="register">Register</button>
       </div>
 
       <div id="navUserActions" class="nav-actions hidden">
+        <div id="premiumBadgeNav" class="hidden glass" style="padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 800; color: #f59e0b; border: 1px solid rgba(245,158,11,0.4);">
+          <i class="fa-solid fa-crown"></i> PREMIUM VIP
+        </div>
         <div class="glass" style="padding: 6px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: var(--gold);">
           <i class="fa-solid fa-coins"></i> <span id="userNavBalance">0.0</span> <span style="font-size: 11px; color: #fff;">Coins</span>
         </div>
-        <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 14px;" onclick="nav('dashboard')" data-i18n="dashboard">Dashboard</button>
-        <button class="btn btn-danger" style="padding: 8px 12px; font-size: 14px;" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i></button>
+        <button class="btn btn-purple" style="padding: 8px 12px; font-size: 13px;" onclick="nav('promote')"><i class="fa-solid fa-bullhorn"></i> Promote</button>
+        <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 13px;" onclick="nav('dashboard')" data-i18n="dashboard">Dashboard</button>
+        <button class="btn btn-danger" style="padding: 8px 12px; font-size: 13px;" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i></button>
       </div>
     </div>
   </nav>
@@ -344,46 +382,49 @@
     <section id="pageHome">
       <div class="hero">
         <div class="badge">
-          <i class="fa-solid fa-fire"></i> <span data-i18n="heroBadge">High Paying PTC Ads Platform</span>
+          <i class="fa-solid fa-fire"></i> <span data-i18n="heroBadge">Blazeculture PTC & Channel Growth Ecosystem</span>
         </div>
-        <h1 data-i18n="heroTitle">Watch Simple Ads & Earn Real Cash Daily</h1>
-        <p data-i18n="heroDesc">Monetize your free time! Watch 15-30 second high-paying partner ads, earn coins, and withdraw directly to UPI, Paytm, USDT or PayPal instantly.</p>
+        <h1 data-i18n="heroTitle">Watch Simple Ads & Promote Your Telegram Channels Instantly</h1>
+        <p data-i18n="heroDesc">The highest-paying PTC Mini App platform! Earn coins by viewing quick ads or promote your Telegram channel paid with automated multi-channel bot broadcasts and real-time revenue share.</p>
 
-        <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
-          <button class="btn btn-primary" style="font-size: 18px; padding: 16px 36px;" onclick="handleStartWatching()" data-i18n="startWatchingBtn">
+        <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+          <button class="btn btn-primary" style="font-size: 17px; padding: 14px 30px;" onclick="handleStartWatching()" data-i18n="startWatchingBtn">
             <i class="fa-solid fa-circle-play"></i> Start Watching Ads
           </button>
-          <button class="btn btn-secondary" style="font-size: 18px; padding: 16px 28px;" onclick="nav('stats')" data-i18n="viewStatsBtn">
-            <i class="fa-solid fa-chart-line"></i> View Earnings
+          <button class="btn btn-purple" style="font-size: 17px; padding: 14px 26px;" onclick="nav('promote')">
+            <i class="fa-solid fa-rocket"></i> Promote My Channel
+          </button>
+          <button class="btn btn-secondary" style="font-size: 17px; padding: 14px 24px;" onclick="nav('channels')">
+            <i class="fa-solid fa-network-wired"></i> Channel Earnings
           </button>
         </div>
       </div>
 
       <!-- Banner Ad Slot -->
-      <div class="glass" style="padding: 15px; margin: 30px 0; text-align: center;" id="homepageBannerSlot">
+      <div class="glass" style="padding: 15px; margin: 25px 0; text-align: center;" id="homepageBannerSlot">
         <!-- Injected via JS -->
       </div>
 
       <!-- How It Works -->
       <div style="margin: 40px 0;">
-        <h2 style="text-align: center; font-size: 28px; margin-bottom: 30px;" data-i18n="howItWorksTitle">How It Works</h2>
+        <h2 style="text-align: center; font-size: 28px; margin-bottom: 30px;" data-i18n="howItWorksTitle">How Blazeculture Works</h2>
         <div class="grid-3">
           <div class="glass" style="padding: 24px; text-align: center;">
             <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(0,255,136,0.15); color: var(--neon-green); display: grid; place-items: center; margin: 0 auto 15px; font-size: 22px; font-weight: 800;">1</div>
-            <h3 style="margin-bottom: 10px;" data-i18n="step1Title">Create Account</h3>
-            <p class="text-muted" data-i18n="step1Desc">Register in 10 seconds. Get unique referral code and bonus daily ad limit.</p>
+            <h3 style="margin-bottom: 10px;">Ad Watching & VIP Pass</h3>
+            <p class="text-muted">Watch 20s partner ads to earn coins or upgrade to <strong>Premium VIP</strong> via Admin to bypass all ad requirements completely!</p>
           </div>
 
           <div class="glass" style="padding: 24px; text-align: center;">
             <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(0,229,255,0.15); color: var(--neon-cyan); display: grid; place-items: center; margin: 0 auto 15px; font-size: 22px; font-weight: 800;">2</div>
-            <h3 style="margin-bottom: 10px;" data-i18n="step2Title">Watch Ads</h3>
-            <p class="text-muted" data-i18n="step2Desc">View full-screen high-paying interstitial & popunder ads. Complete short 20s timer.</p>
+            <h3 style="margin-bottom: 10px;">Paid Channel Promotions</h3>
+            <p class="text-muted">Enter channel link, analyze full metrics, scan QR to pay. Once verified, our bot broadcasts your post across all partner channels!</p>
           </div>
 
           <div class="glass" style="padding: 24px; text-align: center;">
-            <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(245,158,11,0.15); color: var(--gold); display: grid; place-items: center; margin: 0 auto 15px; font-size: 22px; font-weight: 800;">3</div>
-            <h3 style="margin-bottom: 10px;" data-i18n="step3Title">Withdraw Earnings</h3>
-            <p class="text-muted" data-i18n="step3Desc">Reach minimum $5 / ₹400 and request instant cashout via UPI, Paytm, USDT or PayPal.</p>
+            <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(168,85,247,0.15); color: var(--purple); display: grid; place-items: center; margin: 0 auto 15px; font-size: 22px; font-weight: 800;">3</div>
+            <h3 style="margin-bottom: 10px;">Connect & Earn Revenue</h3>
+            <p class="text-muted">Channel owners connect their channel with full bot admin powers. When 2 users join via ad campaigns, earn <strong>₹0.50 INR</strong> split automatically!</p>
           </div>
         </div>
       </div>
@@ -416,9 +457,23 @@
           <h1 style="font-size: 28px;" data-i18n="dashboardTitle">User Dashboard</h1>
           <p class="text-muted" id="userWelcomeText">Welcome back!</p>
         </div>
-        <button class="btn btn-primary" onclick="nav('watch')">
-          <i class="fa-solid fa-circle-play"></i> <span data-i18n="watchAdsNow">Watch Ads Now</span>
-        </button>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn btn-purple" onclick="nav('promote')"><i class="fa-solid fa-bullhorn"></i> Paid Promotion</button>
+          <button class="btn btn-primary" onclick="nav('watch')">
+            <i class="fa-solid fa-circle-play"></i> <span data-i18n="watchAdsNow">Watch Ads</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- VIP Banner if Premium -->
+      <div id="premiumDashCard" class="glass hidden" style="padding: 20px; margin-bottom: 25px; background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(168,85,247,0.15)); border: 1px solid var(--gold);">
+        <div style="display: flex; align-items: center; gap: 15px;">
+          <i class="fa-solid fa-crown" style="font-size: 36px; color: var(--gold);"></i>
+          <div>
+            <h3 style="color: var(--gold); font-size: 18px;">👑 Blazeculture Premium VIP Active</h3>
+            <p style="font-size: 13px; color: #ddd;">You have unrestricted instant access to all services! You do NOT need to watch any ads to complete tasks or access rewards.</p>
+          </div>
+        </div>
       </div>
 
       <!-- User Stats Cards -->
@@ -454,10 +509,10 @@
         </div>
       </div>
 
-      <!-- Actions & Referral Box -->
+      <!-- Referral Link Box -->
       <div class="grid-3" style="margin-bottom: 25px;">
         <div class="glass" style="padding: 24px; grid-column: span 2;">
-          <h3 style="margin-bottom: 12px;" data-i18n="referralTitle"><i class="fa-solid fa-users text-cyan"></i> Referral Link & 15% Commission</h3>
+          <h3 style="margin-bottom: 12px;" data-i18n="referralTitle"><i class="fa-solid fa-users text-cyan"></i> Referral Link & 15% Lifetime Commission</h3>
           <p class="text-muted" style="font-size: 14px; margin-bottom: 15px;" data-i18n="referralDesc">Share your unique referral link with friends. You will earn 15% commission on all ad view coins they earn forever!</p>
 
           <div style="display: flex; gap: 10px;">
@@ -472,6 +527,7 @@
 
         <div class="glass" style="padding: 24px; display: flex; flex-direction: column; justify-content: center; gap: 12px;">
           <button class="btn btn-primary" onclick="nav('watch')"><i class="fa-solid fa-play"></i> Watch Next Ad</button>
+          <button class="btn btn-purple" onclick="nav('promote')"><i class="fa-solid fa-bullhorn"></i> Start Channel Promo</button>
           <button class="btn btn-secondary" onclick="nav('withdraw')"><i class="fa-solid fa-wallet"></i> Withdraw Cash</button>
         </div>
       </div>
@@ -502,7 +558,7 @@
     <section id="pageWatch" class="hidden">
       <div class="glass" style="max-width: 750px; margin: 0 auto; padding: 30px; text-align: center;">
         <div class="badge">
-          <i class="fa-solid fa-eye"></i> <span data-i18n="adAreaTitle">High-Paying Ad Area</span>
+          <i class="fa-solid fa-eye"></i> <span data-i18n="adAreaTitle">Blazeculture High-Paying Ad Hub</span>
         </div>
         <h2 style="font-size: 26px; margin-bottom: 10px;" data-i18n="watchAdHeadline">Watch Full Ad to Earn Reward</h2>
         <p class="text-muted" style="margin-bottom: 20px;" data-i18n="watchAdInstruction">Do not close or switch tab until timer finishes. Reward will be added automatically.</p>
@@ -539,7 +595,155 @@
       </div>
     </section>
 
-    <!-- PAGE 4: WITHDRAWAL PAGE -->
+    <!-- PAGE 4: CHANNEL PROMOTION HUB PAGE -->
+    <section id="pagePromote" class="hidden">
+      <div style="max-width: 800px; margin: 0 auto;">
+        <div class="glass" style="padding: 30px; margin-bottom: 25px;">
+          <h2 style="font-size: 26px; margin-bottom: 8px;"><i class="fa-solid fa-bullhorn text-purple"></i> Paid Telegram Channel Promotion</h2>
+          <p class="text-muted" style="margin-bottom: 20px; font-size: 14px;">Promote your Telegram channel across all channels connected to Blazeculture. Automated analysis, QR payment, admin verification, and mass broadcasting!</p>
+
+          <!-- Step 1: Channel Link Analysis -->
+          <div style="margin-bottom: 20px;">
+            <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--neon-cyan);">Step 1: Enter Telegram Channel Link / Username</label>
+            <div style="display: flex; gap: 10px;">
+              <input type="text" id="promoChannelLink" class="glass-input" placeholder="https://t.me/yourchannel or @yourchannel">
+              <button class="btn btn-cyan" onclick="analyzePromoChannel()"><i class="fa-solid fa-magnifying-glass"></i> Analyze</button>
+            </div>
+          </div>
+
+          <!-- Channel Analysis Output -->
+          <div id="promoAnalysisCard" class="glass hidden" style="padding: 20px; margin-bottom: 25px; border-color: rgba(0,229,255,0.3);">
+            <h4 style="color: var(--neon-cyan); margin-bottom: 10px;"><i class="fa-solid fa-circle-check"></i> Channel Analysis Complete</h4>
+            <div style="font-size: 14px; line-height: 1.8;">
+              <div><strong>Title:</strong> <span id="pTitle">-</span></div>
+              <div><strong>Username:</strong> <span id="pUsername">-</span></div>
+              <div><strong>Total Members:</strong> <span id="pMembers" class="text-green">0</span></div>
+              <div><strong>Bot Full Admin Power:</strong> <span id="pBotAdminStatus" class="text-gold">Checking...</span></div>
+            </div>
+          </div>
+
+          <!-- Step 2: Campaign Details & Payment -->
+          <div id="promoStep2Area" class="hidden">
+            <h3 style="font-size: 18px; margin-bottom: 15px; color: var(--gold);"><i class="fa-solid fa-qrcode"></i> Step 2: Select Package & Scan Admin QR Code</h3>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+              <div class="glass" style="padding: 15px; text-align: center; border: 1px solid var(--neon-green);">
+                <div style="font-size: 12px; text-transform: uppercase;" class="text-muted">Starter Pack</div>
+                <div style="font-size: 24px; font-weight: 800; color: var(--neon-green);">₹100 INR</div>
+                <div style="font-size: 12px;" class="text-muted">Target ~200 Real Joins</div>
+              </div>
+              <div class="glass" style="padding: 15px; text-align: center; border: 1px solid var(--neon-cyan);">
+                <div style="font-size: 12px; text-transform: uppercase;" class="text-muted">Pro Booster</div>
+                <div style="font-size: 24px; font-weight: 800; color: var(--neon-cyan);">₹250 INR</div>
+                <div style="font-size: 12px;" class="text-muted">Target ~500 Real Joins</div>
+              </div>
+              <div class="glass" style="padding: 15px; text-align: center; border: 1px solid var(--purple);">
+                <div style="font-size: 12px; text-transform: uppercase;" class="text-muted">Ultra Viral</div>
+                <div style="font-size: 24px; font-weight: 800; color: var(--purple);">₹500 INR</div>
+                <div style="font-size: 12px;" class="text-muted">Target ~1000 Real Joins</div>
+              </div>
+            </div>
+
+            <div class="glass" style="padding: 20px; text-align: center; margin-bottom: 20px;">
+              <h4 style="margin-bottom: 12px;">Scan QR to Pay via UPI / Paytm / PhonePe</h4>
+              <div class="qr-frame" style="margin-bottom: 12px;">
+                <img id="promoQrImage" src="/static/logo.png" alt="Payment QR Code">
+              </div>
+              <div style="font-size: 14px; font-weight: bold; color: var(--neon-green);" id="promoUpiIdText">UPI ID: blazeculture@upi</div>
+              <p class="text-muted" style="font-size: 12px; margin-top: 6px;">Pay the exact amount for your chosen promotion budget.</p>
+            </div>
+
+            <form onsubmit="handlePromoSubmit(event)">
+              <div style="margin-bottom: 15px;">
+                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Promotion Budget (INR ₹)</label>
+                <input type="number" id="promoBudgetVal" class="glass-input" min="50" step="50" value="100" required>
+              </div>
+
+              <div style="margin-bottom: 15px;">
+                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Ad Message / Description (With Links)</label>
+                <textarea id="promoMsgVal" class="glass-input" rows="3" placeholder="Join @yourchannel for daily high-paying tasks and exclusive giveaways!" required></textarea>
+              </div>
+
+              <div style="margin-bottom: 20px;">
+                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Payment UTR / Transaction Reference ID</label>
+                <input type="text" id="promoTxnRefVal" class="glass-input" placeholder="e.g. 429381029381 or Paytm TXN ID" required>
+              </div>
+
+              <button type="submit" class="btn btn-purple" style="width: 100%; font-size: 16px;">
+                <i class="fa-solid fa-paper-plane"></i> Submit Promotion for Admin Approval
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- User My Promotions List -->
+        <div class="glass" style="padding: 25px;">
+          <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-list-check text-cyan"></i> My Promotion Campaigns</h3>
+          <div style="overflow-x: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Campaign</th>
+                  <th>Budget</th>
+                  <th>Joins / Views</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="myPromotionsTableBody">
+                <tr><td colspan="4" class="text-muted" style="text-align: center;">No promotion campaigns yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE 5: CONNECT CHANNEL & EARNINGS -->
+    <section id="pageChannels" class="hidden">
+      <div style="max-width: 850px; margin: 0 auto;">
+        <div class="glass" style="padding: 30px; margin-bottom: 25px;">
+          <h2 style="font-size: 26px; margin-bottom: 8px;"><i class="fa-solid fa-network-wired text-green"></i> Connect Your Telegram Channel & Earn</h2>
+          <p class="text-muted" style="margin-bottom: 20px; font-size: 14px;">Allow Blazeculture ads to run on your Telegram channel and earn <strong>₹0.50 INR for every 2 user joins</strong> automatically tracked!</p>
+
+          <div class="glass" style="padding: 20px; margin-bottom: 20px; border-left: 4px solid var(--neon-green);">
+            <h4 style="color: var(--neon-green); margin-bottom: 8px;"><i class="fa-solid fa-circle-info"></i> Connection Setup Instructions</h4>
+            <ol style="margin-left: 20px; font-size: 13px; color: var(--text-muted); line-height: 1.8;">
+              <li>Add <code>@BlazecultureBot</code> (or your configured bot) to your channel as an <strong>Admin with full permissions</strong> (Post Messages, Edit Messages, Delete Messages, Invite Users).</li>
+              <li>Paste your channel link below and click <strong>"Connect & Verify Admin"</strong>.</li>
+              <li>When ad campaigns run on your channel, every 2 users who join will automatically deduct ₹1 from the promoter and credit <strong>₹0.50</strong> straight to your wallet!</li>
+            </ol>
+          </div>
+
+          <form onsubmit="handleConnectChannel(event)" style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <input type="text" id="connectChannelLinkInput" class="glass-input" placeholder="https://t.me/yourchannel or @yourchannel" required>
+            <button type="submit" class="btn btn-primary" style="white-space: nowrap;"><i class="fa-solid fa-plug"></i> Connect & Verify</button>
+          </form>
+        </div>
+
+        <!-- My Connected Channels Table -->
+        <div class="glass" style="padding: 25px;">
+          <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-tv text-cyan"></i> My Connected Channels & Analytics</h3>
+          <div style="overflow-x: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Channel</th>
+                  <th>Total Joins</th>
+                  <th>Total Left</th>
+                  <th>Earned (INR)</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="myChannelsTableBody">
+                <tr><td colspan="5" class="text-muted" style="text-align: center;">No channels connected yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE 6: WITHDRAWAL PAGE -->
     <section id="pageWithdraw" class="hidden">
       <div class="glass" style="max-width: 600px; margin: 0 auto; padding: 30px;">
         <h2 style="font-size: 26px; margin-bottom: 10px;" data-i18n="withdrawHeading"><i class="fa-solid fa-wallet text-green"></i> Request Cash Withdrawal</h2>
@@ -576,12 +780,12 @@
       </div>
     </section>
 
-    <!-- PAGE 5: ADMIN PANEL (/raj) -->
+    <!-- PAGE 7: MASTER ADMIN PANEL (/raj) -->
     <section id="pageAdmin" class="hidden">
       <!-- Admin Login View -->
       <div id="adminLoginView" class="glass" style="max-width: 450px; margin: 40px auto; padding: 30px;">
-        <h2 style="font-size: 24px; text-align: center; margin-bottom: 8px;"><i class="fa-solid fa-user-shield text-cyan"></i> Admin Panel</h2>
-        <p class="text-muted" style="text-align: center; font-size: 13px; margin-bottom: 20px;">Enter credentials to access master controls</p>
+        <h2 style="font-size: 24px; text-align: center; margin-bottom: 8px;"><i class="fa-solid fa-user-shield text-cyan"></i> Blazeculture Master Admin</h2>
+        <p class="text-muted" style="text-align: center; font-size: 13px; margin-bottom: 20px;">Enter credentials to access high-level site & bot control panel</p>
 
         <form onsubmit="handleAdminLogin(event)">
           <div style="margin-bottom: 15px;">
@@ -598,15 +802,15 @@
 
       <!-- Admin Dashboard View -->
       <div id="adminDashboardView" class="hidden">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
-          <h2><i class="fa-solid fa-crown text-gold"></i> Master Admin Controls</h2>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; flex-wrap: wrap; gap: 10px;">
+          <h2><i class="fa-solid fa-crown text-gold"></i> Master Admin Control Center</h2>
           <button class="btn btn-danger" onclick="adminLogout()">Logout Admin</button>
         </div>
 
         <!-- Admin Stats -->
         <div class="grid-3" style="margin-bottom: 25px;">
           <div class="glass" style="padding: 20px;">
-            <div class="text-muted" style="font-size: 12px;">Total Users</div>
+            <div class="text-muted" style="font-size: 12px;">Total Registered Users</div>
             <div style="font-size: 28px; font-weight: 800; color: var(--neon-green);" id="admTotalUsers">0</div>
           </div>
           <div class="glass" style="padding: 20px;">
@@ -614,24 +818,64 @@
             <div style="font-size: 28px; font-weight: 800; color: var(--gold);" id="admPendingWithdrawals">0</div>
           </div>
           <div class="glass" style="padding: 20px;">
-            <div class="text-muted" style="font-size: 12px;">Total Paid Out</div>
-            <div style="font-size: 28px; font-weight: 800; color: var(--neon-cyan);" id="admTotalPaid">$0.00</div>
+            <div class="text-muted" style="font-size: 12px;">Pending Promotions</div>
+            <div style="font-size: 28px; font-weight: 800; color: var(--purple);" id="admPendingPromos">0</div>
+          </div>
+        </div>
+
+        <!-- Payment Settings Manager (QR & UPI) -->
+        <div class="glass" style="padding: 25px; margin-bottom: 25px;">
+          <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-qrcode text-gold"></i> Payment QR Code & UPI Settings</h3>
+          <form onsubmit="handleSavePaymentQr(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+            <div>
+              <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">UPI ID / Payment String</label>
+              <input type="text" id="admUpiIdInput" class="glass-input" placeholder="blazeculture@upi">
+            </div>
+            <div>
+              <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">QR Code Image URL / Base64</label>
+              <input type="text" id="admQrUrlInput" class="glass-input" placeholder="/static/logo.png or image URL">
+            </div>
+            <div style="grid-column: 1 / -1;">
+              <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Payment Config</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Promotion Requests Approval Table -->
+        <div class="glass" style="padding: 25px; margin-bottom: 25px;">
+          <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-bullhorn text-purple"></i> Pending Promotion Requests & Broadcast Trigger</h3>
+          <div style="overflow-x: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>User</th>
+                  <th>Channel Link</th>
+                  <th>Budget</th>
+                  <th>Txn Ref</th>
+                  <th>Ad Message</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="adminPromotionsTableBody">
+                <tr><td colspan="7" class="text-muted">Loading promotion requests...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
         <!-- High-Paying Ad Code Manager -->
         <div class="glass" style="padding: 25px; margin-bottom: 25px;">
           <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-code text-green"></i> Ad Network Script Manager (Adsterra / HilltopAds / Monetag)</h3>
-          <p class="text-muted" style="font-size: 13px; margin-bottom: 15px;">Paste your highest paying ad scripts here. They will automatically execute on the website.</p>
 
           <form onsubmit="handleSaveAdCodes(event)">
             <div style="margin-bottom: 15px;">
-              <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Full-Page Interstitial Script (Adsterra / HilltopAds)</label>
+              <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Full-Page Interstitial Script</label>
               <textarea id="admInterstitialCode" class="glass-input" rows="3" style="font-family: monospace; font-size: 12px;"></textarea>
             </div>
 
             <div style="margin-bottom: 15px;">
-              <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Popunder Script (On Page Load / Click)</label>
+              <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Popunder Script</label>
               <textarea id="admPopunderCode" class="glass-input" rows="3" style="font-family: monospace; font-size: 12px;"></textarea>
             </div>
 
@@ -644,9 +888,9 @@
           </form>
         </div>
 
-        <!-- User Management Table -->
+        <!-- User Management Table with Premium Toggle -->
         <div class="glass" style="padding: 25px; margin-bottom: 25px;">
-          <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-users text-cyan"></i> Registered Users Manager</h3>
+          <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-users text-cyan"></i> Registered Users & VIP Premium Status</h3>
           <div style="overflow-x: auto;">
             <table>
               <thead>
@@ -654,8 +898,8 @@
                   <th>ID</th>
                   <th>Username</th>
                   <th>Email</th>
-                  <th>Balance (Coins)</th>
-                  <th>Ads Watched</th>
+                  <th>Coins Balance</th>
+                  <th>VIP Premium (No Ad Needed)</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
@@ -757,28 +1001,21 @@
         login: "Login",
         register: "Register",
         dashboard: "Dashboard",
-        heroBadge: "High Paying PTC Ads Platform",
-        heroTitle: "Watch Simple Ads & Earn Real Cash Daily",
-        heroDesc: "Monetize your free time! Watch 15-30 second high-paying partner ads, earn coins, and withdraw directly to UPI, Paytm, USDT or PayPal instantly.",
+        heroBadge: "Blazeculture PTC & Channel Growth Ecosystem",
+        heroTitle: "Watch Simple Ads & Promote Your Telegram Channels Instantly",
+        heroDesc: "The highest-paying PTC Mini App platform! Earn coins by viewing quick ads or promote your Telegram channel paid with automated multi-channel bot broadcasts and real-time revenue share.",
         startWatchingBtn: "Start Watching Ads",
-        viewStatsBtn: "View Earnings",
-        howItWorksTitle: "How It Works",
-        step1Title: "Create Account",
-        step1Desc: "Register in 10 seconds. Get unique referral code and bonus daily ad limit.",
-        step2Title: "Watch Ads",
-        step2Desc: "View full-screen high-paying interstitial & popunder ads. Complete short 20s timer.",
-        step3Title: "Withdraw Earnings",
-        step3Desc: "Reach minimum $5 / ₹400 and request instant cashout via UPI, Paytm, USDT or PayPal.",
+        howItWorksTitle: "How Blazeculture Works",
         leaderboardTitle: "Top Earners Leaderboard",
         dashboardTitle: "User Dashboard",
-        watchAdsNow: "Watch Ads Now",
+        watchAdsNow: "Watch Ads",
         currentBalance: "Current Balance",
         adsWatchedToday: "Daily Ads Progress",
         totalAdsWatched: "Lifetime Earned",
-        referralTitle: "Referral Link & 15% Commission",
+        referralTitle: "Referral Link & 15% Lifetime Commission",
         referralDesc: "Share your unique referral link with friends. You will earn 15% commission on all ad view coins they earn forever!",
         withdrawalHistory: "Withdrawal History",
-        adAreaTitle: "High-Paying Ad Area",
+        adAreaTitle: "Blazeculture High-Paying Ad Hub",
         watchAdHeadline: "Watch Full Ad to Earn Reward",
         watchAdInstruction: "Do not close or switch tab until timer finishes. Reward will be added automatically.",
         startAdBtn: "Start Viewing Ad",
@@ -793,28 +1030,21 @@
         login: "लॉगिन करें",
         register: "रजिस्टर करें",
         dashboard: "डैशबोर्ड",
-        heroBadge: "हाई पेइंग विज्ञापन और कमाई प्लेटफॉर्म",
-        heroTitle: "सरल विज्ञापन देखें और रोजाना असली पैसा कमाएं",
-        heroDesc: "अपने खाली समय का लाभ उठाएं! 15-30 सेकंड के विज्ञापन देखें, कॉइन कमाएं और सीधे UPI, Paytm, USDT या PayPal पर पैसे निकालें।",
+        heroBadge: "ब्लेज़कल्चर पीटीसी और टेलीग्राम चैनल ग्रोथ इकोसिस्टम",
+        heroTitle: "विज्ञापन देखें और अपने टेलीग्राम चैनल का प्रमोशन कराएं",
+        heroDesc: "सबसे ज्यादा कमाई कराने वाला पीटीसी ऐप! सरल विज्ञापन देखकर कॉइन कमाएं या अपने चैनल का ऑटोमेटेड प्रमोशन कराएं।",
         startWatchingBtn: "विज्ञापन देखना शुरू करें",
-        viewStatsBtn: "कमाई देखें",
-        howItWorksTitle: "यह कैसे काम करता है",
-        step1Title: "अकाउंट बनाएं",
-        step1Desc: "10 सेकंड में रजिस्टर करें। अपना रेफरल कोड पाएं और रोजाना विज्ञापन देखना शुरू करें।",
-        step2Title: "विज्ञापन देखें",
-        step2Desc: "हाई पेइंग फुल स्क्रीन और पॉप-अंडर विज्ञापन देखें। 20 सेकंड का टाइमर पूरा करें।",
-        step3Title: "पैसे निकालें",
-        step3Desc: "कम से कम $5 / ₹400 कमाएं और UPI, Paytm, USDT या PayPal के माध्यम से कैशआउट करें।",
+        howItWorksTitle: "ब्लेज़कल्चर कैसे काम करता है",
         leaderboardTitle: "शीर्ष कमाई करने वाले लीडरबोर्ड",
         dashboardTitle: "यूजर डैशबोर्ड",
-        watchAdsNow: "अब विज्ञापन देखें",
+        watchAdsNow: "विज्ञापन देखें",
         currentBalance: "वर्तमान बैलेंस",
         adsWatchedToday: "आज की प्रगति",
         totalAdsWatched: "कुल कमाई",
-        referralTitle: "रेफरल लिंक और 15% कमीशन",
-        referralDesc: "दोस्तों के साथ अपना लिंक शेयर करें। उनके द्वारा कमाए गए हर विज्ञापन कॉइन पर 15% कमीशन पाएं!",
+        referralTitle: "रेफरल लिंक और 15% लाइफटाइम कमीशन",
+        referralDesc: "दोस्तों के साथ अपना लिंक शेयर करें। उनके द्वारा कमाए गए हर कॉइन पर 15% कमीशन पाएं!",
         withdrawalHistory: "निकासी इतिहास",
-        adAreaTitle: "हाई-पेइंग विज्ञापन क्षेत्र",
+        adAreaTitle: "ब्लेज़कल्चर विज्ञापन हब",
         watchAdHeadline: "पुरस्कार पाने के लिए पूरा विज्ञापन देखें",
         watchAdInstruction: "टाइमर खत्म होने तक टैब बंद न करें। पुरस्कार अपने आप जोड़ दिया जाएगा।",
         startAdBtn: "विज्ञापन देखना शुरू करें",
@@ -834,6 +1064,7 @@
     let currentAdSession = null;
     let adTimerInterval = null;
     let adTimeRemaining = 20;
+    let currentAnalyzedChannel = null;
 
     function toggleLang() {
       currentLang = currentLang === 'en' ? 'hi' : 'en';
@@ -865,6 +1096,15 @@
         if (!userToken) return openAuthModal('login');
         document.getElementById('pageWatch').classList.remove('hidden');
         resetAdWatchArea();
+      } else if (page === 'promote') {
+        if (!userToken) return openAuthModal('login');
+        document.getElementById('pagePromote').classList.remove('hidden');
+        loadPaymentQr();
+        loadMyPromotions();
+      } else if (page === 'channels') {
+        if (!userToken) return openAuthModal('login');
+        document.getElementById('pageChannels').classList.remove('hidden');
+        loadMyChannels();
       } else if (page === 'withdraw') {
         if (!userToken) return openAuthModal('login');
         document.getElementById('pageWithdraw').classList.remove('hidden');
@@ -885,7 +1125,6 @@
 
     // Check Route on Load
     window.addEventListener('DOMContentLoaded', () => {
-      // Check ref in URL
       const urlParams = new URLSearchParams(window.location.search);
       const refCode = urlParams.get('ref');
       if (refCode) {
@@ -955,7 +1194,6 @@
           document.getElementById('homepageBannerSlot').innerHTML = config.adCodes.banner;
         }
         if (config.adCodes && config.adCodes.popunder) {
-          // Dynamically inject popunder
           const div = document.createElement('div');
           div.innerHTML = config.adCodes.popunder;
           document.body.appendChild(div);
@@ -1038,6 +1276,14 @@
         document.getElementById('navUserActions').classList.remove('hidden');
         document.getElementById('userNavBalance').textContent = currentUser.balanceCoins.toFixed(1);
 
+        if (currentUser.is_premium) {
+          document.getElementById('premiumBadgeNav').classList.remove('hidden');
+          document.getElementById('premiumDashCard').classList.remove('hidden');
+        } else {
+          document.getElementById('premiumBadgeNav').classList.add('hidden');
+          document.getElementById('premiumDashCard').classList.add('hidden');
+        }
+
         document.getElementById('userWelcomeText').textContent = `Welcome back, @${currentUser.username}!`;
       } catch (err) {
         logout();
@@ -1108,15 +1354,21 @@
         const res = await apiCall('/api/user/watch-ad', 'POST', {}, userToken);
         currentAdSession = res;
 
+        if (res.is_premium) {
+          // Bypass ad requirement for premium users!
+          document.getElementById('coinModalRewardText').textContent = `+2.0 COINS (VIP PREMIUM BYPASS)!`;
+          document.getElementById('coinRewardModal').classList.add('active');
+          await fetchUserProfile();
+          return;
+        }
+
         document.getElementById('startWatchAdBtn').classList.add('hidden');
         document.getElementById('adPlaceholderText').classList.add('hidden');
         document.getElementById('adTimerSection').classList.remove('hidden');
 
-        // Inject Interstitial & Popunder ad codes
         const adSlot = document.getElementById('dynamicAdInjectSlot');
         adSlot.innerHTML = res.adCodes.interstitial || res.adCodes.banner || '<div class="text-green">Ad Playing...</div>';
 
-        // Execute dynamic scripts inside adSlot if any
         const scripts = adSlot.querySelectorAll('script');
         scripts.forEach(s => {
           const newScript = document.createElement('script');
@@ -1175,6 +1427,124 @@
     function closeCoinRewardModal() {
       document.getElementById('coinRewardModal').classList.remove('active');
       nav('dashboard');
+    }
+
+    // PROMOTION SYSTEM HANDLERS
+    async function loadPaymentQr() {
+      try {
+        const data = await apiCall('/api/promotions/payment-qr');
+        if (data.upi_id) document.getElementById('promoUpiIdText').textContent = `UPI ID: ${data.upi_id}`;
+        if (data.qr_image_url) document.getElementById('promoQrImage').src = data.qr_image_url;
+      } catch (err) {}
+    }
+
+    async function analyzePromoChannel() {
+      const link = document.getElementById('promoChannelLink').value.trim();
+      if (!link) return alert('Please enter a channel link or username!');
+
+      try {
+        const res = await apiCall('/api/promotions/analyze', 'POST', { channel_link: link }, userToken);
+        currentAnalyzedChannel = res;
+
+        document.getElementById('promoAnalysisCard').classList.remove('hidden');
+        document.getElementById('promoStep2Area').classList.remove('hidden');
+
+        document.getElementById('pTitle').textContent = res.title;
+        document.getElementById('pUsername').textContent = res.username;
+        document.getElementById('pMembers').textContent = res.members_count;
+        document.getElementById('pBotAdminStatus').textContent = res.bot_is_admin ? 'YES (Full Powers Enabled)' : 'NO (Please Add Bot as Admin)';
+        document.getElementById('pBotAdminStatus').style.color = res.bot_is_admin ? 'var(--neon-green)' : 'var(--error)';
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function handlePromoSubmit(e) {
+      e.preventDefault();
+      try {
+        const budget = parseFloat(document.getElementById('promoBudgetVal').value);
+        const adMessage = document.getElementById('promoMsgVal').value;
+        const txnRef = document.getElementById('promoTxnRefVal').value;
+        const channelLink = document.getElementById('promoChannelLink').value;
+
+        const res = await apiCall('/api/promotions/submit', 'POST', {
+          channel_link: channelLink,
+          ad_message: adMessage,
+          budget_inr: budget,
+          payment_txn_ref: txnRef
+        }, userToken);
+
+        alert(res.message || 'Promotion submitted successfully!');
+        loadMyPromotions();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function loadMyPromotions() {
+      if (!userToken) return;
+      try {
+        const res = await apiCall('/api/promotions/my', 'GET', null, userToken);
+        const tbody = document.getElementById('myPromotionsTableBody');
+        tbody.innerHTML = '';
+
+        if (res.promotions && res.promotions.length > 0) {
+          res.promotions.forEach(p => {
+            const tr = document.createElement('tr');
+            let color = 'var(--gold)';
+            if (p.status === 'approved') color = 'var(--neon-green)';
+            if (p.status === 'rejected') color = 'var(--error)';
+
+            tr.innerHTML = `
+              <td><strong>${p.channel_title || p.channel_link}</strong></td>
+              <td>₹${p.budget_inr} INR</td>
+              <td>${p.joins_count} joins / ${p.views_count} views</td>
+              <td><span style="color:${color}; font-weight:bold; text-transform:uppercase;">${p.status}</span></td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = `<tr><td colspan="4" class="text-muted" style="text-align: center;">No promotion campaigns yet.</td></tr>`;
+        }
+      } catch (err) {}
+    }
+
+    // CONNECT CHANNEL HANDLERS
+    async function handleConnectChannel(e) {
+      e.preventDefault();
+      try {
+        const link = document.getElementById('connectChannelLinkInput').value.trim();
+        const res = await apiCall('/api/channels/connect', 'POST', { channel_link: link }, userToken);
+        alert(res.message);
+        loadMyChannels();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function loadMyChannels() {
+      if (!userToken) return;
+      try {
+        const res = await apiCall('/api/channels/my', 'GET', null, userToken);
+        const tbody = document.getElementById('myChannelsTableBody');
+        tbody.innerHTML = '';
+
+        if (res.channels && res.channels.length > 0) {
+          res.channels.forEach(c => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><strong>${c.title}</strong> (${c.username})</td>
+              <td class="text-green"><strong>${c.total_joins}</strong></td>
+              <td class="text-gold">${c.total_left}</td>
+              <td class="text-cyan"><strong>₹${c.earnings_inr.toFixed(2)}</strong></td>
+              <td><span style="color:var(--neon-green); font-weight:bold;">CONNECTED</span></td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = `<tr><td colspan="5" class="text-muted" style="text-align: center;">No channels connected yet.</td></tr>`;
+        }
+      } catch (err) {}
     }
 
     // Withdrawals Flow
@@ -1259,7 +1629,42 @@
         const statsData = await apiCall('/api/admin/stats');
         document.getElementById('admTotalUsers').textContent = statsData.totalUsersCount;
         document.getElementById('admPendingWithdrawals').textContent = statsData.pendingWithdrawalsCount;
-        document.getElementById('admTotalPaid').textContent = `$${statsData.stats.total_paid_usd.toFixed(2)}`;
+
+        // Load Payment QR Config
+        const qrRes = await apiCall('/api/admin/payment-qr');
+        document.getElementById('admUpiIdInput').value = qrRes.upi_id || '';
+        document.getElementById('admQrUrlInput').value = qrRes.qr_image_url || '';
+
+        // Load Pending Promotions
+        const promoRes = await apiCall('/api/admin/promotions');
+        const promoTbody = document.getElementById('adminPromotionsTableBody');
+        promoTbody.innerHTML = '';
+        let pendingCount = 0;
+
+        if (promoRes.promotions && promoRes.promotions.length > 0) {
+          promoRes.promotions.forEach(p => {
+            if (p.status === 'pending') pendingCount++;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>#${p.id}</td>
+              <td><strong>${p.username}</strong></td>
+              <td><a href="${p.channel_link}" target="_blank" style="color:var(--neon-cyan);">${p.channel_link}</a></td>
+              <td>₹${p.budget_inr} INR</td>
+              <td><code>${p.payment_txn_ref}</code></td>
+              <td><div style="max-width:200px; font-size:12px;" class="text-muted">${p.ad_message}</div></td>
+              <td>
+                ${p.status === 'pending' ? `
+                  <button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="approvePromotion(${p.id})">Approve & Broadcast</button>
+                  <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="rejectPromotion(${p.id})">Reject</button>
+                ` : `<span style="font-weight:bold;">${p.status.toUpperCase()}</span>`}
+              </td>
+            `;
+            promoTbody.appendChild(tr);
+          });
+        } else {
+          promoTbody.innerHTML = `<tr><td colspan="7" class="text-muted">No pending promotion requests.</td></tr>`;
+        }
+        document.getElementById('admPendingPromos').textContent = pendingCount;
 
         // Load Ad Codes
         const adCodeRes = await apiCall('/api/admin/ad-codes');
@@ -1269,7 +1674,7 @@
           document.getElementById('admBannerCode').value = adCodeRes.adCodes.banner || '';
         }
 
-        // Load Users Table
+        // Load Users Table with VIP Premium Toggle
         const userRes = await apiCall('/api/admin/users');
         const userTbody = document.getElementById('adminUsersTableBody');
         userTbody.innerHTML = '';
@@ -1282,7 +1687,11 @@
             <td>
               <input type="number" value="${u.balance_coins}" style="width: 80px;" class="glass-input" onchange="updateUserBalance(${u.id}, this.value)">
             </td>
-            <td>${u.total_ads_watched}</td>
+            <td>
+              <button class="btn btn-${u.is_premium ? 'purple' : 'secondary'}" style="padding: 4px 10px; font-size: 12px;" onclick="toggleUserPremium(${u.id}, ${!u.is_premium})">
+                ${u.is_premium ? '👑 Premium VIP' : 'Regular User'}
+              </button>
+            </td>
             <td>${u.is_banned ? '<span style="color:var(--error);">BANNED</span>' : '<span style="color:var(--neon-green);">ACTIVE</span>'}</td>
             <td>
               <button class="btn btn-${u.is_banned ? 'primary' : 'danger'}" style="padding: 4px 10px; font-size: 12px;" onclick="toggleUserBan(${u.id}, ${!u.is_banned})">
@@ -1318,6 +1727,47 @@
 
       } catch (err) {
         console.error(err);
+      }
+    }
+
+    async function handleSavePaymentQr(e) {
+      e.preventDefault();
+      try {
+        const upiId = document.getElementById('admUpiIdInput').value;
+        const qrUrl = document.getElementById('admQrUrlInput').value;
+        await apiCall('/api/admin/payment-qr', 'POST', { upi_id: upiId, qr_image_url: qrUrl });
+        alert('Payment QR code and UPI ID updated!');
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function approvePromotion(promoId) {
+      try {
+        const res = await apiCall('/api/admin/promotions/approve', 'POST', { promotionId: promoId });
+        alert(res.message || 'Promotion approved & broadcasted!');
+        loadAdminDashboardData();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function rejectPromotion(promoId) {
+      try {
+        const res = await apiCall('/api/admin/promotions/reject', 'POST', { promotionId: promoId });
+        alert(res.message || 'Promotion rejected!');
+        loadAdminDashboardData();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function toggleUserPremium(userId, isPremium) {
+      try {
+        await apiCall('/api/admin/users/premium', 'POST', { userId, isPremium });
+        loadAdminDashboardData();
+      } catch (err) {
+        alert(err.message);
       }
     }
 

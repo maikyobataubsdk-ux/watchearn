@@ -9,13 +9,17 @@ from aiogram import Bot, Dispatcher, F, Router
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandStart
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+from aiogram.types import (
+    Message, CallbackQuery, ChatMemberUpdated, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
+)
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 
 from config import BOT_TOKEN, ADMIN_USER_ID, WEBAPP_URL, validate_common
 from db import (
     init_db, get_setting, set_setting, create_campaign, get_campaign,
-    has_rewarded_intent, get_unlock, save_unlock,
+    has_rewarded_intent, get_unlock, save_unlock, get_user_by_id,
+    record_channel_join_event, record_channel_left_event, get_user_promotions,
+    get_user_connected_channels, get_all_connected_channels,
 )
 
 router = Router()
@@ -27,8 +31,11 @@ def is_admin(user_id: int) -> bool:
     return user_id == ADMIN_USER_ID
 
 
-def get_webapp_url(token: str) -> str:
-    return f"{WEBAPP_URL}/?{urlencode({'campaign': token})}"
+def get_webapp_url(token: str = "") -> str:
+    params = {}
+    if token:
+        params["campaign"] = token
+    return f"{WEBAPP_URL}/?{urlencode(params)}" if params else WEBAPP_URL
 
 
 async def member_of_force_channel(user_id: int) -> bool:
@@ -45,6 +52,23 @@ async def member_of_force_channel(user_id: int) -> bool:
         return status == "restricted" and bool(getattr(member, "is_member", False))
     except (TelegramBadRequest, TelegramForbiddenError):
         return False
+
+
+def main_welcome_keyboard(token: str = "") -> InlineKeyboardMarkup:
+    web_url = get_webapp_url(token)
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="⭐ Premium Pass", callback_data="btn_premium"),
+            InlineKeyboardButton(text="📚 Tutorial", callback_data="btn_tutorial")
+        ],
+        [
+            InlineKeyboardButton(text="🚀 Open Blazeculture App", web_app=WebAppInfo(url=web_url))
+        ],
+        [
+            InlineKeyboardButton(text="💼 Promote Channel", callback_data="btn_promote"),
+            InlineKeyboardButton(text="🔓 Channel Link", callback_data=f"getlink:{token}" if token else "btn_getlink")
+        ]
+    ])
 
 
 def force_join_keyboard(token: str | None = None) -> InlineKeyboardMarkup:
@@ -75,8 +99,19 @@ async def show_campaign_flow(message: Message, token: str, user_id: int) -> None
             reply_markup=force_join_keyboard(token),
         )
         return
+
+    db_user = get_user_by_id(user_id)
+    if db_user and db_user.get("is_premium"):
+        await message.answer(
+            "⭐ <b>Blazeculture Premium Member</b>\n\n"
+            f"🎯 Target Channel: <b>{escape(campaign['target_title'])}</b>\n\n"
+            "✨ As a Premium user, you can bypass watching ads! Tap below to claim your link.",
+            reply_markup=campaign_keyboard(token),
+        )
+        return
+
     await message.answer(
-        "✨ <b>Channel Access Gateway</b>\n\n"
+        "✨ <b>Blazeculture Channel Access Gateway</b>\n\n"
         f"🎯 Target Channel: <b>{escape(campaign['target_title'])}</b>\n\n"
         "Tap <b>Watch Ad to Unlock</b> to complete the ad view. "
         "Once verified, return here and tap <b>Get Channel Link</b> to claim your access invite!",
@@ -92,32 +127,35 @@ async def start_handler(message: Message) -> None:
     if token and get_campaign(token):
         await show_campaign_flow(message, token, user_id)
         return
-    await message.answer(
-        "👋 <b>Welcome to Channel Access Bot!</b>\n\n"
-        "This bot provides secure access links for configured channels.\n\n"
-        "📌 Please open a valid campaign link provided by the channel administrator to get started.\n\n"
-        "🛠 <i>Admin commands:</i> /setforce, /offforce, /settarget, /genlink, /status, /help"
+
+    greeting = (
+        "HI THERE... 🛰️ ─ ✦ <b>M R  R A J</b> ✦ ─ 💥\n\n"
+        "<b>I AM BLAZECULTURE BOT...!</b>\n"
+        "I CAN PROVIDE EXCLUSIVE FILES & CHANNEL PROMOTIONS THROUGH A SPECIFIC LINK...!\n\n"
+        "⚡ <i>POWERED BY BLAZECULTURE PLATFORM</i>"
     )
+    await message.answer(greeting, reply_markup=main_welcome_keyboard())
 
 
 @router.message(Command("help"))
 async def help_handler(message: Message) -> None:
     user_id = message.from_user.id if message.from_user else 0
     text = (
-        "ℹ️ <b>Commands & Guide</b>\n\n"
-        "• /start — Launch bot or campaign\n"
-        "• /help — View help information\n\n"
+        "ℹ️ <b>Blazeculture Bot Guide</b>\n\n"
+        "• /start — Open main menu & Mini App\n"
+        "• /promote — Promote your channel paid\n"
+        "• /mychannels — View your connected channels & stats\n"
+        "• /help — View help guide\n\n"
     )
     if is_admin(user_id):
         text += (
-            "👑 <b>Admin Commands</b>\n"
-            "• <code>/setforce @channel</code> — Require joining a channel first\n"
-            "• <code>/offforce</code> — Disable required force-subscription check\n"
-            "• <code>/settarget @channel direct</code> — Set target channel with single-use direct invite\n"
-            "• <code>/settarget @channel request</code> — Set target channel with join-request invite\n"
-            "• <code>/genlink</code> — Generate campaign deep link\n"
-            "• <code>/status</code> — Display active configuration\n\n"
-            "<i>Ensure the bot is added as an Administrator with invite permissions in all channels.</i>"
+            "👑 <b>Master Admin Commands</b>\n"
+            "• <code>/setforce @channel</code> — Require channel subscription\n"
+            "• <code>/offforce</code> — Disable force sub\n"
+            "• <code>/settarget @channel direct/request</code> — Set target campaign\n"
+            "• <code>/genlink</code> — Generate deep campaign link\n"
+            "• <code>/broadcast &lt;message&gt;</code> — Broadcast across connected channels\n"
+            "• <code>/status</code> — Display system configuration\n\n"
         )
     await message.answer(text)
 
@@ -131,10 +169,10 @@ async def resolve_channel(chat_ref: str):
     me = await bot.get_me()
     member = await bot.get_chat_member(chat_id=chat.id, user_id=me.id)
     if getattr(member, "status", "") not in ("creator", "administrator"):
-        raise ValueError("The bot must be an administrator in that channel/group first.")
+        raise ValueError("The bot must be an administrator in that channel/group first with full permissions.")
     can_invite = getattr(member, "can_invite_users", None)
     if getattr(member, "status", "") != "creator" and can_invite is False:
-        raise ValueError("Give the bot permission to invite users/manage invite links.")
+        raise ValueError("Give the bot permission to invite users & post messages.")
     return chat
 
 
@@ -142,7 +180,7 @@ async def resolve_channel(chat_ref: str):
 async def set_force_handler(message: Message) -> None:
     user_id = message.from_user.id if message.from_user else 0
     if not is_admin(user_id):
-        await message.answer("⚠️ This command is restricted to the bot administrator.")
+        await message.answer("⚠️ Command restricted to master administrator.")
         return
     args = (message.text or "").split(maxsplit=1)
     if len(args) != 2:
@@ -151,47 +189,36 @@ async def set_force_handler(message: Message) -> None:
     assert bot is not None
     try:
         chat = await resolve_channel(args[1].strip())
-        if chat.username:
-            join_url = f"https://t.me/{chat.username}"
-        else:
-            invite = await bot.create_chat_invite_link(chat_id=chat.id, name="Force subscription")
-            join_url = invite.invite_link
+        join_url = f"https://t.me/{chat.username}" if chat.username else (await bot.create_chat_invite_link(chat_id=chat.id, name="Force sub")).invite_link
         set_setting("force_chat_id", str(chat.id))
         set_setting("force_chat_title", chat.title or chat.full_name or str(chat.id))
         set_setting("force_join_url", join_url)
-        await message.answer(
-            f"✅ <b>Force-subscription enabled</b>\n\n"
-            f"Channel: <b>{escape(chat.title or str(chat.id))}</b>\n"
-            "Users must join this channel before viewing rewarded ads."
-        )
+        await message.answer(f"✅ Force-subscription set to: <b>{escape(chat.title or str(chat.id))}</b>")
     except Exception as exc:
-        await message.answer(f"❌ Could not configure force-sub channel: {escape(str(exc))}")
+        await message.answer(f"❌ Error setting force sub: {escape(str(exc))}")
 
 
 @router.message(Command("offforce"))
 async def off_force_handler(message: Message) -> None:
     user_id = message.from_user.id if message.from_user else 0
     if not is_admin(user_id):
-        await message.answer("⚠️ This command is restricted to the bot administrator.")
+        await message.answer("⚠️ Command restricted to master administrator.")
         return
     set_setting("force_chat_id", None)
     set_setting("force_chat_title", None)
     set_setting("force_join_url", None)
-    await message.answer("✅ Force-subscription requirement disabled.")
+    await message.answer("✅ Force-subscription disabled.")
 
 
 @router.message(Command("settarget"))
 async def set_target_handler(message: Message) -> None:
     user_id = message.from_user.id if message.from_user else 0
     if not is_admin(user_id):
-        await message.answer("⚠️ This command is restricted to the bot administrator.")
+        await message.answer("⚠️ Command restricted to master administrator.")
         return
     args = (message.text or "").split()
     if len(args) != 3 or args[2].lower() not in ("direct", "request"):
-        await message.answer(
-            "Usage:\n<code>/settarget @channel direct</code>\n"
-            "or\n<code>/settarget @channel request</code>"
-        )
+        await message.answer("Usage:\n<code>/settarget @channel direct</code> or <code>request</code>")
         return
     assert bot is not None
     try:
@@ -200,56 +227,114 @@ async def set_target_handler(message: Message) -> None:
         set_setting("target_chat_id", str(chat.id))
         set_setting("target_chat_title", chat.title or chat.full_name or str(chat.id))
         set_setting("target_invite_mode", mode)
-        mode_label = "Direct invite link (1 use)" if mode == "direct" else "Join-request link (Admin approval)"
-        await message.answer(
-            f"🎯 <b>Target Configured</b>\n\n"
-            f"Channel: <b>{escape(chat.title or str(chat.id))}</b>\n"
-            f"Mode: <b>{mode_label}</b>\n\nUse /genlink to create a campaign deep link."
-        )
+        await message.answer(f"🎯 Target channel configured: <b>{escape(chat.title or str(chat.id))}</b> ({mode})")
     except Exception as exc:
-        await message.answer(f"❌ Could not configure target channel: {escape(str(exc))}")
+        await message.answer(f"❌ Error configuring target: {escape(str(exc))}")
 
 
 @router.message(Command("genlink"))
 async def generate_link_handler(message: Message) -> None:
     user_id = message.from_user.id if message.from_user else 0
     if not is_admin(user_id):
-        await message.answer("⚠️ This command is restricted to the bot administrator.")
+        await message.answer("⚠️ Command restricted to master administrator.")
         return
     target_chat_id = get_setting("target_chat_id")
     target_title = get_setting("target_chat_title")
     invite_mode = get_setting("target_invite_mode")
     if not target_chat_id or not target_title or not invite_mode:
-        await message.answer("⚠️ Please configure a target first using /settarget @channel direct or request")
+        await message.answer("⚠️ Configure target first via /settarget @channel direct")
         return
     token = secrets.token_urlsafe(9).replace("-", "a").replace("_", "b")[:12]
     create_campaign(token, target_chat_id, target_title, invite_mode, user_id)
     link = f"https://t.me/{bot_username}?start={token}"
-    await message.answer(
-        "🚀 <b>Campaign Link Created</b>\n\n"
-        f"🎯 Target: <b>{escape(target_title)}</b>\n"
-        f"📌 Mode: <b>{escape(invite_mode)}</b>\n\n"
-        f"<code>{escape(link)}</code>\n\n"
-        "Share this link with your audience."
-    )
+    await message.answer(f"🚀 <b>Campaign Link Generated:</b>\n\n<code>{escape(link)}</code>")
+
+
+@router.message(Command("broadcast"))
+async def broadcast_handler(message: Message) -> None:
+    user_id = message.from_user.id if message.from_user else 0
+    if not is_admin(user_id):
+        await message.answer("⚠️ Command restricted to master administrator.")
+        return
+    parts = (message.text or "").split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer("Usage: <code>/broadcast Your promotional post HTML content</code>")
+        return
+    broadcast_msg = parts[1].strip()
+    channels = get_all_connected_channels()
+    if not channels:
+        await message.answer("⚠️ No connected channels found for broadcasting.")
+        return
+
+    assert bot is not None
+    sent_count = 0
+    fail_count = 0
+    for ch in channels:
+        try:
+            chat_id = int(ch["channel_id"]) if ch["channel_id"].lstrip("-").isdigit() else ch["channel_id"]
+            await bot.send_message(chat_id=chat_id, text=broadcast_msg)
+            sent_count += 1
+        except Exception:
+            fail_count += 1
+
+    await message.answer(f"📢 <b>Broadcast Complete!</b>\n\n✅ Successfully posted to <b>{sent_count}</b> channels.\n❌ Failed on <b>{fail_count}</b> channels.")
 
 
 @router.message(Command("status"))
 async def status_handler(message: Message) -> None:
     user_id = message.from_user.id if message.from_user else 0
     if not is_admin(user_id):
-        await message.answer("⚠️ This command is restricted to the bot administrator.")
+        await message.answer("⚠️ Command restricted to master administrator.")
         return
     force = get_setting("force_chat_title") or "Disabled"
     target = get_setting("target_chat_title") or "Not configured"
     mode = get_setting("target_invite_mode") or "Not configured"
     await message.answer(
-        "📊 <b>Bot Configuration Status</b>\n\n"
+        "📊 <b>Blazeculture System Status</b>\n\n"
         f"📢 Force-sub Channel: <b>{escape(force)}</b>\n"
         f"🎯 Target Channel: <b>{escape(target)}</b>\n"
         f"⚙️ Invite Mode: <b>{escape(mode)}</b>\n"
-        f"🌐 Mini App URL: <b>{'Configured (' + WEBAPP_URL + ')' if WEBAPP_URL.startswith('https://') else 'Not configured'}</b>"
+        f"🌐 Mini App URL: <b>{WEBAPP_URL}</b>"
     )
+
+
+# Callbacks
+@router.callback_query(F.data == "btn_premium")
+async def premium_info_callback(callback: CallbackQuery) -> None:
+    user_id = callback.from_user.id if callback.from_user else 0
+    db_user = get_user_by_id(user_id)
+    is_prem = db_user and db_user.get("is_premium")
+    if is_prem:
+        await callback.answer("⭐ You are a Blazeculture Premium Member! Ads are completely bypassed for you.", show_alert=True)
+    else:
+        await callback.answer("⭐ Blazeculture Premium Pass allows instant access to all channel links without watching ads! Contact @rajpapa or upgrade in Mini App.", show_alert=True)
+
+
+@router.callback_query(F.data == "btn_tutorial")
+async def tutorial_callback(callback: CallbackQuery) -> None:
+    await callback.answer("📚 Open Mini App or tap Watch Ad on any campaign link to earn coins & unlock channels!", show_alert=True)
+
+
+@router.callback_query(F.data == "btn_promote")
+async def promote_callback(callback: CallbackQuery) -> None:
+    await callback.answer("💼 Launching Promotion Portal in Mini App...", show_alert=False)
+    if callback.message:
+        await callback.message.answer(
+            "💼 <b>Blazeculture Paid Channel Promotions</b>\n\n"
+            "1. Open Blazeculture Mini App and go to <b>Channel Promotion</b>.\n"
+            "2. Enter your channel link to analyze audience.\n"
+            "3. Pay via Admin UPI QR Code.\n"
+            "4. Add this bot as Administrator in your channel.\n"
+            "5. Once approved, your ad is posted across all partner channels!",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🚀 Launch Promotion Portal", web_app=WebAppInfo(url=WEBAPP_URL))]
+            ])
+        )
+
+
+@router.callback_query(F.data == "btn_getlink")
+async def getlink_help_callback(callback: CallbackQuery) -> None:
+    await callback.answer("📌 Please open a specific campaign link to unlock access.", show_alert=True)
 
 
 @router.callback_query(F.data.startswith("checkforce"))
@@ -258,7 +343,7 @@ async def check_force_callback(callback: CallbackQuery) -> None:
         await callback.answer()
         return
     if not await member_of_force_channel(callback.from_user.id):
-        await callback.answer("❌ Membership not verified. Please join the required channel first.", show_alert=True)
+        await callback.answer("❌ Membership not verified. Please join required channel first.", show_alert=True)
         return
     await callback.answer("✅ Membership verified!")
     token = callback.data.split(":", 1)[1] if ":" in (callback.data or "") else ""
@@ -282,6 +367,10 @@ async def get_link_callback(callback: CallbackQuery) -> None:
         await callback.answer("⚠️ Please join the required channel first.", show_alert=True)
         await callback.message.answer("Please join the required channel to continue.", reply_markup=force_join_keyboard(token))
         return
+
+    db_user = get_user_by_id(callback.from_user.id)
+    is_premium_user = db_user and bool(db_user.get("is_premium"))
+
     existing = get_unlock(callback.from_user.id, token)
     if existing:
         await callback.answer("✨ Your link is ready")
@@ -289,7 +378,8 @@ async def get_link_callback(callback: CallbackQuery) -> None:
             f"🎉 <b>Here is your link for {escape(campaign['target_title'])}:</b>\n\n{escape(existing['invite_link'])}"
         )
         return
-    if not has_rewarded_intent(callback.from_user.id, token):
+
+    if not is_premium_user and not has_rewarded_intent(callback.from_user.id, token):
         await callback.answer("⚠️ Please watch and complete the rewarded ad first in the Mini App.", show_alert=True)
         return
 
@@ -299,7 +389,7 @@ async def get_link_callback(callback: CallbackQuery) -> None:
         target_chat_arg = int(target_chat_id) if str(target_chat_id).lstrip("-").isdigit() else target_chat_id
         create_kwargs = {
             "chat_id": target_chat_arg,
-            "name": f"gate-{callback.from_user.id}-{token}",
+            "name": f"blaze-{callback.from_user.id}-{token}",
             "expire_date": int(time.time()) + 86_400,
         }
         if campaign["invite_mode"] == "request":
@@ -311,18 +401,36 @@ async def get_link_callback(callback: CallbackQuery) -> None:
         save_unlock(callback.from_user.id, token, invite.invite_link)
         stored = get_unlock(callback.from_user.id, token)
         link = stored["invite_link"] if stored else invite.invite_link
-        request_note = "This is a join-request link; channel admins will approve your request." if campaign["invite_mode"] == "request" else "This direct invite link is single-use."
+        request_note = "Join-request link; channel admins will approve your request." if campaign["invite_mode"] == "request" else "Single-use direct invite link."
+        premium_badge = "⭐ [Premium Ad-Bypass Active]\n" if is_premium_user else ""
         await callback.answer("🎉 Link unlocked!")
         await callback.message.answer(
             f"🔓 <b>Unlocked: {escape(campaign['target_title'])}</b>\n\n"
-            f"ℹ️ {escape(request_note)}\n\n{escape(link)}"
+            f"{premium_badge}ℹ️ {escape(request_note)}\n\n{escape(link)}"
         )
     except Exception as exc:
         await callback.answer("❌ Failed to create invite link.", show_alert=True)
         await callback.message.answer(
-            "⚠️ Telegram error generating invite link. Ensure bot has admin invite privileges.\n"
+            "⚠️ Telegram error generating invite link. Ensure bot has admin invite privileges in target channel.\n"
             f"Details: <code>{escape(str(exc))}</code>"
         )
+
+
+# Real-time ChatMemberUpdated Handler for Join/Left & Earning Analytics
+@router.chat_member()
+async def chat_member_update_handler(event: ChatMemberUpdated) -> None:
+    chat_id = str(event.chat.id)
+    old_status = event.old_chat_member.status
+    new_status = event.new_chat_member.status
+    user_id = event.new_chat_member.user.id
+
+    # Join Event
+    if old_status in ("left", "kicked") and new_status in ("member", "administrator"):
+        record_channel_join_event(chat_id, user_id)
+
+    # Left Event
+    if old_status in ("member", "administrator", "restricted") and new_status in ("left", "kicked"):
+        record_channel_left_event(chat_id, user_id)
 
 
 async def main() -> None:
@@ -338,7 +446,7 @@ async def main() -> None:
         raise RuntimeError("Could not read bot username. Check BOT_TOKEN.")
     dp = Dispatcher()
     dp.include_router(router)
-    print(f"Bot @{bot_username} is polling...")
+    print(f"Blazeculture Bot @{bot_username} is polling...")
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:

@@ -1,8 +1,32 @@
-# AdEarn - High-Paying "Watch Ads & Earn" PTC Platform
+# Blazeculture - High-Paying PTC Platform & Telegram Channel Promotion Ecosystem
 
-A complete, modern, production-ready "Ad Watching & Earn" PTC (Pay-To-Click) platform designed for maximum ad network monetization with **Adsterra**, **HilltopAds**, **Monetag**, and custom networks.
+**Blazeculture** is a complete, modern, production-ready "Watch Ads & Earn" PTC (Pay-To-Click) platform combined with an advanced **Telegram Mini App & Channel Promotion Ecosystem**. Integrated with high-paying ad networks (**Adsterra**, **HilltopAds**, **Monetag**), automated multi-channel bot broadcasts, QR payment verification, VIP Premium ad-bypass, and channel owner revenue sharing.
 
-Features a dark glassmorphism UI, dual Hindi + English language toggle, 20-second non-skippable anti-cheat countdown timer, automated 15% referral commission system, $5 / ₹400 minimum withdrawal support (UPI, Paytm, USDT, PayPal), dual SQLite + JSON persistent database, and a master admin panel.
+Features a dark glassmorphism UI, dual Hindi + English language toggle, 20-second non-skippable anti-cheat timer, automated 15% referral commission system, $5 / ₹400 minimum withdrawal support (UPI, Paytm, USDT, PayPal), dual SQLite + JSON persistent database, Telegram bot integration (`bot.py`), and a master admin panel at `/raj`.
+
+---
+
+## 🌟 Key Features Overview
+
+1. **Brand Identity**: Branded as **Blazeculture** with official logo across website, Telegram Mini App, and bot greetings (`static/logo.png`).
+2. **Master Admin Panel (`/raj`)**:
+   - Master login (`rajpapa` / `28@RajPapa`).
+   - **VIP Premium User Manager**: One-click toggle for user **Premium VIP status**. Premium users do NOT need to watch any ads to access services or claim tasks!
+   - **Payment Settings Manager**: Configure UPI ID & QR Code Image URL dynamically.
+   - **Promotion Manager**: Review paid channel promotion submissions with payment UTR reference IDs and trigger instant automated multi-channel broadcasts.
+   - **Ad Network Script Manager**: Paste and execute Adsterra, HilltopAds, and Monetag ad codes on live site without server restart.
+   - **User & Withdrawal Manager**: Adjust coin balances, ban/unban users, approve or reject cash withdrawals.
+3. **Telegram Channel Promotion System**:
+   - **Channel Link Analyzer**: Users input channel link to analyze title, username, and active members.
+   - **Scan & Pay QR**: Users scan admin QR code to pay promotion budget via UPI/Paytm.
+   - **Multi-Channel Broadcast**: Upon admin approval, the bot broadcasts promotion posts across all connected partner channels where the bot is admin.
+4. **Channel Owner Revenue Sharing**:
+   - Channel owners connect their Telegram channel by adding `@BlazecultureBot` as admin.
+   - Real-time `ChatMemberUpdated` tracking records joins and leaves.
+   - **Revenue Split**: Every 2 users joining via ad campaigns deducts ₹1.00 INR from promoter budget and credits **₹0.50 INR** directly to the channel owner's wallet.
+5. **Telegram Bot (`bot.py`)**:
+   - Modern inline layout matching custom designs.
+   - Redesigned welcome greeting with Mini App button, Channel Promotions, Earn Coins, VIP Premium Pass, and Master Admin Broadcast (`/broadcast`).
 
 ---
 
@@ -10,34 +34,28 @@ Features a dark glassmorphism UI, dual Hindi + English language toggle, 20-secon
 
 The master admin panel is accessible via your browser:
 
-- **Admin URL Route**: `https://yourdomain.com/raj`
+- **Admin URL Route**: `https://yourdomain.com/raj` (or `http://localhost:8000/raj`)
 - **Admin Username**: `rajpapa`
 - **Admin Password**: `28@RajPapa`
 
-### Admin Features:
-- View real-time platform statistics (total users, total ads watched, global paid out).
-- **Ad Network Script Manager**: Directly paste and update high-paying ad codes for **Adsterra**, **HilltopAds**, and **Monetag** (Interstitial, Popunder, Banner, Direct Link) without editing code or restarting server.
-- **User Manager**: Search users, adjust coin balance, ban/unban abusive users.
-- **Withdrawal Manager**: Approve payouts or reject requests with automatic coin refund.
-
 ---
 
-## 💰 How to Paste Adsterra / HilltopAds / Monetag Ad Codes
+## 💰 How to Setup QR Payment & Ad Codes in Admin Panel
 
 1. Open your browser and navigate to `https://yourdomain.com/raj`.
 2. Login using **Username**: `rajpapa` and **Password**: `28@RajPapa`.
-3. Go to the **Ad Network Script Manager** section.
-4. Paste your high-paying network scripts into the corresponding textareas:
+3. **Payment QR Settings**: Enter your UPI ID (e.g. `blazeculture@upi`) and QR Code URL (e.g. `/static/logo.png` or hosted image link) and click **Save Payment Config**.
+4. **Ad Network Script Manager**: Paste your high-paying network scripts into the corresponding textareas:
    - **Full-Page Interstitial Script** (Adsterra / HilltopAds Interstitial code)
    - **Popunder Script** (Adsterra / HilltopAds / Monetag Popunder code)
-   - **Banner Ad HTML/JS Code** (300x250 or 728x90 banner code)
-5. Click **Save High-Paying Ad Codes**. Changes take effect immediately across all users' web sessions!
+   - **Banner Ad HTML/JS Code**
+5. Click **Save High-Paying Ad Codes**. Changes take effect immediately!
 
 ---
 
-## 🚀 Complete Ubuntu VPS Deployment Guide
+## 🚀 Complete Ubuntu VPS & Telegram Bot Deployment Guide
 
-Follow this step-by-step guide to deploy this platform on a fresh Ubuntu 20.04 / 22.04 / 24.04 VPS.
+Follow this step-by-step guide to deploy **Blazeculture** web platform and Telegram Bot on a fresh Ubuntu 20.04 / 22.04 / 24.04 VPS.
 
 ### 1. System Update & Dependencies
 
@@ -48,52 +66,71 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install -y python3 python3-pip python3-venv nginx git certbot python3-certbot-nginx
 ```
 
-### 2. Setup Project Directory & Virtual Environment
+### 2. Clone Repository & Setup Virtual Environment
 
 ```bash
 cd /opt
-sudo git clone <YOUR_GIT_REPOSITORY_URL> adearn
-cd /opt/adearn
+sudo git clone <YOUR_GIT_REPOSITORY_URL> blazeculture
+cd /opt/blazeculture
 
 # Create virtual environment
 python3 -m venv venv
 source venv/bin/activate
 
-# Install requirements & test client dependencies
+# Install requirements
 pip install --upgrade pip
 pip install -r requirements.txt
-pip install httpx
 ```
 
-### 3. Verify Local Execution
+### 3. Configure Environment Variables (`.env`)
 
-Test running the FastAPI server locally:
+Create a `.env` file in `/opt/blazeculture`:
 
 ```bash
-python3 -m unittest discover -s . -p "test_*.py"
+cat << 'EOF' > /opt/blazeculture/.env
+BOT_TOKEN=7591603597:AAG3-YourActualTelegramBotToken
+ADMIN_USER_ID=7280907147
+WEBAPP_URL=https://blazeculture.yourdomain.com
+DATABASE_PATH=data.sqlite3
+HOST=127.0.0.1
+PORT=8000
+EOF
 ```
 
-Expected output: `Ran 6 tests ... OK`
+### 4. Run Unit Tests & Verification
 
-### 4. Configure Systemd Production Service
-
-Create a systemd service file so the app automatically runs and restarts on VPS reboot:
+Verify everything is working:
 
 ```bash
-sudo nano /etc/systemd/system/adearn.service
+TESTING=1 python3 -m unittest discover -s . -p "test_*.py"
 ```
 
-Paste the following configuration:
+Expected output: `Ran 9 tests ... OK`
+
+---
+
+### 5. Configure Systemd Production Services
+
+#### A. Web Service (`blazeculture-web.service`)
+
+Create the web service file:
+
+```bash
+sudo nano /etc/systemd/system/blazeculture-web.service
+```
+
+Paste the configuration:
 
 ```ini
 [Unit]
-Description=AdEarn PTC Web Application
+Description=Blazeculture Web & Admin Application
 After=network.target
 
 [Service]
 User=root
-WorkingDirectory=/opt/adearn
-ExecStart=/opt/adearn/venv/bin/uvicorn web:app --host 127.0.0.1 --port 8000 --workers 4
+WorkingDirectory=/opt/blazeculture
+EnvironmentFile=/opt/blazeculture/.env
+ExecStart=/opt/blazeculture/venv/bin/uvicorn web:app --host 127.0.0.1 --port 8000 --workers 4
 Restart=always
 RestartSec=3
 
@@ -101,31 +138,58 @@ RestartSec=3
 WantedBy=multi-user.target
 ```
 
-Enable and start the service:
+#### B. Telegram Bot Service (`blazeculture-bot.service`)
+
+Create the Telegram bot service file:
+
+```bash
+sudo nano /etc/systemd/system/blazeculture-bot.service
+```
+
+Paste the configuration:
+
+```ini
+[Unit]
+Description=Blazeculture Telegram Bot Service
+After=network.target blazeculture-web.service
+
+[Service]
+User=root
+WorkingDirectory=/opt/blazeculture
+EnvironmentFile=/opt/blazeculture/.env
+ExecStart=/opt/blazeculture/venv/bin/python bot.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start both services:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable adearn
-sudo systemctl start adearn
-sudo systemctl status adearn
+sudo systemctl enable blazeculture-web blazeculture-bot
+sudo systemctl start blazeculture-web blazeculture-bot
+sudo systemctl status blazeculture-web blazeculture-bot
 ```
 
 ---
 
-### 5. Nginx Reverse Proxy Setup
+### 6. Nginx Reverse Proxy Setup
 
-Create an Nginx server block for your domain (e.g. `earn.yourdomain.com`):
+Create an Nginx server block for your domain (`blazeculture.yourdomain.com`):
 
 ```bash
-sudo nano /etc/nginx/sites-available/adearn
+sudo nano /etc/nginx/sites-available/blazeculture
 ```
 
-Paste the following Nginx configuration:
+Paste the Nginx configuration:
 
 ```nginx
 server {
     listen 80;
-    server_name earn.yourdomain.com;
+    server_name blazeculture.yourdomain.com;
 
     location / {
         proxy_pass http://127.0.0.1:8000;
@@ -141,31 +205,31 @@ server {
 }
 ```
 
-Enable the configuration and reload Nginx:
+Enable configuration and reload Nginx:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/adearn /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/blazeculture /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
 ---
 
-### 6. SSL Certificate Setup (Let's Encrypt HTTPS)
+### 7. SSL Certificate Setup (Let's Encrypt HTTPS)
 
-Obtain a free SSL certificate to enable HTTPS (required for ad networks):
+Obtain a free SSL certificate:
 
 ```bash
-sudo certbot --nginx -d earn.yourdomain.com
+sudo certbot --nginx -d blazeculture.yourdomain.com
 ```
 
 Select option **2** to automatically redirect HTTP traffic to HTTPS.
 
 ---
 
-### 7. Security Hardening & Firewall (UFW)
+### 8. Security Hardening & Firewall (UFW)
 
-Enable UFW firewall and allow HTTP/HTTPS/SSH traffic:
+Enable UFW firewall:
 
 ```bash
 sudo ufw allow OpenSSH
@@ -177,9 +241,9 @@ sudo ufw enable
 
 ## 🗄️ Database Backup & JSON Sync
 
-All user profiles, earnings, withdrawals, and settings are stored in SQLite (`data.sqlite3`).
+All user profiles, earnings, channel analytics, promotions, and settings are stored in SQLite (`data.sqlite3`).
 
-To ensure transparent backups, the system automatically synchronizes a structured JSON export file (`db.json`) on every write transaction located at `/opt/adearn/db.json`.
+To ensure transparent backups, the system automatically synchronizes a structured JSON export file (`db.json`) on every write transaction located at `/opt/blazeculture/db.json`.
 
 ---
 
@@ -187,12 +251,14 @@ To ensure transparent backups, the system automatically synchronizes a structure
 
 ```
 .
-├── config.py           # Configuration & Environment loading
+├── config.py           # Environment variables & constants
 ├── db.py               # SQLite & JSON dual persistent database engine
-├── web.py              # FastAPI Web Backend, API endpoints & /raj Admin panel
+├── web.py              # FastAPI Web Backend, API endpoints & /raj Master Admin
+├── bot.py              # Telegram Bot Engine (aiogram 3.x, ChatMemberUpdated tracking, Mini App)
 ├── static/
-│   └── Index.html      # Glassmorphism UI (SPA with Hindi/English & Ad Engine)
-├── test_app.py         # Test suite
+│   ├── Index.html      # Glassmorphism UI (SPA with Blazeculture branding & Promotion Hub)
+│   └── logo.png        # Official Blazeculture Logo
+├── test_app.py         # Complete automated test suite
 ├── requirements.txt    # Python dependencies
 └── README.md           # Master documentation & deployment guide
 ```
