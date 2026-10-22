@@ -191,6 +191,59 @@ class TestBlazeculturePTCPlatform(unittest.TestCase):
         }, headers={"X-Admin-Token": admin_token})
         self.assertEqual(qr_res.status_code, 200)
 
+    def test_10_telegram_mini_app_auto_login(self):
+        # Auto-login Telegram user
+        tg_res = self.client.post("/api/auth/telegram-mini-app", json={
+            "telegram_id": 123456789,
+            "username": "tg_user_test",
+            "first_name": "Rajesh",
+            "last_name": "Kumar",
+            "photo_url": "https://example.com/photo.jpg"
+        })
+        self.assertEqual(tg_res.status_code, 200)
+        data = tg_res.json()
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["user"]["telegram_id"], 123456789)
+        self.assertEqual(data["user"]["first_name"], "Rajesh")
+        tg_token = data["token"]
+
+        # Call /api/auth/me using token
+        me_res = self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {tg_token}"})
+        self.assertEqual(me_res.status_code, 200)
+        me_data = me_res.json()
+        self.assertEqual(me_data["user"]["telegram_id"], 123456789)
+        self.assertEqual(me_data["user"]["first_name"], "Rajesh")
+
+    def test_11_campaign_details_and_ad_watch_intent(self):
+        # Create a campaign in DB
+        token = "testcamp123"
+        user_a = db.get_user_by_username("userA")
+        db.create_campaign(token, "-1001234567", "Test Vip Channel", "direct", user_a["id"])
+
+        # Fetch campaign details
+        camp_res = self.client.get(f"/api/campaign/{token}")
+        self.assertEqual(camp_res.status_code, 200)
+        self.assertEqual(camp_res.json()["campaign"]["target_title"], "Test Vip Channel")
+
+        # Telegram User logs in and watches ad for campaign
+        tg_login = self.client.post("/api/auth/telegram-mini-app", json={
+            "telegram_id": 987654321,
+            "username": "tg_campaign_viewer"
+        }).json()
+        tg_token = tg_login["token"]
+        tg_user_id = tg_login["user"]["id"]
+
+        watch_res = self.client.post("/api/user/watch-ad", json={"campaignToken": token}, headers={"Authorization": f"Bearer {tg_token}"})
+        self.assertEqual(watch_res.status_code, 200)
+        session_id = watch_res.json()["sessionId"]
+
+        claim_res = self.client.post("/api/user/claim-reward", json={"sessionId": session_id, "campaignToken": token}, headers={"Authorization": f"Bearer {tg_token}"})
+        self.assertEqual(claim_res.status_code, 200)
+
+        # Check rewarded intent recorded in DB
+        has_intent = db.has_rewarded_intent(tg_user_id, token)
+        self.assertTrue(has_intent)
+
 
 if __name__ == "__main__":
     unittest.main()

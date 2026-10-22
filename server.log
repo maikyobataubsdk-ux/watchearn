@@ -1,17 +1,25 @@
-/app/web.py:192: DeprecationWarning:
+/app/web.py:212: DeprecationWarning:
         on_event is deprecated, use lifespan event handlers instead.
 
         Read more about it in the
         [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
 
   @app.on_event("startup")
-INFO:     Started server process [91438]
+INFO:     Started server process [91553]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:46854 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:37200 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:37200 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:37200 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:37200 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:37214 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58784 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42178 - "GET /?tg_user_id=777123456&ref=PROMO123 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42178 - "GET /static/logo.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:42178 - "GET /static/logo.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:42178 - "POST /api/auth/telegram-mini-app HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39692 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39692 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39692 - "POST /api/user/watch-ad HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39692 - "GET /?campaign=testcamp123&tg_user_id=777123456 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39692 - "GET /static/logo.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39692 - "GET /static/logo.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:39692 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42178 - "POST /api/auth/telegram-mini-app HTTP/1.1" 200 OK
+INFO:     127.0.0.1:42178 - "GET /api/campaign/testcamp123 HTTP/1.1" 404 Not Found

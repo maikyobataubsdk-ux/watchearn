@@ -68,6 +68,10 @@ def init_db() -> None:
             """
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                telegram_id INTEGER UNIQUE,
+                first_name TEXT,
+                last_name TEXT,
+                photo_url TEXT,
                 email TEXT UNIQUE NOT NULL,
                 username TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
@@ -201,6 +205,22 @@ def init_db() -> None:
             conn.execute("ALTER TABLE users ADD COLUMN is_premium INTEGER DEFAULT 0")
         except sqlite3.OperationalError:
             pass
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN telegram_id INTEGER")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN first_name TEXT")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN last_name TEXT")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN photo_url TEXT")
+        except sqlite3.OperationalError:
+            pass
 
         # Default settings if not set
         default_settings = {
@@ -322,6 +342,66 @@ def get_user_by_id(user_id: int) -> dict | None:
     with db() as conn:
         row = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
         return dict(row) if row else None
+
+
+def get_user_by_telegram_id(telegram_id: int) -> dict | None:
+    with db() as conn:
+        row = conn.execute("SELECT * FROM users WHERE telegram_id=?", (telegram_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def get_or_create_telegram_user(
+    telegram_id: int,
+    username: str | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    photo_url: str | None = None,
+    referral_code_used: str | None = None,
+    ip_address: str = ""
+) -> dict:
+    existing = get_user_by_telegram_id(telegram_id)
+    if existing:
+        with db() as conn:
+            conn.execute(
+                """
+                UPDATE users
+                SET username = COALESCE(NULLIF(?, ''), username),
+                    first_name = COALESCE(NULLIF(?, ''), first_name),
+                    last_name = COALESCE(NULLIF(?, ''), last_name),
+                    photo_url = COALESCE(NULLIF(?, ''), photo_url)
+                WHERE id = ?
+                """,
+                (username or "", first_name or "", last_name or "", photo_url or "", existing["id"]),
+            )
+        res = get_user_by_id(existing["id"])
+        assert res is not None
+        return res
+
+    uname = username.strip() if username else f"user_{telegram_id}"
+    email = f"tg_{telegram_id}@telegram.org"
+    pass_hash = hash_password(f"tg_secret_{telegram_id}")
+    my_ref_code = uuid.uuid4().hex[:8].upper()
+
+    referred_by_id = None
+    if referral_code_used:
+        ref_user = get_user_by_referral_code(referral_code_used.strip().upper())
+        if ref_user and ref_user["id"] != telegram_id:
+            referred_by_id = ref_user["id"]
+
+    user_id = None
+    with db() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO users (telegram_id, email, username, first_name, last_name, photo_url, password_hash, referral_code, referred_by, ip_address, is_premium, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
+            """,
+            (telegram_id, email, uname, first_name or "", last_name or "", photo_url or "", pass_hash, my_ref_code, referred_by_id, ip_address, utcnow()),
+        )
+        user_id = cursor.lastrowid
+
+    res = get_user_by_id(user_id)
+    assert res is not None
+    return res
 
 
 def get_user_by_referral_code(code: str) -> dict | None:
