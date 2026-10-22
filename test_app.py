@@ -187,7 +187,7 @@ class TestBlazeculturePTCPlatform(unittest.TestCase):
 
         qr_res = self.client.post("/api/admin/payment-qr", json={
             "upi_id": "blaze@upi",
-            "qr_image_url": "/static/logo.png"
+            "qr_image_url": "/static/payment_qr.jpg"
         }, headers={"X-Admin-Token": admin_token})
         self.assertEqual(qr_res.status_code, 200)
 
@@ -243,6 +243,23 @@ class TestBlazeculturePTCPlatform(unittest.TestCase):
         # Check rewarded intent recorded in DB
         has_intent = db.has_rewarded_intent(tg_user_id, token)
         self.assertTrue(has_intent)
+
+    def test_12_admin_bot_config_and_qr_default(self):
+        admin_login = self.client.post("/api/admin/login", json={"username": "rajpapa", "password": "28@RajPapa"}).json()
+        admin_token = admin_login["adminToken"]
+
+        bot_conf = self.client.get("/api/admin/bot-config", headers={"X-Admin-Token": admin_token})
+        self.assertEqual(bot_conf.status_code, 200)
+
+        save_bot = self.client.post("/api/admin/bot-config", json={
+            "force_chat_title": "Test Force Channel",
+            "target_invite_mode": "request"
+        }, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(save_bot.status_code, 200)
+
+        qr_res = self.client.get("/api/promotions/payment-qr")
+        self.assertEqual(qr_res.status_code, 200)
+        self.assertIn("payment_qr.jpg", qr_res.json()["qr_image_url"])
 
 
 if __name__ == "__main__":
