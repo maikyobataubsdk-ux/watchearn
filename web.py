@@ -164,6 +164,15 @@ class AdminPaymentSettingsRequest(BaseModel):
     paymentQrUrl: Optional[str] = None
 
 
+class AdminBotConfigRequest(BaseModel):
+    force_chat_id: Optional[str] = None
+    force_chat_title: Optional[str] = None
+    force_join_url: Optional[str] = None
+    target_chat_id: Optional[str] = None
+    target_chat_title: Optional[str] = None
+    target_invite_mode: Optional[str] = None
+
+
 class AdminAdCodesRequest(BaseModel):
     interstitial: Optional[str] = ""
     popunder: Optional[str] = ""
@@ -178,7 +187,7 @@ class AdminSettingsRequest(BaseModel):
     min_withdrawal_inr: Optional[float] = 400.0
     referral_commission_pct: Optional[float] = 15.0
     payment_upi_id: Optional[str] = "blazeculture@upi"
-    payment_qr_url: Optional[str] = "/static/logo.png"
+    payment_qr_url: Optional[str] = "/static/payment_qr.jpg"
 
 
 # Dependency Auth Helpers
@@ -242,8 +251,9 @@ async def public_config() -> dict:
         "coinsPerUsd": float(settings.get("coins_per_usd", 100.0)),
         "referralCommissionPct": float(settings.get("referral_commission_pct", 15.0)),
         "paymentUpiId": settings.get("payment_upi_id", "blazeculture@upi"),
-        "paymentQrUrl": settings.get("payment_qr_url", "/static/logo.png"),
+        "paymentQrUrl": settings.get("payment_qr_url", "/static/payment_qr.jpg"),
         "adCodes": ad_codes,
+        "supportTelegram": "@Tgfuckerx",
     }
 
 
@@ -539,7 +549,7 @@ async def get_payment_qr_public() -> dict:
     return {
         "ok": True,
         "upi_id": settings.get("payment_upi_id", "blazeculture@upi"),
-        "qr_image_url": settings.get("payment_qr_url", "/static/logo.png"),
+        "qr_image_url": settings.get("payment_qr_url", "/static/payment_qr.jpg"),
     }
 
 
@@ -552,12 +562,21 @@ async def analyze_channel(body: AnalyzeChannelRequest, user: dict = Depends(get_
     channel_username = clean_url.split("t.me/")[-1].replace("@", "").strip("/")
     channel_id = f"@{channel_username}" if channel_username else clean_url
 
+    # Check if channel exists in connected channels
+    connected = None
+    with db.db() as conn:
+        row = conn.execute("SELECT * FROM connected_channels WHERE channel_id=? OR channel_username=?", (channel_id, channel_username)).fetchone()
+        if row:
+            connected = dict(row)
+
+    members_str = f"{connected['total_joins']} Connected Joins" if connected else "Verified Active Telegram Channel"
+
     return {
         "ok": True,
         "channel_link": clean_url,
-        "title": f"Telegram Channel ({channel_id})",
+        "title": connected["channel_title"] if connected else f"Telegram Channel ({channel_id})",
         "username": f"@{channel_username}" if channel_username else clean_url,
-        "members_count": "5,420 Active Members",
+        "members_count": members_str,
         "bot_is_admin": True,
     }
 
@@ -650,20 +669,47 @@ async def admin_stats(_: bool = Depends(require_admin)) -> dict:
     }
 
 
+@app.get("/api/admin/bot-config")
+async def admin_get_bot_config(_: bool = Depends(require_admin)) -> dict:
+    settings = get_settings()
+    return {
+        "ok": True,
+        "force_chat_id": settings.get("force_chat_id", ""),
+        "force_chat_title": settings.get("force_chat_title", ""),
+        "force_join_url": settings.get("force_join_url", ""),
+        "target_chat_id": settings.get("target_chat_id", ""),
+        "target_chat_title": settings.get("target_chat_title", ""),
+        "target_invite_mode": settings.get("target_invite_mode", "direct"),
+    }
+
+
+@app.post("/api/admin/bot-config")
+async def admin_save_bot_config(body: AdminBotConfigRequest, _: bool = Depends(require_admin)) -> dict:
+    new_settings = {}
+    if body.force_chat_id is not None: new_settings["force_chat_id"] = body.force_chat_id
+    if body.force_chat_title is not None: new_settings["force_chat_title"] = body.force_chat_title
+    if body.force_join_url is not None: new_settings["force_join_url"] = body.force_join_url
+    if body.target_chat_id is not None: new_settings["target_chat_id"] = body.target_chat_id
+    if body.target_chat_title is not None: new_settings["target_chat_title"] = body.target_chat_title
+    if body.target_invite_mode is not None: new_settings["target_invite_mode"] = body.target_invite_mode
+    update_settings(new_settings)
+    return {"ok": True, "message": "Bot configuration updated successfully!"}
+
+
 @app.get("/api/admin/payment-qr")
 async def admin_get_payment_qr(_: bool = Depends(require_admin)) -> dict:
     settings = get_settings()
     return {
         "ok": True,
         "upi_id": settings.get("payment_upi_id", "blazeculture@upi"),
-        "qr_image_url": settings.get("payment_qr_url", "/static/logo.png"),
+        "qr_image_url": settings.get("payment_qr_url", "/static/payment_qr.jpg"),
     }
 
 
 @app.post("/api/admin/payment-qr")
 async def admin_save_payment_qr(body: AdminPaymentSettingsRequest, _: bool = Depends(require_admin)) -> dict:
     upi = body.upi_id or body.paymentUpiId or "blazeculture@upi"
-    qr = body.qr_image_url or body.paymentQrUrl or "/static/logo.png"
+    qr = body.qr_image_url or body.paymentQrUrl or "/static/payment_qr.jpg"
     update_settings({"payment_upi_id": upi, "payment_qr_url": qr})
     return {"ok": True, "message": "Payment QR code & UPI ID updated successfully!"}
 
@@ -762,7 +808,7 @@ async def admin_save_settings(body: AdminSettingsRequest, _: bool = Depends(requ
         "min_withdrawal_inr": body.min_withdrawal_inr or 400.0,
         "referral_commission_pct": body.referral_commission_pct or 15.0,
         "payment_upi_id": body.payment_upi_id or "blazeculture@upi",
-        "payment_qr_url": body.payment_qr_url or "/static/logo.png",
+        "payment_qr_url": body.payment_qr_url or "/static/payment_qr.jpg",
     })
     return {"ok": True, "message": "Blazeculture system settings updated successfully!"}
 

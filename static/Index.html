@@ -157,39 +157,61 @@
     }
     .logo-brand span { color: var(--neon-green); }
 
-    .nav-menu {
+    /* Fixed Bottom Navigation Bar */
+    .bottom-nav-container {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: rgba(7, 9, 14, 0.94);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--card-border);
+      padding: 6px 10px 10px;
+      box-shadow: 0 -5px 25px rgba(0, 0, 0, 0.6);
+    }
+
+    .bottom-nav {
       display: flex;
       align-items: center;
-      gap: 8px;
-      overflow-x: auto;
-      padding: 4px 0;
-      scrollbar-width: none;
+      justify-content: space-around;
+      max-width: 600px;
+      margin: 0 auto;
     }
-    .nav-menu::-webkit-scrollbar { display: none; }
 
     .nav-link {
-      color: var(--text-muted);
-      padding: 8px 14px;
-      border-radius: 12px;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.2s;
-      border: 1px solid transparent;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
+      gap: 3px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 12px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: 1px solid transparent;
+      background: transparent;
+      white-space: nowrap;
     }
+
+    .nav-link i {
+      font-size: 18px;
+    }
+
     .nav-link:hover, .nav-link.active {
-      color: #fff;
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.12);
-    }
-    .nav-link.active {
       color: var(--neon-green);
-      border-color: rgba(0, 255, 136, 0.3);
+      border-color: rgba(0, 255, 136, 0.2);
       background: rgba(0, 255, 136, 0.1);
+    }
+
+    /* Prevent bottom navbar overlay */
+    main.container {
+      padding-bottom: 95px !important;
     }
 
     /* Telegram User Profile Pill */
@@ -426,12 +448,13 @@
 
     @media (max-width: 768px) {
       .hero h1 { font-size: 26px; }
-      .navbar { padding: 10px 12px; flex-wrap: wrap; }
+      .navbar { padding: 10px 12px; }
       .logo-brand { font-size: 16px; }
-      .logo-brand img { width: 30px; height: 30px; }
-      .nav-menu { width: 100%; order: 3; justify-content: space-between; border-top: 1px solid var(--card-border); pt: 8px; margin-top: 4px; }
-      .user-name { max-width: 80px; font-size: 12px; }
+      .logo-brand img { width: 32px; height: 32px; }
+      .user-name { max-width: 70px; font-size: 11px; }
       .user-avatar { width: 28px; height: 28px; font-size: 12px; }
+      .nav-link { padding: 5px 8px; font-size: 10px; }
+      .nav-link i { font-size: 16px; }
     }
   </style>
 </head>
@@ -446,16 +469,7 @@
         Blazeculture <span>PTC</span>
       </a>
 
-      <!-- Navigation Tabs -->
-      <div class="nav-menu">
-        <button class="nav-link active" id="navTabHome" onclick="nav('home')"><i class="fa-solid fa-house"></i> Home</button>
-        <button class="nav-link" id="navTabWatch" onclick="nav('watch')"><i class="fa-solid fa-play"></i> Watch Ads</button>
-        <button class="nav-link" id="navTabPromote" onclick="nav('promote')"><i class="fa-solid fa-bullhorn"></i> Promote</button>
-        <button class="nav-link" id="navTabChannels" onclick="nav('channels')"><i class="fa-solid fa-network-wired"></i> Earnings</button>
-        <button class="nav-link" id="navTabDash" onclick="nav('dashboard')"><i class="fa-solid fa-user-circle"></i> Profile</button>
-      </div>
-
-      <!-- Right Header Controls (Telegram User Profile & Balance) -->
+      <!-- Right Header Controls (Telegram User Profile & Balance & Support) -->
       <div style="display: flex; align-items: center; gap: 8px;">
         <!-- Coins Balance Pill -->
         <div class="balance-pill">
@@ -476,6 +490,11 @@
           👑 VIP
         </div>
 
+        <!-- Support Link -->
+        <a href="https://t.me/Tgfuckerx" target="_blank" class="lang-btn" style="text-decoration: none; border-color: rgba(0,255,136,0.3); color: var(--neon-green);">
+          <i class="fa-brands fa-telegram"></i> Support
+        </a>
+
         <!-- Language Toggle -->
         <button class="lang-btn" id="langToggleBtn" onclick="toggleLang()">
           <i class="fa-solid fa-globe"></i> <span id="currentLangLabel">HI</span>
@@ -483,6 +502,32 @@
       </div>
     </nav>
   </header>
+
+  <!-- Fixed Bottom Navigation Bar -->
+  <nav class="bottom-nav-container">
+    <div class="bottom-nav">
+      <button class="nav-link active" id="navTabHome" onclick="nav('home')">
+        <i class="fa-solid fa-house"></i>
+        <span>Home</span>
+      </button>
+      <button class="nav-link" id="navTabWatch" onclick="nav('watch')">
+        <i class="fa-solid fa-circle-play"></i>
+        <span>Watch</span>
+      </button>
+      <button class="nav-link" id="navTabPromote" onclick="nav('promote')">
+        <i class="fa-solid fa-bullhorn"></i>
+        <span>Promote</span>
+      </button>
+      <button class="nav-link" id="navTabChannels" onclick="nav('channels')">
+        <i class="fa-solid fa-network-wired"></i>
+        <span>Earnings</span>
+      </button>
+      <button class="nav-link" id="navTabDash" onclick="nav('dashboard')">
+        <i class="fa-solid fa-user-circle"></i>
+        <span>Profile</span>
+      </button>
+    </div>
+  </nav>
 
   <main class="container">
 
@@ -727,7 +772,7 @@
       <div style="max-width: 800px; margin: 0 auto;">
         <div class="glass" style="padding: 30px; margin-bottom: 25px;">
           <h2 style="font-size: 24px; margin-bottom: 8px;"><i class="fa-solid fa-bullhorn text-purple"></i> Paid Telegram Channel Promotion</h2>
-          <p class="text-muted" style="margin-bottom: 20px; font-size: 14px;">Promote your Telegram channel across all channels connected to Blazeculture. Automated analysis, QR payment, admin verification, and mass broadcasting!</p>
+          <p class="text-muted" style="margin-bottom: 20px; font-size: 14px;">Promote your Telegram channel across all channels connected to Blazeculture with automated target analysis and campaign management.</p>
 
           <!-- Step 1: Channel Link Analysis -->
           <div style="margin-bottom: 20px;">
@@ -837,7 +882,6 @@
             <ol style="margin-left: 20px; font-size: 13px; color: var(--text-muted); line-height: 1.8;">
               <li>Add <code>@BlazecultureBot</code> (or your configured bot) to your channel as an <strong>Admin with full permissions</strong> (Post Messages, Edit Messages, Delete Messages, Invite Users).</li>
               <li>Paste your channel link below and click <strong>"Connect & Verify Admin"</strong>.</li>
-              <li>When ad campaigns run on your channel, every 2 users who join will automatically deduct ₹1 from the promoter and credit <strong>₹0.50</strong> straight to your wallet!</li>
             </ol>
           </div>
 
@@ -929,141 +973,220 @@
 
       <!-- Admin Dashboard View -->
       <div id="adminDashboardView" class="hidden">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; flex-wrap: wrap; gap: 10px;">
-          <h2><i class="fa-solid fa-crown text-gold"></i> Master Admin Control Center</h2>
-          <button class="btn btn-danger" onclick="adminLogout()">Logout Admin</button>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+          <h2><i class="fa-solid fa-crown text-gold"></i> Advanced Master Admin Panel</h2>
+          <button class="btn btn-danger" onclick="adminLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
         </div>
 
-        <!-- Admin Stats -->
-        <div class="grid-3" style="margin-bottom: 25px;">
-          <div class="glass" style="padding: 20px;">
-            <div class="text-muted" style="font-size: 12px;">Total Registered Users</div>
-            <div style="font-size: 28px; font-weight: 800; color: var(--neon-green);" id="admTotalUsers">0</div>
-          </div>
-          <div class="glass" style="padding: 20px;">
-            <div class="text-muted" style="font-size: 12px;">Pending Withdrawals</div>
-            <div style="font-size: 28px; font-weight: 800; color: var(--gold);" id="admPendingWithdrawals">0</div>
-          </div>
-          <div class="glass" style="padding: 20px;">
-            <div class="text-muted" style="font-size: 12px;">Pending Promotions</div>
-            <div style="font-size: 28px; font-weight: 800; color: var(--purple);" id="admPendingPromos">0</div>
-          </div>
+        <!-- Admin Sub-Navigation Menu -->
+        <div class="glass" style="padding: 8px; margin-bottom: 25px; display: flex; gap: 8px; overflow-x: auto;">
+          <button class="btn btn-secondary admin-tab-btn active" id="admTabBtn_overview" onclick="switchAdminTab('overview')"><i class="fa-solid fa-chart-line"></i> Overview</button>
+          <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_payment" onclick="switchAdminTab('payment')"><i class="fa-solid fa-qrcode"></i> Payment & Rates</button>
+          <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_promos" onclick="switchAdminTab('promos')"><i class="fa-solid fa-bullhorn"></i> Promotions</button>
+          <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_users" onclick="switchAdminTab('users')"><i class="fa-solid fa-users"></i> Users & VIP</button>
+          <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_withdraws" onclick="switchAdminTab('withdraws')"><i class="fa-solid fa-wallet"></i> Withdrawals</button>
+          <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_adcodes" onclick="switchAdminTab('adcodes')"><i class="fa-solid fa-code"></i> Ad Codes</button>
+          <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_bot" onclick="switchAdminTab('bot')"><i class="fa-solid fa-robot"></i> Bot Settings</button>
         </div>
 
-        <!-- Payment Settings Manager (QR & UPI) -->
-        <div class="glass" style="padding: 25px; margin-bottom: 25px;">
-          <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-qrcode text-gold"></i> Payment QR Code & UPI Settings</h3>
-          <form onsubmit="handleSavePaymentQr(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-            <div>
-              <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">UPI ID / Payment String</label>
-              <input type="text" id="admUpiIdInput" class="glass-input" placeholder="blazeculture@upi">
+        <!-- SUBTAB 1: Overview & Stats -->
+        <div id="adminSubtab_overview" class="admin-subtab">
+          <div class="grid-3" style="margin-bottom: 25px;">
+            <div class="glass" style="padding: 20px;">
+              <div class="text-muted" style="font-size: 12px; text-transform: uppercase;">Total Registered Users</div>
+              <div style="font-size: 32px; font-weight: 800; color: var(--neon-green);" id="admTotalUsers">0</div>
             </div>
-            <div>
-              <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">QR Code Image URL / Base64</label>
-              <input type="text" id="admQrUrlInput" class="glass-input" placeholder="/static/logo.png or image URL">
+            <div class="glass" style="padding: 20px;">
+              <div class="text-muted" style="font-size: 12px; text-transform: uppercase;">Pending Withdrawals</div>
+              <div style="font-size: 32px; font-weight: 800; color: var(--gold);" id="admPendingWithdrawals">0</div>
             </div>
-            <div style="grid-column: 1 / -1;">
-              <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Payment Config</button>
+            <div class="glass" style="padding: 20px;">
+              <div class="text-muted" style="font-size: 12px; text-transform: uppercase;">Pending Promotions</div>
+              <div style="font-size: 32px; font-weight: 800; color: var(--purple);" id="admPendingPromos">0</div>
             </div>
-          </form>
-        </div>
-
-        <!-- Promotion Requests Approval Table -->
-        <div class="glass" style="padding: 25px; margin-bottom: 25px;">
-          <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-bullhorn text-purple"></i> Pending Promotion Requests & Broadcast Trigger</h3>
-          <div style="overflow-x: auto;">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>User</th>
-                  <th>Channel Link</th>
-                  <th>Budget</th>
-                  <th>Txn Ref</th>
-                  <th>Ad Message</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody id="adminPromotionsTableBody">
-                <tr><td colspan="7" class="text-muted">Loading promotion requests...</td></tr>
-              </tbody>
-            </table>
           </div>
         </div>
 
-        <!-- High-Paying Ad Code Manager -->
-        <div class="glass" style="padding: 25px; margin-bottom: 25px;">
-          <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-code text-green"></i> Ad Network Script Manager (Adsterra / HilltopAds / Monetag)</h3>
-
-          <form onsubmit="handleSaveAdCodes(event)">
-            <div style="margin-bottom: 15px;">
-              <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Full-Page Interstitial Script</label>
-              <textarea id="admInterstitialCode" class="glass-input" rows="3" style="font-family: monospace; font-size: 12px;"></textarea>
-            </div>
-
-            <div style="margin-bottom: 15px;">
-              <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Popunder Script</label>
-              <textarea id="admPopunderCode" class="glass-input" rows="3" style="font-family: monospace; font-size: 12px;"></textarea>
-            </div>
-
-            <div style="margin-bottom: 15px;">
-              <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Banner Ad HTML/JS Code</label>
-              <textarea id="admBannerCode" class="glass-input" rows="3" style="font-family: monospace; font-size: 12px;"></textarea>
-            </div>
-
-            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save High-Paying Ad Codes</button>
-          </form>
-        </div>
-
-        <!-- User Management Table with Premium Toggle -->
-        <div class="glass" style="padding: 25px; margin-bottom: 25px;">
-          <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-users text-cyan"></i> Registered Users & VIP Premium Status</h3>
-          <div style="overflow-x: auto;">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Username</th>
-                  <th>Telegram ID</th>
-                  <th>Coins Balance</th>
-                  <th>VIP Premium (No Ad Needed)</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody id="adminUsersTableBody">
-                <tr><td colspan="7" class="text-muted">Loading users...</td></tr>
-              </tbody>
-            </table>
+        <!-- SUBTAB 2: Payment & Rates Settings -->
+        <div id="adminSubtab_payment" class="admin-subtab hidden">
+          <div class="glass" style="padding: 25px; margin-bottom: 25px;">
+            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-qrcode text-gold"></i> Payment QR Code & UPI Config</h3>
+            <form onsubmit="handleSavePaymentQr(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">UPI ID / Payment Handle</label>
+                <input type="text" id="admUpiIdInput" class="glass-input" placeholder="blazeculture@upi">
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">QR Code Image Path / Base64</label>
+                <input type="text" id="admQrUrlInput" class="glass-input" placeholder="/static/payment_qr.jpg">
+              </div>
+              <div style="grid-column: 1 / -1; display: flex; align-items: center; gap: 15px;">
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Payment Config</button>
+                <div style="font-size: 12px; color: var(--neon-green);">Live Preview: <a id="admQrPreviewLink" href="/static/payment_qr.jpg" target="_blank" style="color: var(--neon-cyan);">View QR Image</a></div>
+              </div>
+            </form>
           </div>
         </div>
 
-        <!-- Withdrawal Requests Manager -->
-        <div class="glass" style="padding: 25px;">
-          <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-money-bill-transfer text-gold"></i> Withdrawal Requests</h3>
-          <div style="overflow-x: auto;">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>User</th>
-                  <th>Amount ($ / ₹)</th>
-                  <th>Method</th>
-                  <th>Account Details</th>
-                  <th>Status</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody id="adminWithdrawalsTableBody">
-                <tr><td colspan="7" class="text-muted">Loading withdrawal requests...</td></tr>
-              </tbody>
-            </table>
+        <!-- SUBTAB 3: Pending Promotion Requests -->
+        <div id="adminSubtab_promos" class="admin-subtab hidden">
+          <div class="glass" style="padding: 25px; margin-bottom: 25px;">
+            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-bullhorn text-purple"></i> Promotion Requests & Broadcast Trigger</h3>
+            <div style="overflow-x: auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Channel Link</th>
+                    <th>Budget</th>
+                    <th>Txn Ref</th>
+                    <th>Ad Message</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="adminPromotionsTableBody">
+                  <tr><td colspan="7" class="text-muted">Loading promotion requests...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBTAB 4: Users & VIP Premium Status -->
+        <div id="adminSubtab_users" class="admin-subtab hidden">
+          <div class="glass" style="padding: 25px; margin-bottom: 25px;">
+            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-users text-cyan"></i> Registered Users & VIP Premium Status</h3>
+            <div style="overflow-x: auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Telegram ID</th>
+                    <th>Coins Balance</th>
+                    <th>VIP Premium (No Ad Needed)</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="adminUsersTableBody">
+                  <tr><td colspan="7" class="text-muted">Loading users...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBTAB 5: Withdrawals Manager -->
+        <div id="adminSubtab_withdraws" class="admin-subtab hidden">
+          <div class="glass" style="padding: 25px;">
+            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-money-bill-transfer text-gold"></i> Withdrawal Requests</h3>
+            <div style="overflow-x: auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Amount ($ / ₹)</th>
+                    <th>Method</th>
+                    <th>Account Details</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="adminWithdrawalsTableBody">
+                  <tr><td colspan="7" class="text-muted">Loading withdrawal requests...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBTAB 6: Ad Network Code Manager -->
+        <div id="adminSubtab_adcodes" class="admin-subtab hidden">
+          <div class="glass" style="padding: 25px; margin-bottom: 25px;">
+            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-code text-green"></i> Ad Network Script Manager (Adsterra / HilltopAds / Monetag)</h3>
+
+            <form onsubmit="handleSaveAdCodes(event)">
+              <div style="margin-bottom: 15px;">
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Full-Page Interstitial Script</label>
+                <textarea id="admInterstitialCode" class="glass-input" rows="3" style="font-family: monospace; font-size: 12px;"></textarea>
+              </div>
+
+              <div style="margin-bottom: 15px;">
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Popunder Script</label>
+                <textarea id="admPopunderCode" class="glass-input" rows="3" style="font-family: monospace; font-size: 12px;"></textarea>
+              </div>
+
+              <div style="margin-bottom: 15px;">
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Banner Ad HTML/JS Code</label>
+                <textarea id="admBannerCode" class="glass-input" rows="3" style="font-family: monospace; font-size: 12px;"></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save High-Paying Ad Codes</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- SUBTAB 7: Bot Configuration -->
+        <div id="adminSubtab_bot" class="admin-subtab hidden">
+          <div class="glass" style="padding: 25px;">
+            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-robot text-purple"></i> Telegram Bot Force-Sub & Campaign Configuration</h3>
+            <form onsubmit="handleSaveBotConfig(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Force Sub Channel Title / ID</label>
+                <input type="text" id="admForceChatTitleInput" class="glass-input" placeholder="@yourforcechannel or Title">
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Force Sub Join Link</label>
+                <input type="text" id="admForceJoinUrlInput" class="glass-input" placeholder="https://t.me/yourforcechannel">
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Target Campaign Channel Title</label>
+                <input type="text" id="admTargetChatTitleInput" class="glass-input" placeholder="Target Channel Title">
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Target Invite Mode</label>
+                <select id="admTargetInviteModeInput" class="glass-input" style="background: rgba(18,24,38,0.9);">
+                  <option value="direct">Direct Invite Link</option>
+                  <option value="request">Join Request Link</option>
+                </select>
+              </div>
+              <div style="grid-column: 1 / -1;">
+                <button type="submit" class="btn btn-purple"><i class="fa-solid fa-floppy-disk"></i> Save Bot Config</button>
+              </div>
+            </form>
           </div>
         </div>
       </div>
     </section>
 
+    <!-- Site Footer with Legal Links -->
+    <footer style="text-align: center; padding: 30px 20px; margin-top: 40px; border-top: 1px solid var(--card-border); color: var(--text-muted); font-size: 13px;">
+      <p>© 2025 Blazeculture PTC. All rights reserved.</p>
+      <div style="display: flex; justify-content: center; gap: 15px; margin-top: 10px; flex-wrap: wrap;">
+        <a href="#" onclick="openLegalModal('tos'); return false;" style="color: var(--neon-cyan); text-decoration: none;">Terms of Service</a> |
+        <a href="#" onclick="openLegalModal('privacy'); return false;" style="color: var(--neon-cyan); text-decoration: none;">Privacy Policy</a> |
+        <a href="#" onclick="openLegalModal('refund'); return false;" style="color: var(--neon-cyan); text-decoration: none;">Refund Policy</a> |
+        <a href="#" onclick="openLegalModal('disclaimer'); return false;" style="color: var(--neon-cyan); text-decoration: none;">Earnings Disclaimer</a> |
+        <a href="https://t.me/Tgfuckerx" target="_blank" style="color: var(--neon-green); text-decoration: none;"><i class="fa-brands fa-telegram"></i> Support (@Tgfuckerx)</a>
+      </div>
+    </footer>
+
   </main>
+
+  <!-- Legal Modal Window -->
+  <div id="legalModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div class="glass" style="max-width: 650px; width: 100%; max-height: 85vh; overflow-y: auto; padding: 30px; position: relative;">
+      <button onclick="closeLegalModal()" style="position: absolute; top: 15px; right: 20px; background: transparent; border: none; color: #fff; font-size: 22px; cursor: pointer;">&times;</button>
+      <h2 id="legalModalTitle" style="color: var(--neon-cyan); margin-bottom: 15px; font-size: 22px;">Legal Information</h2>
+      <div id="legalModalBody" style="font-size: 14px; line-height: 1.7; color: var(--text-main);"></div>
+      <div style="margin-top: 20px; text-align: right;">
+        <button class="btn btn-primary" onclick="closeLegalModal()">Close</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Coin Reward Burst Modal Animation -->
   <div id="coinRewardModal">
@@ -1536,6 +1659,54 @@
       }
     }
 
+    // Legal Modal Controls
+    function openLegalModal(type) {
+      const modal = document.getElementById('legalModal');
+      const title = document.getElementById('legalModalTitle');
+      const body = document.getElementById('legalModalBody');
+
+      if (type === 'tos') {
+        title.textContent = '📜 Terms of Service';
+        body.innerHTML = `
+          <p><strong>1. Acceptance of Terms</strong><br>By accessing or using the Blazeculture PTC and Telegram promotion platform, you agree to be bound by these Terms of Service. If you do not agree, please discontinue service usage immediately.</p>
+          <br>
+          <p><strong>2. Account & Usage Rules</strong><br>Users must be at least 18 years of age or have legal guardian consent. Automated bots, multiple account cheating, or fraud will result in immediate termination and forfeiture of balance.</p>
+          <br>
+          <p><strong>3. Advertising & Promotion Policy</strong><br>Promoters must ensure submitted channels do not contain illegal, harmful, adult, or copyrighted content. Blazeculture reserves full rights to reject non-compliant campaigns.</p>
+          <br>
+          <p><strong>4. Support & Official Handles</strong><br>For questions or assistance regarding your account, contact official support at <strong>@Tgfuckerx</strong>.</p>
+        `;
+      } else if (type === 'privacy') {
+        title.textContent = '🔒 Privacy Policy';
+        body.innerHTML = `
+          <p><strong>1. Data Collection</strong><br>We collect minimal required data including Telegram user ID, username, IP address, and transaction records for service delivery and fraud prevention.</p>
+          <br>
+          <p><strong>2. Use of Information</strong><br>Your information is used strictly to process rewards, track promotion campaign metrics, and verify payouts. We do NOT sell or share personal data with third parties.</p>
+          <br>
+          <p><strong>3. Security</strong><br>We implement industry-standard encryption and security protocols to safeguard user data and payment details.</p>
+        `;
+      } else if (type === 'refund') {
+        title.textContent = '💳 Refund & Cancellation Policy';
+        body.innerHTML = `
+          <p><strong>1. Promotion Refunds</strong><br>Promotion orders that are rejected by administrators will have funds credited back or refunded upon request via support (<strong>@Tgfuckerx</strong>).</p>
+          <br>
+          <p><strong>2. Completed Campaigns</strong><br>Once a channel promotion campaign has been approved and broadcasted across our network, refunds are non-applicable.</p>
+        `;
+      } else if (type === 'disclaimer') {
+        title.textContent = '⚖️ Earnings & Promotion Disclaimer';
+        body.innerHTML = `
+          <p><strong>1. Earnings Disclaimer</strong><br>Coin rewards and channel earnings depend on active user engagement and ad views. Historical results do not guarantee future earnings.</p>
+          <br>
+          <p><strong>2. Promotion Results</strong><br>Channel growth and join numbers depend on channel niche, appeal, and audience activity. Targeted estimates are for illustrative purposes.</p>
+        `;
+      }
+      modal.classList.remove('hidden');
+    }
+
+    function closeLegalModal() {
+      document.getElementById('legalModal').classList.add('hidden');
+    }
+
     // PROMOTION SYSTEM HANDLERS
     async function loadPaymentQr() {
       try {
@@ -1731,6 +1902,16 @@
       nav('home');
     }
 
+    function switchAdminTab(tabName) {
+      document.querySelectorAll('.admin-subtab').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.admin-tab-btn').forEach(btn => btn.classList.remove('active'));
+
+      const target = document.getElementById(`adminSubtab_${tabName}`);
+      const btn = document.getElementById(`admTabBtn_${tabName}`);
+      if (target) target.classList.remove('hidden');
+      if (btn) btn.classList.add('active');
+    }
+
     async function loadAdminDashboardData() {
       try {
         const statsData = await apiCall('/api/admin/stats');
@@ -1741,6 +1922,20 @@
         const qrRes = await apiCall('/api/admin/payment-qr');
         document.getElementById('admUpiIdInput').value = qrRes.upi_id || '';
         document.getElementById('admQrUrlInput').value = qrRes.qr_image_url || '';
+        if (document.getElementById('admQrPreviewLink')) {
+          document.getElementById('admQrPreviewLink').href = qrRes.qr_image_url || '/static/payment_qr.jpg';
+        }
+
+        // Load Bot Config
+        try {
+          const botRes = await apiCall('/api/admin/bot-config');
+          if (botRes) {
+            document.getElementById('admForceChatTitleInput').value = botRes.force_chat_title || '';
+            document.getElementById('admForceJoinUrlInput').value = botRes.force_join_url || '';
+            document.getElementById('admTargetChatTitleInput').value = botRes.target_chat_title || '';
+            document.getElementById('admTargetInviteModeInput').value = botRes.target_invite_mode || 'direct';
+          }
+        } catch (e) {}
 
         // Load Pending Promotions
         const promoRes = await apiCall('/api/admin/promotions');
@@ -1844,6 +2039,26 @@
         const qrUrl = document.getElementById('admQrUrlInput').value;
         await apiCall('/api/admin/payment-qr', 'POST', { upi_id: upiId, qr_image_url: qrUrl });
         alert('Payment QR code and UPI ID updated!');
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function handleSaveBotConfig(e) {
+      e.preventDefault();
+      try {
+        const forceTitle = document.getElementById('admForceChatTitleInput').value;
+        const forceUrl = document.getElementById('admForceJoinUrlInput').value;
+        const targetTitle = document.getElementById('admTargetChatTitleInput').value;
+        const targetMode = document.getElementById('admTargetInviteModeInput').value;
+
+        await apiCall('/api/admin/bot-config', 'POST', {
+          force_chat_title: forceTitle,
+          force_join_url: forceUrl,
+          target_chat_title: targetTitle,
+          target_invite_mode: targetMode
+        });
+        alert('Bot configuration saved!');
       } catch (err) {
         alert(err.message);
       }

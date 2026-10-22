@@ -307,7 +307,7 @@ async def premium_info_callback(callback: CallbackQuery) -> None:
     if is_prem:
         await callback.answer("⭐ You are a Blazeculture Premium Member! Ads are completely bypassed for you.", show_alert=True)
     else:
-        await callback.answer("⭐ Blazeculture Premium Pass allows instant access to all channel links without watching ads! Contact @rajpapa or upgrade in Mini App.", show_alert=True)
+        await callback.answer("⭐ Blazeculture Premium Pass allows instant access to all channel links without watching ads! Contact @Tgfuckerx or upgrade in Mini App.", show_alert=True)
 
 
 @router.callback_query(F.data == "btn_tutorial")
