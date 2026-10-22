@@ -3,6 +3,7 @@ import secrets
 import uuid
 from pathlib import Path
 from typing import Optional
+import httpx
 
 from fastapi import FastAPI, HTTPException, Request, Depends, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -218,6 +219,78 @@ def require_admin(x_admin_token: Optional[str] = Header(None)) -> bool:
     return True
 
 
+def normalize_telegram_channel(input_str: str) -> tuple[str, str, str]:
+    """
+    Parses any telegram channel link or input format and returns:
+    (clean_url, channel_id, channel_username)
+    """
+    s = (input_str or "").strip()
+    if not s:
+        return "", "", ""
+
+    s = s.rstrip("/")
+    s = s.replace("telegram.me/", "t.me/")
+
+    if "t.me/" in s:
+        path = s.split("t.me/")[-1].split("?")[0].strip()
+        parts = [p for p in path.split("/") if p]
+        if not parts:
+            return "", "", ""
+        target = parts[0].strip()
+    else:
+        target = s.lstrip("@").split("?")[0].split("/")[0].strip()
+
+    if not target:
+        return "", "", ""
+
+    if target.startswith("+") or target.startswith("joinchat"):
+        code = target if target.startswith("+") else target.replace("joinchat/", "")
+        clean_url = f"https://t.me/{code}"
+        channel_id = code
+        channel_username = ""
+        return clean_url, channel_id, channel_username
+
+    username = target.replace("@", "")
+    clean_url = f"https://t.me/{username}"
+    channel_id = f"@{username}"
+    channel_username = username
+    return clean_url, channel_id, channel_username
+
+
+async def async_fetch_tg_channel_info(channel_username: str, channel_id: str) -> dict | None:
+    from config import BOT_TOKEN
+    if not BOT_TOKEN or BOT_TOKEN == "PASTE_BOT_TOKEN_HERE":
+        return None
+
+    chat_ref = f"@{channel_username}" if channel_username else channel_id
+    if not chat_ref.startswith("@") and not chat_ref.startswith("-"):
+        return None
+
+    try:
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getChat", params={"chat_id": chat_ref})
+            data = res.json()
+            if data.get("ok"):
+                chat = data.get("result", {})
+                count_res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMemberCount", params={"chat_id": chat_ref})
+                count_data = count_res.json()
+                members_count = count_data.get("result") if count_data.get("ok") else None
+
+                title = chat.get("title") or chat.get("first_name") or chat_ref
+                username_str = f"@{chat.get('username')}" if chat.get("username") else chat_ref
+                members_str = f"{members_count:,} Subscribers" if members_count else "Active Telegram Channel"
+
+                return {
+                    "title": title,
+                    "username": username_str,
+                    "members_count": members_str,
+                    "bot_is_admin": True
+                }
+    except Exception:
+        pass
+    return None
+
+
 @app.on_event("startup")
 async def startup() -> None:
     init_db()
@@ -226,6 +299,7 @@ async def startup() -> None:
 # Static & Root Page
 @app.get("/", response_class=HTMLResponse)
 @app.get("/raj", response_class=HTMLResponse)
+@app.get("/admin", response_class=HTMLResponse)
 async def serve_index() -> HTMLResponse:
     html_file = BASE_DIR / "static" / "Index.html"
     if not html_file.exists():
@@ -555,27 +629,38 @@ async def get_payment_qr_public() -> dict:
 
 @app.post("/api/promotions/analyze")
 async def analyze_channel(body: AnalyzeChannelRequest, user: dict = Depends(get_current_user)) -> dict:
-    clean_url = (body.channel_link or body.channelUrl or "").strip()
-    if not clean_url or ("t.me/" not in clean_url and not clean_url.startswith("@")):
-        raise HTTPException(status_code=400, detail="Please enter a valid Telegram channel link or @username")
+    raw_input = (body.channel_link or body.channelUrl or "").strip()
+    if not raw_input:
+        raise HTTPException(status_code=400, detail="Please enter a Telegram channel link, @username, or invite code.")
 
-    channel_username = clean_url.split("t.me/")[-1].replace("@", "").strip("/")
-    channel_id = f"@{channel_username}" if channel_username else clean_url
+    clean_url, channel_id, channel_username = normalize_telegram_channel(raw_input)
+    if not clean_url:
+        raise HTTPException(status_code=400, detail="Could not parse Telegram channel link. Please enter a valid @username or t.me link.")
 
-    # Check if channel exists in connected channels
+    live_info = await async_fetch_tg_channel_info(channel_username, channel_id)
+
     connected = None
     with db.db() as conn:
         row = conn.execute("SELECT * FROM connected_channels WHERE channel_id=? OR channel_username=?", (channel_id, channel_username)).fetchone()
         if row:
             connected = dict(row)
 
-    members_str = f"{connected['total_joins']} Connected Joins" if connected else "Verified Active Telegram Channel"
+    if connected:
+        title = connected["channel_title"]
+        members_str = f"{connected['total_joins']} Connected Joins"
+    elif live_info:
+        title = live_info["title"]
+        members_str = live_info["members_count"]
+    else:
+        title = f"Telegram Channel ({channel_username or channel_id})"
+        members_str = "Verified Active Telegram Channel"
 
     return {
         "ok": True,
         "channel_link": clean_url,
-        "title": connected["channel_title"] if connected else f"Telegram Channel ({channel_id})",
-        "username": f"@{channel_username}" if channel_username else clean_url,
+        "channel_id": channel_id,
+        "title": title,
+        "username": f"@{channel_username}" if channel_username else channel_id,
         "members_count": members_str,
         "bot_is_admin": True,
     }
@@ -583,8 +668,11 @@ async def analyze_channel(body: AnalyzeChannelRequest, user: dict = Depends(get_
 
 @app.post("/api/promotions/submit")
 async def submit_promotion(body: SubmitPromotionRequest, user: dict = Depends(get_current_user)) -> dict:
-    url = body.channel_link or body.channelUrl or "https://t.me/channel"
-    c_id = body.channel_id or body.channelId or url
+    raw_input = body.channel_link or body.channelUrl or "https://t.me/channel"
+    clean_url, channel_id, channel_username = normalize_telegram_channel(raw_input)
+
+    url = clean_url or raw_input
+    c_id = body.channel_id or body.channelId or channel_id or url
     c_title = body.channel_title or body.channelTitle or f"Channel ({c_id})"
     price = body.budget_inr or body.priceInr or 100.0
     joins = body.target_joins or body.targetJoins or int(price * 2)
@@ -615,10 +703,13 @@ async def user_promotions(user: dict = Depends(get_current_user)) -> dict:
 
 @app.post("/api/channels/connect")
 async def user_connect_channel(body: ConnectChannelRequest, user: dict = Depends(get_current_user)) -> dict:
-    url = body.channel_link or body.channel_id or body.channelId or "https://t.me/channel"
-    c_id = body.channel_id or body.channelId or url
+    raw_input = body.channel_link or body.channel_id or body.channelId or "https://t.me/channel"
+    clean_url, channel_id, channel_username = normalize_telegram_channel(raw_input)
+
+    url = clean_url or raw_input
+    c_id = body.channel_id or body.channelId or channel_id or url
     c_title = body.channel_title or body.channelTitle or f"Channel ({c_id})"
-    c_username = body.channel_username or body.channelUsername or url.split("t.me/")[-1]
+    c_username = body.channel_username or body.channelUsername or channel_username or url.split("t.me/")[-1]
 
     ch = connect_channel(
         owner_user_id=user["id"],
