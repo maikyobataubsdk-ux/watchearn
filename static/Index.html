@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Blazeculture - Premium Ad Earn & Telegram Channel Promotions Hub</title>
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <!-- Google Fonts & FontAwesome Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -116,54 +118,153 @@
       border: 1px solid rgba(239, 68, 68, 0.3);
     }
 
-    /* Navbar */
+    /* Modern Navbar Header */
+    .navbar-container {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7, 9, 14, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--card-border);
+    }
+
     .navbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 14px 24px;
+      padding: 12px 20px;
       max-width: 1200px;
       margin: 0 auto;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      backdrop-filter: blur(12px);
+      gap: 15px;
     }
 
     .logo-brand {
       display: flex;
       align-items: center;
-      gap: 12px;
-      font-size: 22px;
+      gap: 10px;
+      font-size: 20px;
       font-weight: 800;
       color: #fff;
       text-decoration: none;
+      white-space: nowrap;
     }
     .logo-brand img {
-      width: 40px;
-      height: 40px;
+      width: 38px;
+      height: 38px;
       border-radius: 10px;
       box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
       object-fit: cover;
     }
     .logo-brand span { color: var(--neon-green); }
 
-    .nav-actions {
+    .nav-menu {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 4px 0;
+      scrollbar-width: none;
+    }
+    .nav-menu::-webkit-scrollbar { display: none; }
+
+    .nav-link {
+      color: var(--text-muted);
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nav-link:hover, .nav-link.active {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    .nav-link.active {
+      color: var(--neon-green);
+      border-color: rgba(0, 255, 136, 0.3);
+      background: rgba(0, 255, 136, 0.1);
+    }
+
+    /* Telegram User Profile Pill */
+    .profile-pill {
       display: flex;
       align-items: center;
       gap: 10px;
-      flex-wrap: wrap;
+      background: rgba(18, 24, 38, 0.8);
+      border: 1px solid var(--card-border);
+      padding: 6px 14px 6px 8px;
+      border-radius: 30px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    .user-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--neon-green), var(--neon-cyan));
+      color: #000;
+      font-weight: 800;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      object-fit: cover;
+      box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+    }
+
+    .user-meta {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+    .user-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #fff;
+      max-width: 110px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .user-id-badge {
+      font-size: 10px;
+      color: var(--neon-cyan);
+      font-weight: 600;
+    }
+
+    .balance-pill {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: var(--gold);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: 800;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
     }
 
     .lang-btn {
       background: rgba(255, 255, 255, 0.08);
       border: 1px solid var(--card-border);
       color: #fff;
-      padding: 6px 14px;
+      padding: 6px 12px;
       border-radius: 20px;
       cursor: pointer;
-      font-weight: 600;
-      font-size: 13px;
+      font-weight: 700;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
     /* Layout Containers */
@@ -182,7 +283,7 @@
     /* Hero Section */
     .hero {
       text-align: center;
-      padding: 40px 20px 25px;
+      padding: 30px 20px 20px;
       max-width: 850px;
       margin: 0 auto;
     }
@@ -203,7 +304,7 @@
     }
 
     .hero h1 {
-      font-size: 40px;
+      font-size: 38px;
       font-weight: 800;
       line-height: 1.2;
       margin-bottom: 16px;
@@ -213,7 +314,7 @@
     }
 
     .hero p {
-      font-size: 17px;
+      font-size: 16px;
       color: var(--text-muted);
       margin-bottom: 28px;
     }
@@ -294,19 +395,6 @@
     .text-purple { color: var(--purple); }
     .text-muted { color: var(--text-muted); }
 
-    /* Modals */
-    .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(8px);
-      z-index: 500;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-
     /* Ad Container Area */
     .ad-container-area {
       min-height: 250px;
@@ -336,45 +424,65 @@
       display: block;
     }
 
-    @media (max-width: 640px) {
-      .hero h1 { font-size: 28px; }
-      .navbar { padding: 12px 14px; }
-      .logo-brand { font-size: 18px; }
-      .logo-brand img { width: 32px; height: 32px; }
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 26px; }
+      .navbar { padding: 10px 12px; flex-wrap: wrap; }
+      .logo-brand { font-size: 16px; }
+      .logo-brand img { width: 30px; height: 30px; }
+      .nav-menu { width: 100%; order: 3; justify-content: space-between; border-top: 1px solid var(--card-border); pt: 8px; margin-top: 4px; }
+      .user-name { max-width: 80px; font-size: 12px; }
+      .user-avatar { width: 28px; height: 28px; font-size: 12px; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Navigation Bar -->
-  <nav class="navbar">
-    <a href="#" class="logo-brand" onclick="nav('home')">
-      <img src="/static/logo.png" alt="Blazeculture Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2583/2583163.png'">
-      Blazeculture <span>PTC</span>
-    </a>
-    <div class="nav-actions">
-      <button class="lang-btn" id="langToggleBtn" onclick="toggleLang()">
-        <i class="fa-solid fa-globe"></i> <span id="currentLangLabel">HI</span>
-      </button>
+  <!-- Modern Header Navigation Bar -->
+  <header class="navbar-container">
+    <nav class="navbar">
+      <!-- Logo -->
+      <a href="#" class="logo-brand" onclick="nav('home')">
+        <img src="/static/logo.png" alt="Blazeculture Logo" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2583/2583163.png'">
+        Blazeculture <span>PTC</span>
+      </a>
 
-      <div id="navGuestActions" class="nav-actions">
-        <button class="btn btn-secondary" style="padding: 8px 14px; font-size: 13px;" onclick="openAuthModal('login')" data-i18n="login">Login</button>
-        <button class="btn btn-primary" style="padding: 8px 14px; font-size: 13px;" onclick="openAuthModal('register')" data-i18n="register">Register</button>
+      <!-- Navigation Tabs -->
+      <div class="nav-menu">
+        <button class="nav-link active" id="navTabHome" onclick="nav('home')"><i class="fa-solid fa-house"></i> Home</button>
+        <button class="nav-link" id="navTabWatch" onclick="nav('watch')"><i class="fa-solid fa-play"></i> Watch Ads</button>
+        <button class="nav-link" id="navTabPromote" onclick="nav('promote')"><i class="fa-solid fa-bullhorn"></i> Promote</button>
+        <button class="nav-link" id="navTabChannels" onclick="nav('channels')"><i class="fa-solid fa-network-wired"></i> Earnings</button>
+        <button class="nav-link" id="navTabDash" onclick="nav('dashboard')"><i class="fa-solid fa-user-circle"></i> Profile</button>
       </div>
 
-      <div id="navUserActions" class="nav-actions hidden">
-        <div id="premiumBadgeNav" class="hidden glass" style="padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 800; color: #f59e0b; border: 1px solid rgba(245,158,11,0.4);">
-          <i class="fa-solid fa-crown"></i> PREMIUM VIP
+      <!-- Right Header Controls (Telegram User Profile & Balance) -->
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <!-- Coins Balance Pill -->
+        <div class="balance-pill">
+          <i class="fa-solid fa-coins"></i> <span id="userNavBalance">0.0</span>
         </div>
-        <div class="glass" style="padding: 6px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: var(--gold);">
-          <i class="fa-solid fa-coins"></i> <span id="userNavBalance">0.0</span> <span style="font-size: 11px; color: #fff;">Coins</span>
+
+        <!-- Telegram User Profile Pill -->
+        <div class="profile-pill" id="userHeaderProfileCard">
+          <div class="user-avatar" id="headerUserAvatar">TG</div>
+          <div class="user-meta">
+            <span class="user-name" id="headerUserName">Telegram User</span>
+            <span class="user-id-badge" id="headerUserIdBadge"><i class="fa-solid fa-shield"></i> ID: --</span>
+          </div>
         </div>
-        <button class="btn btn-purple" style="padding: 8px 12px; font-size: 13px;" onclick="nav('promote')"><i class="fa-solid fa-bullhorn"></i> Promote</button>
-        <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 13px;" onclick="nav('dashboard')" data-i18n="dashboard">Dashboard</button>
-        <button class="btn btn-danger" style="padding: 8px 12px; font-size: 13px;" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i></button>
+
+        <!-- VIP Premium Badge -->
+        <div id="premiumBadgeNav" class="hidden glass" style="padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; color: #f59e0b; border: 1px solid rgba(245,158,11,0.4);">
+          👑 VIP
+        </div>
+
+        <!-- Language Toggle -->
+        <button class="lang-btn" id="langToggleBtn" onclick="toggleLang()">
+          <i class="fa-solid fa-globe"></i> <span id="currentLangLabel">HI</span>
+        </button>
       </div>
-    </div>
-  </nav>
+    </nav>
+  </header>
 
   <main class="container">
 
@@ -388,13 +496,13 @@
         <p data-i18n="heroDesc">The highest-paying PTC Mini App platform! Earn coins by viewing quick ads or promote your Telegram channel paid with automated multi-channel bot broadcasts and real-time revenue share.</p>
 
         <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
-          <button class="btn btn-primary" style="font-size: 17px; padding: 14px 30px;" onclick="handleStartWatching()" data-i18n="startWatchingBtn">
+          <button class="btn btn-primary" style="font-size: 16px; padding: 12px 26px;" onclick="nav('watch')" data-i18n="startWatchingBtn">
             <i class="fa-solid fa-circle-play"></i> Start Watching Ads
           </button>
-          <button class="btn btn-purple" style="font-size: 17px; padding: 14px 26px;" onclick="nav('promote')">
+          <button class="btn btn-purple" style="font-size: 16px; padding: 12px 24px;" onclick="nav('promote')">
             <i class="fa-solid fa-rocket"></i> Promote My Channel
           </button>
-          <button class="btn btn-secondary" style="font-size: 17px; padding: 14px 24px;" onclick="nav('channels')">
+          <button class="btn btn-secondary" style="font-size: 16px; padding: 12px 20px;" onclick="nav('channels')">
             <i class="fa-solid fa-network-wired"></i> Channel Earnings
           </button>
         </div>
@@ -407,7 +515,7 @@
 
       <!-- How It Works -->
       <div style="margin: 40px 0;">
-        <h2 style="text-align: center; font-size: 28px; margin-bottom: 30px;" data-i18n="howItWorksTitle">How Blazeculture Works</h2>
+        <h2 style="text-align: center; font-size: 26px; margin-bottom: 25px;" data-i18n="howItWorksTitle">How Blazeculture Works</h2>
         <div class="grid-3">
           <div class="glass" style="padding: 24px; text-align: center;">
             <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(0,255,136,0.15); color: var(--neon-green); display: grid; place-items: center; margin: 0 auto 15px; font-size: 22px; font-weight: 800;">1</div>
@@ -430,8 +538,8 @@
       </div>
 
       <!-- Live Stats & Leaderboard -->
-      <div class="glass" style="padding: 30px; margin: 30px 0;">
-        <h3 style="margin-bottom: 20px; font-size: 22px;" data-i18n="leaderboardTitle"><i class="fa-solid fa-trophy text-gold"></i> Top Earners Leaderboard</h3>
+      <div class="glass" style="padding: 25px; margin: 30px 0;">
+        <h3 style="margin-bottom: 20px; font-size: 20px;" data-i18n="leaderboardTitle"><i class="fa-solid fa-trophy text-gold"></i> Top Earners Leaderboard</h3>
         <div style="overflow-x: auto;">
           <table>
             <thead>
@@ -454,7 +562,7 @@
     <section id="pageDashboard" class="hidden">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;">
         <div>
-          <h1 style="font-size: 28px;" data-i18n="dashboardTitle">User Dashboard</h1>
+          <h1 style="font-size: 26px;" data-i18n="dashboardTitle">User Dashboard</h1>
           <p class="text-muted" id="userWelcomeText">Welcome back!</p>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -479,18 +587,18 @@
       <!-- User Stats Cards -->
       <div class="grid-3" style="margin-bottom: 25px;">
         <div class="glass" style="padding: 20px;">
-          <div class="text-muted" style="font-size: 13px; text-transform: uppercase;" data-i18n="currentBalance">Current Balance</div>
-          <div style="font-size: 32px; font-weight: 800; color: var(--gold); margin: 6px 0;">
-            <i class="fa-solid fa-coins"></i> <span id="dashBalanceCoins">0.0</span> <span style="font-size: 14px; color: #fff;">Coins</span>
+          <div class="text-muted" style="font-size: 12px; text-transform: uppercase;" data-i18n="currentBalance">Current Balance</div>
+          <div style="font-size: 30px; font-weight: 800; color: var(--gold); margin: 6px 0;">
+            <i class="fa-solid fa-coins"></i> <span id="dashBalanceCoins">0.0</span> <span style="font-size: 13px; color: #fff;">Coins</span>
           </div>
-          <div style="font-size: 14px; color: var(--neon-green);">
+          <div style="font-size: 13px; color: var(--neon-green);">
             ≈ $<span id="dashBalanceUsd">0.00</span> / ₹<span id="dashBalanceInr">0.00</span>
           </div>
         </div>
 
         <div class="glass" style="padding: 20px;">
-          <div class="text-muted" style="font-size: 13px; text-transform: uppercase;" data-i18n="adsWatchedToday">Daily Ads Progress</div>
-          <div style="font-size: 28px; font-weight: 800; color: var(--neon-cyan); margin: 6px 0;">
+          <div class="text-muted" style="font-size: 12px; text-transform: uppercase;" data-i18n="adsWatchedToday">Daily Ads Progress</div>
+          <div style="font-size: 26px; font-weight: 800; color: var(--neon-cyan); margin: 6px 0;">
             <span id="dashAdsToday">0</span> / <span id="dashDailyLimit">50</span>
           </div>
           <div class="progress-bar-bg">
@@ -499,11 +607,11 @@
         </div>
 
         <div class="glass" style="padding: 20px;">
-          <div class="text-muted" style="font-size: 13px; text-transform: uppercase;" data-i18n="totalAdsWatched">Lifetime Earned</div>
-          <div style="font-size: 28px; font-weight: 800; color: var(--neon-green); margin: 6px 0;">
+          <div class="text-muted" style="font-size: 12px; text-transform: uppercase;" data-i18n="totalAdsWatched">Lifetime Earned</div>
+          <div style="font-size: 26px; font-weight: 800; color: var(--neon-green); margin: 6px 0;">
             <span id="dashTotalEarned">0.0</span> Coins
           </div>
-          <div style="font-size: 13px;" class="text-muted">
+          <div style="font-size: 12px;" class="text-muted">
             Total Ads: <span id="dashTotalAds" class="text-green">0</span>
           </div>
         </div>
@@ -513,14 +621,14 @@
       <div class="grid-3" style="margin-bottom: 25px;">
         <div class="glass" style="padding: 24px; grid-column: span 2;">
           <h3 style="margin-bottom: 12px;" data-i18n="referralTitle"><i class="fa-solid fa-users text-cyan"></i> Referral Link & 15% Lifetime Commission</h3>
-          <p class="text-muted" style="font-size: 14px; margin-bottom: 15px;" data-i18n="referralDesc">Share your unique referral link with friends. You will earn 15% commission on all ad view coins they earn forever!</p>
+          <p class="text-muted" style="font-size: 13px; margin-bottom: 15px;" data-i18n="referralDesc">Share your unique referral link with friends. You will earn 15% commission on all ad view coins they earn forever!</p>
 
           <div style="display: flex; gap: 10px;">
             <input type="text" id="referralLinkInput" class="glass-input" readonly value="Loading referral link...">
             <button class="btn btn-cyan" onclick="copyReferralLink()"><i class="fa-solid fa-copy"></i> Copy</button>
           </div>
 
-          <div style="margin-top: 15px; font-size: 14px;">
+          <div style="margin-top: 15px; font-size: 13px;">
             Total Referrals: <strong id="dashTotalReferrals" class="text-cyan">0</strong>
           </div>
         </div>
@@ -554,13 +662,24 @@
       </div>
     </section>
 
-    <!-- PAGE 3: WATCH ADS PAGE -->
+    <!-- PAGE 3: WATCH ADS PAGE (WITH CAMPAIGN DEEP LINK UNLOCK DISPLAY) -->
     <section id="pageWatch" class="hidden">
       <div class="glass" style="max-width: 750px; margin: 0 auto; padding: 30px; text-align: center;">
+
+        <!-- Bot Campaign Active Banner Card -->
+        <div id="campaignActiveCard" class="glass hidden" style="padding: 20px; margin-bottom: 25px; border: 1px solid var(--neon-cyan); background: rgba(0,229,255,0.08);">
+          <div style="display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--neon-cyan); margin-bottom: 8px;">
+            <i class="fa-solid fa-link" style="font-size: 22px;"></i>
+            <h3 style="font-size: 18px;">Telegram Channel Unlock Campaign</h3>
+          </div>
+          <p style="font-size: 14px; color: #fff; margin-bottom: 8px;">Target Channel: <strong id="campaignTargetTitleText" style="color: var(--gold);">-</strong></p>
+          <p class="text-muted" style="font-size: 13px;">Watch 20s ad below to verify and unlock your invite link in the Telegram Bot!</p>
+        </div>
+
         <div class="badge">
           <i class="fa-solid fa-eye"></i> <span data-i18n="adAreaTitle">Blazeculture High-Paying Ad Hub</span>
         </div>
-        <h2 style="font-size: 26px; margin-bottom: 10px;" data-i18n="watchAdHeadline">Watch Full Ad to Earn Reward</h2>
+        <h2 style="font-size: 24px; margin-bottom: 10px;" data-i18n="watchAdHeadline">Watch Full Ad to Earn Reward</h2>
         <p class="text-muted" style="margin-bottom: 20px;" data-i18n="watchAdInstruction">Do not close or switch tab until timer finishes. Reward will be added automatically.</p>
 
         <!-- Dynamic Ad Render Frame -->
@@ -583,13 +702,21 @@
         </div>
 
         <!-- Buttons -->
-        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
+        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 20px; flex-wrap: wrap;">
           <button class="btn btn-primary" id="startWatchAdBtn" onclick="initWatchAdFlow()">
             <i class="fa-solid fa-play"></i> <span data-i18n="startAdBtn">Start Viewing Ad</span>
           </button>
 
           <button class="btn btn-primary hidden" id="claimRewardBtn" onclick="submitClaimReward()">
             <i class="fa-solid fa-gift"></i> <span data-i18n="claimRewardBtn">Claim Reward (+2.0 Coins)</span>
+          </button>
+        </div>
+
+        <!-- Campaign Return to Bot Button -->
+        <div id="campaignBotReturnArea" class="hidden" style="margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--card-border);">
+          <p style="color: var(--neon-green); font-weight: bold; margin-bottom: 12px;"><i class="fa-solid fa-circle-check"></i> Ad completed! You can now claim your channel link in the bot.</p>
+          <button class="btn btn-cyan" onclick="returnToBotToGetLink()">
+            <i class="fa-solid fa-paper-plane"></i> Return to Bot & Claim Link
           </button>
         </div>
       </div>
@@ -599,7 +726,7 @@
     <section id="pagePromote" class="hidden">
       <div style="max-width: 800px; margin: 0 auto;">
         <div class="glass" style="padding: 30px; margin-bottom: 25px;">
-          <h2 style="font-size: 26px; margin-bottom: 8px;"><i class="fa-solid fa-bullhorn text-purple"></i> Paid Telegram Channel Promotion</h2>
+          <h2 style="font-size: 24px; margin-bottom: 8px;"><i class="fa-solid fa-bullhorn text-purple"></i> Paid Telegram Channel Promotion</h2>
           <p class="text-muted" style="margin-bottom: 20px; font-size: 14px;">Promote your Telegram channel across all channels connected to Blazeculture. Automated analysis, QR payment, admin verification, and mass broadcasting!</p>
 
           <!-- Step 1: Channel Link Analysis -->
@@ -624,23 +751,23 @@
 
           <!-- Step 2: Campaign Details & Payment -->
           <div id="promoStep2Area" class="hidden">
-            <h3 style="font-size: 18px; margin-bottom: 15px; color: var(--gold);"><i class="fa-solid fa-qrcode"></i> Step 2: Select Package & Scan Admin QR Code</h3>
+            <h3 style="font-size: 17px; margin-bottom: 15px; color: var(--gold);"><i class="fa-solid fa-qrcode"></i> Step 2: Select Package & Scan Admin QR Code</h3>
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
               <div class="glass" style="padding: 15px; text-align: center; border: 1px solid var(--neon-green);">
-                <div style="font-size: 12px; text-transform: uppercase;" class="text-muted">Starter Pack</div>
-                <div style="font-size: 24px; font-weight: 800; color: var(--neon-green);">₹100 INR</div>
-                <div style="font-size: 12px;" class="text-muted">Target ~200 Real Joins</div>
+                <div style="font-size: 11px; text-transform: uppercase;" class="text-muted">Starter Pack</div>
+                <div style="font-size: 22px; font-weight: 800; color: var(--neon-green);">₹100 INR</div>
+                <div style="font-size: 11px;" class="text-muted">Target ~200 Real Joins</div>
               </div>
               <div class="glass" style="padding: 15px; text-align: center; border: 1px solid var(--neon-cyan);">
-                <div style="font-size: 12px; text-transform: uppercase;" class="text-muted">Pro Booster</div>
-                <div style="font-size: 24px; font-weight: 800; color: var(--neon-cyan);">₹250 INR</div>
-                <div style="font-size: 12px;" class="text-muted">Target ~500 Real Joins</div>
+                <div style="font-size: 11px; text-transform: uppercase;" class="text-muted">Pro Booster</div>
+                <div style="font-size: 22px; font-weight: 800; color: var(--neon-cyan);">₹250 INR</div>
+                <div style="font-size: 11px;" class="text-muted">Target ~500 Real Joins</div>
               </div>
               <div class="glass" style="padding: 15px; text-align: center; border: 1px solid var(--purple);">
-                <div style="font-size: 12px; text-transform: uppercase;" class="text-muted">Ultra Viral</div>
-                <div style="font-size: 24px; font-weight: 800; color: var(--purple);">₹500 INR</div>
-                <div style="font-size: 12px;" class="text-muted">Target ~1000 Real Joins</div>
+                <div style="font-size: 11px; text-transform: uppercase;" class="text-muted">Ultra Viral</div>
+                <div style="font-size: 22px; font-weight: 800; color: var(--purple);">₹500 INR</div>
+                <div style="font-size: 11px;" class="text-muted">Target ~1000 Real Joins</div>
               </div>
             </div>
 
@@ -702,7 +829,7 @@
     <section id="pageChannels" class="hidden">
       <div style="max-width: 850px; margin: 0 auto;">
         <div class="glass" style="padding: 30px; margin-bottom: 25px;">
-          <h2 style="font-size: 26px; margin-bottom: 8px;"><i class="fa-solid fa-network-wired text-green"></i> Connect Your Telegram Channel & Earn</h2>
+          <h2 style="font-size: 24px; margin-bottom: 8px;"><i class="fa-solid fa-network-wired text-green"></i> Connect Your Telegram Channel & Earn</h2>
           <p class="text-muted" style="margin-bottom: 20px; font-size: 14px;">Allow Blazeculture ads to run on your Telegram channel and earn <strong>₹0.50 INR for every 2 user joins</strong> automatically tracked!</p>
 
           <div class="glass" style="padding: 20px; margin-bottom: 20px; border-left: 4px solid var(--neon-green);">
@@ -746,7 +873,7 @@
     <!-- PAGE 6: WITHDRAWAL PAGE -->
     <section id="pageWithdraw" class="hidden">
       <div class="glass" style="max-width: 600px; margin: 0 auto; padding: 30px;">
-        <h2 style="font-size: 26px; margin-bottom: 10px;" data-i18n="withdrawHeading"><i class="fa-solid fa-wallet text-green"></i> Request Cash Withdrawal</h2>
+        <h2 style="font-size: 24px; margin-bottom: 10px;" data-i18n="withdrawHeading"><i class="fa-solid fa-wallet text-green"></i> Request Cash Withdrawal</h2>
         <p class="text-muted" style="margin-bottom: 20px;" data-i18n="withdrawSub">Minimum payout: <strong>$5.00 / ₹400</strong> (500 Coins).</p>
 
         <form id="withdrawForm" onsubmit="handleWithdrawSubmit(event)">
@@ -784,7 +911,7 @@
     <section id="pageAdmin" class="hidden">
       <!-- Admin Login View -->
       <div id="adminLoginView" class="glass" style="max-width: 450px; margin: 40px auto; padding: 30px;">
-        <h2 style="font-size: 24px; text-align: center; margin-bottom: 8px;"><i class="fa-solid fa-user-shield text-cyan"></i> Blazeculture Master Admin</h2>
+        <h2 style="font-size: 22px; text-align: center; margin-bottom: 8px;"><i class="fa-solid fa-user-shield text-cyan"></i> Blazeculture Master Admin</h2>
         <p class="text-muted" style="text-align: center; font-size: 13px; margin-bottom: 20px;">Enter credentials to access high-level site & bot control panel</p>
 
         <form onsubmit="handleAdminLogin(event)">
@@ -897,7 +1024,7 @@
                 <tr>
                   <th>ID</th>
                   <th>Username</th>
-                  <th>Email</th>
+                  <th>Telegram ID</th>
                   <th>Coins Balance</th>
                   <th>VIP Premium (No Ad Needed)</th>
                   <th>Status</th>
@@ -938,52 +1065,6 @@
 
   </main>
 
-  <!-- Auth Modal (Login / Register) -->
-  <div id="authModal" class="modal-overlay hidden">
-    <div class="glass" style="max-width: 420px; width: 100%; padding: 30px; position: relative;">
-      <button style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;" onclick="closeAuthModal()">&times;</button>
-
-      <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--card-border); padding-bottom: 10px;">
-        <button id="authTabLogin" class="btn btn-secondary" style="flex: 1;" onclick="switchAuthTab('login')">Login</button>
-        <button id="authTabRegister" class="btn btn-secondary" style="flex: 1;" onclick="switchAuthTab('register')">Register</button>
-      </div>
-
-      <!-- Login Form -->
-      <form id="authLoginForm" onsubmit="handleLoginSubmit(event)">
-        <div style="margin-bottom: 15px;">
-          <label style="font-size: 12px; color: var(--text-muted);">Email or Username</label>
-          <input type="text" id="loginEmailVal" class="glass-input" required>
-        </div>
-        <div style="margin-bottom: 20px;">
-          <label style="font-size: 12px; color: var(--text-muted);">Password</label>
-          <input type="password" id="loginPassVal" class="glass-input" required>
-        </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In</button>
-      </form>
-
-      <!-- Register Form -->
-      <form id="authRegisterForm" class="hidden" onsubmit="handleRegisterSubmit(event)">
-        <div style="margin-bottom: 12px;">
-          <label style="font-size: 12px; color: var(--text-muted);">Email Address</label>
-          <input type="email" id="regEmailVal" class="glass-input" required>
-        </div>
-        <div style="margin-bottom: 12px;">
-          <label style="font-size: 12px; color: var(--text-muted);">Username</label>
-          <input type="text" id="regUserVal" class="glass-input" required>
-        </div>
-        <div style="margin-bottom: 12px;">
-          <label style="font-size: 12px; color: var(--text-muted);">Password</label>
-          <input type="password" id="regPassVal" class="glass-input" required>
-        </div>
-        <div style="margin-bottom: 20px;">
-          <label style="font-size: 12px; color: var(--text-muted);">Referral Code (Optional)</label>
-          <input type="text" id="regRefVal" class="glass-input" placeholder="e.g. A1B2C3D4">
-        </div>
-        <button type="submit" class="btn btn-primary" style="width: 100%;">Create Account</button>
-      </form>
-    </div>
-  </div>
-
   <!-- Coin Reward Burst Modal Animation -->
   <div id="coinRewardModal">
     <div class="glass coin-box">
@@ -998,8 +1079,6 @@
     // Internationalization (Language Toggle: EN / HI)
     const i18n = {
       en: {
-        login: "Login",
-        register: "Register",
         dashboard: "Dashboard",
         heroBadge: "Blazeculture PTC & Channel Growth Ecosystem",
         heroTitle: "Watch Simple Ads & Promote Your Telegram Channels Instantly",
@@ -1027,8 +1106,6 @@
         paymentDetails: "Payment ID / UPI / Wallet Address"
       },
       hi: {
-        login: "लॉगिन करें",
-        register: "रजिस्टर करें",
         dashboard: "डैशबोर्ड",
         heroBadge: "ब्लेज़कल्चर पीटीसी और टेलीग्राम चैनल ग्रोथ इकोसिस्टम",
         heroTitle: "विज्ञापन देखें और अपने टेलीग्राम चैनल का प्रमोशन कराएं",
@@ -1066,6 +1143,10 @@
     let adTimeRemaining = 20;
     let currentAnalyzedChannel = null;
 
+    // Telegram Bot Deep-Link Campaign State
+    let activeCampaignToken = null;
+    let activeCampaignData = null;
+
     function toggleLang() {
       currentLang = currentLang === 'en' ? 'hi' : 'en';
       document.getElementById('currentLangLabel').textContent = currentLang.toUpperCase();
@@ -1085,28 +1166,31 @@
     function nav(page) {
       document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
 
+      // Update active nav link
+      document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+      if (page === 'home') document.getElementById('navTabHome')?.classList.add('active');
+      if (page === 'watch') document.getElementById('navTabWatch')?.classList.add('active');
+      if (page === 'promote') document.getElementById('navTabPromote')?.classList.add('active');
+      if (page === 'channels') document.getElementById('navTabChannels')?.classList.add('active');
+      if (page === 'dashboard') document.getElementById('navTabDash')?.classList.add('active');
+
       if (page === 'home') {
         document.getElementById('pageHome').classList.remove('hidden');
         loadLeaderboardAndStats();
       } else if (page === 'dashboard') {
-        if (!userToken) return openAuthModal('login');
         document.getElementById('pageDashboard').classList.remove('hidden');
         loadDashboardData();
       } else if (page === 'watch') {
-        if (!userToken) return openAuthModal('login');
         document.getElementById('pageWatch').classList.remove('hidden');
         resetAdWatchArea();
       } else if (page === 'promote') {
-        if (!userToken) return openAuthModal('login');
         document.getElementById('pagePromote').classList.remove('hidden');
         loadPaymentQr();
         loadMyPromotions();
       } else if (page === 'channels') {
-        if (!userToken) return openAuthModal('login');
         document.getElementById('pageChannels').classList.remove('hidden');
         loadMyChannels();
       } else if (page === 'withdraw') {
-        if (!userToken) return openAuthModal('login');
         document.getElementById('pageWithdraw').classList.remove('hidden');
         loadUserWithdrawals();
       } else if (page === 'admin' || window.location.pathname.startsWith('/raj')) {
@@ -1123,30 +1207,11 @@
       window.scrollTo(0, 0);
     }
 
-    // Check Route on Load
-    window.addEventListener('DOMContentLoaded', () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const refCode = urlParams.get('ref');
-      if (refCode) {
-        localStorage.setItem('adEarnRefCode', refCode);
-      }
-
-      if (window.location.pathname.startsWith('/raj')) {
-        nav('admin');
-      } else {
-        nav('home');
-      }
-
-      if (userToken) {
-        fetchUserProfile();
-      }
-      loadPublicAdCodes();
-    });
-
     // API Helper
     async function apiCall(endpoint, method = 'GET', body = null, token = null) {
       const headers = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const authToken = token || userToken;
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
       if (adminToken) headers['X-Admin-Token'] = adminToken;
 
       const opts = { method, headers };
@@ -1159,6 +1224,123 @@
       }
       return data;
     }
+
+    // Telegram Mini App Auto Auth & Initialization
+    async function initTelegramMiniAppAuth() {
+      // 1. Initialize Telegram WebApp SDK
+      if (window.Telegram && window.Telegram.WebApp) {
+        window.Telegram.WebApp.ready();
+        window.Telegram.WebApp.expand();
+      }
+
+      const tgWebApp = window.Telegram?.WebApp;
+      const tgUser = tgWebApp?.initDataUnsafe?.user;
+
+      // Extract URL params for ref code, campaign deep link, tg_user_id
+      const urlParams = new URLSearchParams(window.location.search);
+      const refCode = urlParams.get('ref') || localStorage.getItem('adEarnRefCode');
+      if (refCode) localStorage.setItem('adEarnRefCode', refCode);
+
+      // Extract Campaign / Start Param from URL or Telegram initData
+      const campaignParam = urlParams.get('campaign') || urlParams.get('startapp') || urlParams.get('tgWebAppStartParam') || tgWebApp?.initDataUnsafe?.start_param;
+      if (campaignParam) {
+        activeCampaignToken = campaignParam;
+      }
+
+      // Determine Telegram User Profile Data
+      let tgId, username, firstName, lastName, photoUrl;
+
+      if (tgUser && tgUser.id) {
+        tgId = tgUser.id;
+        username = tgUser.username || `tg_${tgUser.id}`;
+        firstName = tgUser.first_name || 'Telegram User';
+        lastName = tgUser.last_name || '';
+        photoUrl = tgUser.photo_url || '';
+      } else {
+        // Fallback for standard browser preview or testing
+        let fallbackId = urlParams.get('tg_user_id') || localStorage.getItem('tgFallbackUserId');
+        if (!fallbackId) {
+          fallbackId = Math.floor(100000000 + Math.random() * 900000000);
+          localStorage.setItem('tgFallbackUserId', fallbackId);
+        }
+        tgId = parseInt(fallbackId);
+        username = `user_${tgId}`;
+        firstName = 'Telegram User';
+        lastName = '';
+        photoUrl = '';
+      }
+
+      try {
+        const authRes = await apiCall('/api/auth/telegram-mini-app', 'POST', {
+          telegram_id: tgId,
+          username: username,
+          first_name: firstName,
+          last_name: lastName,
+          photo_url: photoUrl,
+          referralCode: refCode
+        });
+
+        userToken = authRes.token;
+        localStorage.setItem('adEarnUserToken', userToken);
+        currentUser = authRes.user;
+        updateHeaderProfileUI(currentUser);
+
+        // Check if coming via bot campaign link
+        if (activeCampaignToken) {
+          await loadAndActivateCampaign(activeCampaignToken);
+        } else if (!window.location.pathname.startsWith('/raj')) {
+          nav('home');
+        }
+      } catch (err) {
+        console.error('Telegram auth failed:', err);
+      }
+    }
+
+    function updateHeaderProfileUI(u) {
+      if (!u) return;
+      document.getElementById('userNavBalance').textContent = u.balanceCoins.toFixed(1);
+      document.getElementById('headerUserName').textContent = u.first_name || u.username || 'User';
+      document.getElementById('headerUserIdBadge').innerHTML = `<i class="fa-solid fa-shield"></i> ID: ${u.telegram_id || u.id}`;
+
+      const avatar = document.getElementById('headerUserAvatar');
+      if (u.photo_url) {
+        avatar.innerHTML = `<img src="${u.photo_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+      } else {
+        const initials = ((u.first_name || u.username || 'T').substring(0, 2)).toUpperCase();
+        avatar.textContent = initials;
+      }
+
+      if (u.is_premium) {
+        document.getElementById('premiumBadgeNav').classList.remove('hidden');
+        document.getElementById('premiumDashCard')?.classList.remove('hidden');
+      } else {
+        document.getElementById('premiumBadgeNav').classList.add('hidden');
+        document.getElementById('premiumDashCard')?.classList.add('hidden');
+      }
+    }
+
+    async function loadAndActivateCampaign(token) {
+      try {
+        const res = await apiCall(`/api/campaign/${token}`);
+        if (res.ok && res.campaign) {
+          activeCampaignData = res.campaign;
+          document.getElementById('campaignTargetTitleText').textContent = activeCampaignData.target_title;
+          document.getElementById('campaignActiveCard').classList.remove('hidden');
+          nav('watch');
+        }
+      } catch (e) {
+        console.log('Campaign link expired or not found:', e);
+      }
+    }
+
+    // Check Route on Load
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.location.pathname.startsWith('/raj')) {
+        nav('admin');
+      }
+      initTelegramMiniAppAuth();
+      loadPublicAdCodes();
+    });
 
     // Public Stats & Leaderboard
     async function loadLeaderboardAndStats() {
@@ -1201,102 +1383,14 @@
       } catch (e) {}
     }
 
-    // Auth Modal Handlers
-    function openAuthModal(tab = 'login') {
-      document.getElementById('authModal').classList.remove('hidden');
-      switchAuthTab(tab);
-
-      const savedRef = localStorage.getItem('adEarnRefCode');
-      if (savedRef) {
-        document.getElementById('regRefVal').value = savedRef;
-      }
-    }
-
-    function closeAuthModal() {
-      document.getElementById('authModal').classList.add('hidden');
-    }
-
-    function switchAuthTab(tab) {
-      if (tab === 'login') {
-        document.getElementById('authLoginForm').classList.remove('hidden');
-        document.getElementById('authRegisterForm').classList.add('hidden');
-        document.getElementById('authTabLogin').classList.replace('btn-secondary', 'btn-primary');
-        document.getElementById('authTabRegister').classList.replace('btn-primary', 'btn-secondary');
-      } else {
-        document.getElementById('authLoginForm').classList.add('hidden');
-        document.getElementById('authRegisterForm').classList.remove('hidden');
-        document.getElementById('authTabRegister').classList.replace('btn-secondary', 'btn-primary');
-        document.getElementById('authTabLogin').classList.replace('btn-primary', 'btn-secondary');
-      }
-    }
-
-    async function handleLoginSubmit(e) {
-      e.preventDefault();
-      try {
-        const loginVal = document.getElementById('loginEmailVal').value;
-        const passVal = document.getElementById('loginPassVal').value;
-
-        const res = await apiCall('/api/auth/login', 'POST', { login: loginVal, password: passVal });
-        userToken = res.token;
-        localStorage.setItem('adEarnUserToken', userToken);
-        closeAuthModal();
-        await fetchUserProfile();
-        nav('dashboard');
-      } catch (err) {
-        alert(err.message);
-      }
-    }
-
-    async function handleRegisterSubmit(e) {
-      e.preventDefault();
-      try {
-        const email = document.getElementById('regEmailVal').value;
-        const username = document.getElementById('regUserVal').value;
-        const password = document.getElementById('regPassVal').value;
-        const referralCode = document.getElementById('regRefVal').value;
-
-        const res = await apiCall('/api/auth/register', 'POST', { email, username, password, referralCode });
-        userToken = res.token;
-        localStorage.setItem('adEarnUserToken', userToken);
-        closeAuthModal();
-        await fetchUserProfile();
-        nav('dashboard');
-      } catch (err) {
-        alert(err.message);
-      }
-    }
-
     async function fetchUserProfile() {
       if (!userToken) return;
       try {
         const res = await apiCall('/api/auth/me', 'GET', null, userToken);
         currentUser = res.user;
-
-        document.getElementById('navGuestActions').classList.add('hidden');
-        document.getElementById('navUserActions').classList.remove('hidden');
-        document.getElementById('userNavBalance').textContent = currentUser.balanceCoins.toFixed(1);
-
-        if (currentUser.is_premium) {
-          document.getElementById('premiumBadgeNav').classList.remove('hidden');
-          document.getElementById('premiumDashCard').classList.remove('hidden');
-        } else {
-          document.getElementById('premiumBadgeNav').classList.add('hidden');
-          document.getElementById('premiumDashCard').classList.add('hidden');
-        }
-
-        document.getElementById('userWelcomeText').textContent = `Welcome back, @${currentUser.username}!`;
-      } catch (err) {
-        logout();
-      }
-    }
-
-    function logout() {
-      userToken = null;
-      currentUser = null;
-      localStorage.removeItem('adEarnUserToken');
-      document.getElementById('navGuestActions').classList.remove('hidden');
-      document.getElementById('navUserActions').classList.add('hidden');
-      nav('home');
+        updateHeaderProfileUI(currentUser);
+        document.getElementById('userWelcomeText').textContent = `Welcome back, ${currentUser.first_name || currentUser.username}!`;
+      } catch (err) {}
     }
 
     // Dashboard Data Loader
@@ -1330,14 +1424,6 @@
       alert('Referral link copied to clipboard!');
     }
 
-    function handleStartWatching() {
-      if (!userToken) {
-        openAuthModal('register');
-      } else {
-        nav('watch');
-      }
-    }
-
     // Watch Ad Interactive Engine
     function resetAdWatchArea() {
       if (adTimerInterval) clearInterval(adTimerInterval);
@@ -1351,13 +1437,15 @@
 
     async function initWatchAdFlow() {
       try {
-        const res = await apiCall('/api/user/watch-ad', 'POST', {}, userToken);
+        const res = await apiCall('/api/user/watch-ad', 'POST', { campaignToken: activeCampaignToken }, userToken);
         currentAdSession = res;
 
         if (res.is_premium) {
-          // Bypass ad requirement for premium users!
           document.getElementById('coinModalRewardText').textContent = `+2.0 COINS (VIP PREMIUM BYPASS)!`;
           document.getElementById('coinRewardModal').classList.add('active');
+          if (activeCampaignToken) {
+            document.getElementById('campaignBotReturnArea').classList.remove('hidden');
+          }
           await fetchUserProfile();
           return;
         }
@@ -1412,10 +1500,17 @@
     async function submitClaimReward() {
       if (!currentAdSession) return;
       try {
-        const res = await apiCall('/api/user/claim-reward', 'POST', { sessionId: currentAdSession.sessionId }, userToken);
+        const res = await apiCall('/api/user/claim-reward', 'POST', {
+          sessionId: currentAdSession.sessionId,
+          campaignToken: activeCampaignToken
+        }, userToken);
+
         if (res.ok) {
           document.getElementById('coinModalRewardText').textContent = `+${res.reward_coins.toFixed(1)} COINS!`;
           document.getElementById('coinRewardModal').classList.add('active');
+          if (activeCampaignToken) {
+            document.getElementById('campaignBotReturnArea').classList.remove('hidden');
+          }
           await fetchUserProfile();
           resetAdWatchArea();
         }
@@ -1424,9 +1519,21 @@
       }
     }
 
+    function returnToBotToGetLink() {
+      if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.close) {
+        window.Telegram.WebApp.close();
+      } else {
+        alert('Ad completed! Please return to Telegram Bot and tap "Get Channel Link"!');
+      }
+    }
+
     function closeCoinRewardModal() {
       document.getElementById('coinRewardModal').classList.remove('active');
-      nav('dashboard');
+      if (activeCampaignToken) {
+        nav('watch');
+      } else {
+        nav('dashboard');
+      }
     }
 
     // PROMOTION SYSTEM HANDLERS
@@ -1683,7 +1790,7 @@
           tr.innerHTML = `
             <td>#${u.id}</td>
             <td><strong>${u.username}</strong></td>
-            <td>${u.email}</td>
+            <td><code>${u.telegram_id || '-'}</code></td>
             <td>
               <input type="number" value="${u.balance_coins}" style="width: 80px;" class="glass-input" onchange="updateUserBalance(${u.id}, this.value)">
             </td>

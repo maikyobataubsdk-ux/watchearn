@@ -13,13 +13,15 @@ import db
 from config import HOST, PORT, validate_common
 from db import (
     init_db, create_user, get_user_by_email, get_user_by_username,
-    get_user_by_id, get_all_users, set_user_ban_status, set_user_premium_status, adjust_user_balance,
+    get_user_by_id, get_user_by_telegram_id, get_or_create_telegram_user,
+    get_all_users, set_user_ban_status, set_user_premium_status, adjust_user_balance,
     get_user_daily_ad_count, get_ip_daily_ad_count, start_ad_session,
     claim_ad_reward, create_withdrawal, get_user_withdrawals, get_all_withdrawals,
     update_withdrawal_status, get_top_earners, get_global_stats,
     get_referral_stats, get_settings, update_settings, get_ad_codes, update_ad_codes,
     hash_password, create_promotion, get_user_promotions, get_all_promotions,
     update_promotion_status, connect_channel, get_user_connected_channels, get_all_connected_channels,
+    get_campaign, record_rewarded_intent,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -62,12 +64,29 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=100)
 
 
+class TelegramMiniAppAuthRequest(BaseModel):
+    telegram_id: Optional[int] = None
+    id: Optional[int] = None
+    username: Optional[str] = None
+    first_name: Optional[str] = None
+    firstName: Optional[str] = None
+    last_name: Optional[str] = None
+    lastName: Optional[str] = None
+    photo_url: Optional[str] = None
+    photoUrl: Optional[str] = None
+    referralCode: Optional[str] = None
+    initData: Optional[str] = None
+
+
 class WatchAdRequest(BaseModel):
-    pass
+    campaignToken: Optional[str] = None
+    campaign: Optional[str] = None
 
 
 class ClaimRewardRequest(BaseModel):
     sessionId: str = Field(min_length=10, max_length=64)
+    campaignToken: Optional[str] = None
+    campaign: Optional[str] = None
 
 
 class WithdrawRequest(BaseModel):
@@ -239,6 +258,22 @@ async def public_stats() -> dict:
     }
 
 
+@app.get("/api/campaign/{token}")
+async def get_campaign_details(token: str) -> dict:
+    campaign = get_campaign(token)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found or invalid.")
+    return {
+        "ok": True,
+        "campaign": {
+            "token": campaign["token"],
+            "target_title": campaign["target_title"],
+            "target_chat_id": campaign["target_chat_id"],
+            "invite_mode": campaign["invite_mode"],
+        },
+    }
+
+
 # User Authentication Endpoints
 @app.post("/api/auth/register")
 async def register(body: RegisterRequest, request: Request) -> dict:
@@ -291,8 +326,59 @@ async def login(body: LoginRequest) -> dict:
         "token": token,
         "user": {
             "id": user["id"],
+            "telegram_id": user.get("telegram_id"),
             "email": user["email"],
             "username": user["username"],
+            "first_name": user.get("first_name", ""),
+            "last_name": user.get("last_name", ""),
+            "photo_url": user.get("photo_url", ""),
+            "balanceCoins": user["balance_coins"],
+            "isPremium": bool(user.get("is_premium", 0)),
+            "referralCode": user["referral_code"],
+        },
+    }
+
+
+@app.post("/api/auth/telegram-mini-app")
+@app.post("/api/auth/telegram")
+async def telegram_mini_app_auth(body: TelegramMiniAppAuthRequest, request: Request) -> dict:
+    tg_id = body.telegram_id or body.id
+    if not tg_id:
+        raise HTTPException(status_code=400, detail="Telegram User ID is required.")
+
+    ip_addr = request.client.host if request.client else "127.0.0.1"
+    uname = body.username or f"user_{tg_id}"
+    fname = body.first_name or body.firstName or ""
+    lname = body.last_name or body.lastName or ""
+    purl = body.photo_url or body.photoUrl or ""
+
+    user = get_or_create_telegram_user(
+        telegram_id=tg_id,
+        username=uname,
+        first_name=fname,
+        last_name=lname,
+        photo_url=purl,
+        referral_code_used=body.referralCode,
+        ip_address=ip_addr,
+    )
+
+    if user.get("is_banned"):
+        raise HTTPException(status_code=403, detail="Your account has been suspended by administrator.")
+
+    token = secrets.token_hex(24)
+    USER_SESSIONS[token] = user["id"]
+
+    return {
+        "ok": True,
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "telegram_id": user.get("telegram_id"),
+            "email": user["email"],
+            "username": user["username"],
+            "first_name": user.get("first_name", ""),
+            "last_name": user.get("last_name", ""),
+            "photo_url": user.get("photo_url", ""),
             "balanceCoins": user["balance_coins"],
             "isPremium": bool(user.get("is_premium", 0)),
             "referralCode": user["referral_code"],
@@ -310,8 +396,12 @@ async def me(user: dict = Depends(get_current_user)) -> dict:
         "ok": True,
         "user": {
             "id": user["id"],
+            "telegram_id": user.get("telegram_id"),
             "email": user["email"],
             "username": user["username"],
+            "first_name": user.get("first_name", ""),
+            "last_name": user.get("last_name", ""),
+            "photo_url": user.get("photo_url", ""),
             "balanceCoins": user["balance_coins"],
             "totalEarnedCoins": user["total_earned_coins"],
             "totalAdsWatched": user["total_ads_watched"],
@@ -335,9 +425,13 @@ async def logout(authorization: Optional[str] = Header(None)) -> dict:
 
 # Ad Watching & Reward Endpoints
 @app.post("/api/user/watch-ad")
-async def watch_ad(request: Request, user: dict = Depends(get_current_user)) -> dict:
+async def watch_ad(request: Request, body: Optional[WatchAdRequest] = None, user: dict = Depends(get_current_user)) -> dict:
     settings = get_settings()
     coins_per_ad = float(settings.get("coins_per_ad", 2.0))
+    camp_token = (body.campaignToken or body.campaign) if body else None
+
+    if camp_token:
+        record_rewarded_intent(user["id"], camp_token)
 
     if user.get("is_premium"):
         with db.db() as conn:
@@ -390,6 +484,10 @@ async def watch_ad(request: Request, user: dict = Depends(get_current_user)) -> 
 
 @app.post("/api/user/claim-reward")
 async def claim_reward(body: ClaimRewardRequest, user: dict = Depends(get_current_user)) -> dict:
+    camp_token = body.campaignToken or body.campaign
+    if camp_token:
+        record_rewarded_intent(user["id"], camp_token)
+
     res = claim_ad_reward(body.sessionId, user["id"])
     if not res.get("ok"):
         raise HTTPException(status_code=400, detail=res.get("error", "Failed to claim reward."))
