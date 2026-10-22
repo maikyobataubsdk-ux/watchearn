@@ -1,165 +1,198 @@
-# Telegram Channel Gate Mini App (Monetag rewarded-ad starter)
+# AdEarn - High-Paying "Watch Ads & Earn" PTC Platform
 
-This project connects a Telegram bot, a Telegram Mini App, force-subscription checks, and a target channel invite link. The target channel can be configured to deliver either a direct one-person invite link or a join-request link.
+A complete, modern, production-ready "Ad Watching & Earn" PTC (Pay-To-Click) platform designed for maximum ad network monetization with **Adsterra**, **HilltopAds**, **Monetag**, and custom networks.
 
-**Important monetization limitation:** this project intentionally uses only Monetag's *Rewarded Interstitial* flow for the unlock step. Do not require users to view/click ads from every network in your earlier list. Adsterra and HilltopAds explicitly prohibit incentivized traffic; using them in a forced-ad-for-access loop can lead to rejected inventory, withheld earnings, or account suspension. Add other networks only in placements and formats their current publisher terms explicitly permit. Get written approval from Monetag for the exact “watch rewarded ad to receive a Telegram channel invite” reward before running it with real traffic.
+Features a dark glassmorphism UI, dual Hindi + English language toggle, 20-second non-skippable anti-cheat countdown timer, automated 15% referral commission system, $5 / ₹400 minimum withdrawal support (UPI, Paytm, USDT, PayPal), dual SQLite + JSON persistent database, and a master admin panel.
 
-The bot gives access only when the backend receives a Monetag server-side postback with `reward_event_type=valued` for an `impression`. The browser alone cannot grant the reward. It uses SQLite for idempotent ad-event handling and saved campaign/unlock records.
+---
 
-## Project files
+## 🔑 Master Admin Access
 
-- `bot.py` — Telegram bot commands, force-subscription check, campaign links, and direct/request invite generation.
-- `web.py` — FastAPI endpoints, Telegram `initData` signature validation, rewarded-ad intent/status APIs, and Monetag postback endpoint.
-- `static/Index.html` — modern responsive Telegram Mini App UI with Telegram WebApp theme and haptics support.
-- `db.py` — SQLite database and one-time reward handling.
-- `telegram_auth.py` — HMAC validation for Telegram Mini App `initData`.
-- `wrangler.toml` — Cloudflare deployment setup.
-- `.env.example` — environment configuration template.
+The master admin panel is accessible via your browser:
 
-## 1. Create the Telegram bot
+- **Admin URL Route**: `https://yourdomain.com/raj`
+- **Admin Username**: `rajpapa`
+- **Admin Password**: `28@RajPapa`
 
-1. Create a bot with `@BotFather` and copy its token.
-2. Obtain your numeric Telegram user ID and set it as `ADMIN_USER_ID`.
-3. Add the bot as an administrator to both the force-subscription channel (if used) and the target channel. It must be able to manage/create invite links. For membership checks, Telegram requires the bot to be an administrator in the force-subscription chat.
-4. Host the Mini App on a domain with valid HTTPS. Telegram Web Apps require HTTPS for the web URL.
+### Admin Features:
+- View real-time platform statistics (total users, total ads watched, global paid out).
+- **Ad Network Script Manager**: Directly paste and update high-paying ad codes for **Adsterra**, **HilltopAds**, and **Monetag** (Interstitial, Popunder, Banner, Direct Link) without editing code or restarting server.
+- **User Manager**: Search users, adjust coin balance, ban/unban abusive users.
+- **Withdrawal Manager**: Approve payouts or reject requests with automatic coin refund.
 
-## 2. Cloudflare Deployment Options
+---
 
-### Option A: Cloudflare Tunnel (Recommended)
-Cloudflare Tunnel allows you to securely expose your FastAPI app & Telegram Mini App without opening public ports.
+## 💰 How to Paste Adsterra / HilltopAds / Monetag Ad Codes
 
-1. **Install cloudflared on your server**:
-   ```bash
-   curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-   sudo dpkg -i cloudflared.deb
-   ```
-2. **Authenticate & Create Tunnel**:
-   ```bash
-   cloudflared tunnel login
-   cloudflared tunnel create telegram-gate
-   ```
-3. **Route Traffic**:
-   ```bash
-   cloudflared tunnel route dns telegram-gate miniapp.yourdomain.com
-   ```
-4. **Configure `~/.cloudflared/config.yml`**:
-   ```yaml
-   tunnel: <TUNNEL_UUID>
-   credentials-file: /root/.cloudflared/<TUNNEL_UUID>.json
+1. Open your browser and navigate to `https://yourdomain.com/raj`.
+2. Login using **Username**: `rajpapa` and **Password**: `28@RajPapa`.
+3. Go to the **Ad Network Script Manager** section.
+4. Paste your high-paying network scripts into the corresponding textareas:
+   - **Full-Page Interstitial Script** (Adsterra / HilltopAds Interstitial code)
+   - **Popunder Script** (Adsterra / HilltopAds / Monetag Popunder code)
+   - **Banner Ad HTML/JS Code** (300x250 or 728x90 banner code)
+5. Click **Save High-Paying Ad Codes**. Changes take effect immediately across all users' web sessions!
 
-   ingress:
-     - hostname: miniapp.yourdomain.com
-       service: http://localhost:8000
-     - service: http_status:404
-   ```
-5. **Run Tunnel as Service**:
-   ```bash
-   sudo cloudflared service install
-   sudo systemctl start cloudflared
-   ```
+---
 
-### Option B: Cloudflare DNS Proxy (Orange Cloud) + Nginx
-If running on a VPS behind Cloudflare CDN:
-- Set your DNS A record for `miniapp.yourdomain.com` to **Proxied (Orange Cloud)**.
-- Set SSL/TLS encryption mode in Cloudflare dashboard to **Full (strict)**.
+## 🚀 Complete Ubuntu VPS Deployment Guide
 
-Example Nginx block behind Cloudflare Proxy:
+Follow this step-by-step guide to deploy this platform on a fresh Ubuntu 20.04 / 22.04 / 24.04 VPS.
+
+### 1. System Update & Dependencies
+
+Connect to your VPS via SSH and install required packages:
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y python3 python3-pip python3-venv nginx git certbot python3-certbot-nginx
+```
+
+### 2. Setup Project Directory & Virtual Environment
+
+```bash
+cd /opt
+sudo git clone <YOUR_GIT_REPOSITORY_URL> adearn
+cd /opt/adearn
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install requirements & test client dependencies
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install httpx
+```
+
+### 3. Verify Local Execution
+
+Test running the FastAPI server locally:
+
+```bash
+python3 -m unittest discover -s . -p "test_*.py"
+```
+
+Expected output: `Ran 6 tests ... OK`
+
+### 4. Configure Systemd Production Service
+
+Create a systemd service file so the app automatically runs and restarts on VPS reboot:
+
+```bash
+sudo nano /etc/systemd/system/adearn.service
+```
+
+Paste the following configuration:
+
+```ini
+[Unit]
+Description=AdEarn PTC Web Application
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/opt/adearn
+ExecStart=/opt/adearn/venv/bin/uvicorn web:app --host 127.0.0.1 --port 8000 --workers 4
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start the service:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable adearn
+sudo systemctl start adearn
+sudo systemctl status adearn
+```
+
+---
+
+### 5. Nginx Reverse Proxy Setup
+
+Create an Nginx server block for your domain (e.g. `earn.yourdomain.com`):
+
+```bash
+sudo nano /etc/nginx/sites-available/adearn
+```
+
+Paste the following Nginx configuration:
+
 ```nginx
 server {
-    listen 443 ssl http2;
-    server_name miniapp.yourdomain.com;
-
-    ssl_certificate /etc/letsencrypt/live/miniapp.yourdomain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/miniapp.yourdomain.com/privkey.pem;
+    listen 80;
+    server_name earn.yourdomain.com;
 
     location / {
         proxy_pass http://127.0.0.1:8000;
         proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
     }
 }
 ```
 
-## 3. Configure the project
-
-On a Debian/Ubuntu VPS with Python 3.11 or newer:
+Enable the configuration and reload Nginx:
 
 ```bash
-mkdir -p /opt/channel-gate
-cd /opt/channel-gate
-python3 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
-cp .env.example .env
-nano .env
+sudo ln -s /etc/nginx/sites-available/adearn /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
 ```
 
-Set these values in `.env`:
+---
 
-```dotenv
-BOT_TOKEN=YOUR_BOT_TOKEN
-ADMIN_USER_ID=YOUR_NUMERIC_TELEGRAM_USER_ID
-WEBAPP_URL=https://miniapp.yourdomain.com
-MONETAG_SDK_URL=PASTE_THE_EXACT_SDK_SCRIPT_URL_FROM_MONETAG_DASHBOARD
-MONETAG_ZONE_ID=PASTE_MAIN_ZONE_ID
-MONETAG_POSTBACK_SECRET=USE_A_LONG_RANDOM_ALPHANUMERIC_SECRET
-DATABASE_PATH=/opt/channel-gate/data.sqlite3
-HOST=127.0.0.1
-PORT=8000
-```
+### 6. SSL Certificate Setup (Let's Encrypt HTTPS)
 
-## 4. Run the web app and bot
-
-Run these in two separate terminal sessions or use `systemd` / `pm2`:
+Obtain a free SSL certificate to enable HTTPS (required for ad networks):
 
 ```bash
-cd /opt/channel-gate
-source .venv/bin/activate
-uvicorn web:app --host 127.0.0.1 --port 8000
+sudo certbot --nginx -d earn.yourdomain.com
 ```
 
-In another session:
+Select option **2** to automatically redirect HTTP traffic to HTTPS.
+
+---
+
+### 7. Security Hardening & Firewall (UFW)
+
+Enable UFW firewall and allow HTTP/HTTPS/SSH traffic:
 
 ```bash
-cd /opt/channel-gate
-source .venv/bin/activate
-python bot.py
+sudo ufw allow OpenSSH
+sudo ufw allow 'Nginx Full'
+sudo ufw enable
 ```
 
-Test `https://miniapp.yourdomain.com/health` and expect `{"ok":true}`.
+---
 
-## 5. Configure Monetag postback
+## 🗄️ Database Backup & JSON Sync
 
-Set the postback URL for the **main SDK zone** in Monetag dashboard:
+All user profiles, earnings, withdrawals, and settings are stored in SQLite (`data.sqlite3`).
 
-```text
-https://miniapp.yourdomain.com/monetag/postback?secret=YOUR_LONG_RANDOM_SECRET&ymid={ymid}&event_type={event_type}&reward_event_type={reward_event_type}&estimated_price={estimated_price}&telegram_id={telegram_id}&zone_id={zone_id}&sub_zone_id={sub_zone_id}&request_var={request_var}
+To ensure transparent backups, the system automatically synchronizes a structured JSON export file (`db.json`) on every write transaction located at `/opt/adearn/db.json`.
+
+---
+
+## 📜 Project Structure Overview
+
 ```
-
-The `secret` value must exactly match `MONETAG_POSTBACK_SECRET` in `.env`.
-
-## 6. Register the Mini App URL with Telegram
-
-Use `@BotFather` to configure a Mini App for the bot and set the public HTTPS URL to `https://miniapp.yourdomain.com/`.
-
-## 7. Bot admin commands
-
-- `/setforce @RequiredChannel` — set required force-sub channel.
-- `/offforce` — turn off force-sub check.
-- `/settarget @TargetChannel direct` — set target channel with direct one-use invite link.
-- `/settarget @TargetChannel request` — set target channel with join-request invite link.
-- `/genlink` — generate campaign link (`https://t.me/YourBot?start=TOKEN`).
-- `/status` — view active config.
-
-## 8. How a user's flow works
-
-1. User opens campaign link.
-2. Force-sub check verified if enabled.
-3. User opens Telegram Mini App with smooth animations and haptic feedback.
-4. User taps "Watch ad to unlock".
-5. Monetag postback verifies ad completion server-side.
-6. User taps "Get Channel Link" to claim target invite link.
+.
+├── config.py           # Configuration & Environment loading
+├── db.py               # SQLite & JSON dual persistent database engine
+├── web.py              # FastAPI Web Backend, API endpoints & /raj Admin panel
+├── static/
+│   └── Index.html      # Glassmorphism UI (SPA with Hindi/English & Ad Engine)
+├── test_app.py         # Test suite
+├── requirements.txt    # Python dependencies
+└── README.md           # Master documentation & deployment guide
+```

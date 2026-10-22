@@ -1,498 +1,1367 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="en" class="dark">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="color-scheme" content="dark light">
-  <title>Channel Access</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AdEarn - Watch Ads & Earn Real Money Daily</title>
+  <!-- Google Fonts & FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <style>
     :root {
-      --bg: var(--tg-theme-bg-color, #0f172a);
-      --secondary-bg: var(--tg-theme-secondary-bg-color, #1e293b);
-      --text: var(--tg-theme-text-color, #f8fafc);
-      --hint: var(--tg-theme-hint-color, #94a3b8);
-      --link: var(--tg-theme-link-color, #38bdf8);
-      --btn: var(--tg-theme-button-color, #0284c7);
-      --btn-text: var(--tg-theme-button-text-color, #ffffff);
-      --card-bg: rgba(30, 41, 59, 0.7);
+      --bg: #07090e;
+      --card-bg: rgba(18, 24, 38, 0.75);
       --card-border: rgba(255, 255, 255, 0.08);
-      --good: #10b981;
-      --warn: #f59e0b;
+      --neon-green: #00ff88;
+      --neon-cyan: #00e5ff;
+      --accent-blue: #3b82f6;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --gold: #f59e0b;
       --error: #ef4444;
     }
 
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
 
     body {
-      margin: 0;
-      padding: 16px 16px calc(24px + env(safe-area-inset-bottom));
-      min-height: 100vh;
       background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      font-size: 16px;
-      line-height: 1.5;
+      color: var(--text-main);
+      min-height: 100vh;
       overflow-x: hidden;
+      background-image:
+        radial-gradient(circle at 15% 15%, rgba(0, 255, 136, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(0, 229, 255, 0.08) 0%, transparent 40%);
+      background-attachment: fixed;
     }
 
-    main {
-      max-width: 480px;
-      margin: 0 auto;
+    /* Glassmorphism Classes */
+    .glass {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .glass-input {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 15px;
+      width: 100%;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .glass-input:focus {
+      border-color: var(--neon-green);
+      box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 15px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--neon-green), #00b359);
+      color: #000;
+      box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(0, 255, 136, 0.45);
+    }
+
+    .btn-cyan {
+      background: linear-gradient(135deg, var(--neon-cyan), #0099ff);
+      color: #000;
+      box-shadow: 0 4px 20px rgba(0, 229, 255, 0.3);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      border: 1px solid var(--card-border);
+    }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.14); }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    /* Navbar */
+    .navbar {
       display: flex;
-      flex-direction: column;
-      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
     }
 
-    .header {
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 22px;
+      font-weight: 800;
+      color: #fff;
+      text-decoration: none;
+    }
+    .logo span { color: var(--neon-green); }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .lang-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--card-border);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    /* Layout Containers */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    /* Hero Section */
+    .hero {
       text-align: center;
-      padding: 12px 0 4px;
+      padding: 50px 20px 30px;
+      max-width: 800px;
+      margin: 0 auto;
     }
 
     .badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background: rgba(56, 189, 248, 0.12);
-      color: var(--link);
-      font-size: 12px;
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid rgba(0, 255, 136, 0.3);
+      color: var(--neon-green);
+      font-size: 13px;
       font-weight: 700;
-      letter-spacing: 0.08em;
+      padding: 6px 16px;
+      border-radius: 30px;
+      margin-bottom: 20px;
       text-transform: uppercase;
-      padding: 6px 12px;
-      border-radius: 20px;
-      margin-bottom: 12px;
     }
 
-    h1 {
-      font-size: 26px;
+    .hero h1 {
+      font-size: 42px;
       font-weight: 800;
-      line-height: 1.25;
-      margin: 0 0 8px;
-      letter-spacing: -0.02em;
+      line-height: 1.2;
+      margin-bottom: 16px;
+      background: linear-gradient(to right, #fff, var(--text-muted));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
-    .subtitle {
-      color: var(--hint);
-      font-size: 14px;
-      margin: 0;
+    .hero p {
+      font-size: 18px;
+      color: var(--text-muted);
+      margin-bottom: 30px;
     }
 
-    .card {
-      background: var(--card-bg);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid var(--card-border);
-      border-radius: 20px;
-      padding: 20px;
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
-    }
-
-    .label {
-      color: var(--hint);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      font-weight: 700;
-      margin-bottom: 6px;
-    }
-
-    .target-title {
-      font-size: 20px;
-      font-weight: 750;
-      color: var(--text);
-      word-break: break-word;
-    }
-
-    .status-container {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 14px;
-      padding: 12px;
-      border-radius: 12px;
-      background: rgba(0, 0, 0, 0.18);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      font-size: 14px;
-    }
-
-    .spinner {
-      width: 18px;
-      height: 18px;
-      border: 2px solid var(--hint);
-      border-top-color: var(--link);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      flex-shrink: 0;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .status-text {
-      color: var(--hint);
-      flex: 1;
-    }
-
-    .status-text.good { color: var(--good); font-weight: 600; }
-    .status-text.warn { color: var(--warn); font-weight: 600; }
-    .status-text.error { color: var(--error); font-weight: 600; }
-
-    .btn-group {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 16px;
-    }
-
-    button {
+    /* Progress bar */
+    .progress-bar-bg {
+      background: rgba(255, 255, 255, 0.08);
+      height: 12px;
+      border-radius: 6px;
+      overflow: hidden;
       width: 100%;
-      display: inline-flex;
+      margin: 10px 0;
+    }
+    .progress-bar-fill {
+      background: linear-gradient(90deg, var(--neon-cyan), var(--neon-green));
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s ease;
+      border-radius: 6px;
+    }
+
+    /* Coin Animation Modal */
+    #coinRewardModal {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      min-height: 52px;
-      padding: 14px 20px;
-      border: 0;
-      border-radius: 14px;
-      font-size: 16px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      background: var(--btn);
-      color: var(--btn-text);
-      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.25);
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    #coinRewardModal.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .coin-box {
+      text-align: center;
+      padding: 40px;
+      animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes popIn {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .coin-icon {
+      font-size: 70px;
+      color: var(--gold);
+      animation: spinCoin 1s ease infinite alternate;
+      margin-bottom: 15px;
+    }
+    @keyframes spinCoin {
+      0% { transform: rotateY(0deg) scale(1); }
+      100% { transform: rotateY(180deg) scale(1.1); }
     }
 
-    button:active {
-      transform: scale(0.98);
-      opacity: 0.9;
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
     }
-
-    button.secondary {
-      background: var(--secondary-bg);
-      color: var(--text);
-      border: 1px solid var(--card-border);
-      box-shadow: none;
-    }
-
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      transform: none !important;
-    }
-
-    .steps-list {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      margin: 12px 0 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .step-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      color: var(--hint);
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--card-border);
       font-size: 14px;
     }
+    th { color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 12px; }
 
-    .step-num {
-      flex-shrink: 0;
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      background: var(--secondary-bg);
-      border: 1px solid var(--card-border);
-      color: var(--link);
-      font-weight: 700;
-      font-size: 13px;
-      display: grid;
-      place-items: center;
-    }
-
-    .fineprint {
-      color: var(--hint);
-      font-size: 12px;
-      margin-top: 14px;
-      line-height: 1.4;
-      opacity: 0.85;
-    }
-
+    /* Helper Utilities */
     .hidden { display: none !important; }
+    .text-green { color: var(--neon-green); }
+    .text-cyan { color: var(--neon-cyan); }
+    .text-gold { color: var(--gold); }
+    .text-muted { color: var(--text-muted); }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(8px);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* Ad Container Area */
+    .ad-container-area {
+      min-height: 250px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 2px dashed rgba(0, 255, 136, 0.3);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      margin: 20px 0;
+      position: relative;
+    }
+
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 30px; }
+      .navbar { padding: 12px 16px; }
+    }
   </style>
 </head>
 <body>
-<main>
-  <div class="header">
-    <div class="badge">
-      <span>✨ Channel Gate</span>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <a href="#" class="logo" onclick="nav('home')">
+      <i class="fa-solid fa-bolt text-green"></i> Ad<span>Earn</span>
+    </a>
+    <div class="nav-actions">
+      <button class="lang-btn" id="langToggleBtn" onclick="toggleLang()">
+        <i class="fa-solid fa-globe"></i> <span id="currentLangLabel">HI</span>
+      </button>
+
+      <div id="navGuestActions" class="nav-actions">
+        <button class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px;" onclick="openAuthModal('login')" data-i18n="login">Login</button>
+        <button class="btn btn-primary" style="padding: 8px 16px; font-size: 14px;" onclick="openAuthModal('register')" data-i18n="register">Register</button>
+      </div>
+
+      <div id="navUserActions" class="nav-actions hidden">
+        <div class="glass" style="padding: 6px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: var(--gold);">
+          <i class="fa-solid fa-coins"></i> <span id="userNavBalance">0.0</span> <span style="font-size: 11px; color: #fff;">Coins</span>
+        </div>
+        <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 14px;" onclick="nav('dashboard')" data-i18n="dashboard">Dashboard</button>
+        <button class="btn btn-danger" style="padding: 8px 12px; font-size: 14px;" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
     </div>
-    <h1>Unlock Channel Link</h1>
-    <p class="subtitle">Complete the simple task below to receive your exclusive invite link.</p>
+  </nav>
+
+  <main class="container">
+
+    <!-- PAGE 1: HOME PAGE -->
+    <section id="pageHome">
+      <div class="hero">
+        <div class="badge">
+          <i class="fa-solid fa-fire"></i> <span data-i18n="heroBadge">High Paying PTC Ads Platform</span>
+        </div>
+        <h1 data-i18n="heroTitle">Watch Simple Ads & Earn Real Cash Daily</h1>
+        <p data-i18n="heroDesc">Monetize your free time! Watch 15-30 second high-paying partner ads, earn coins, and withdraw directly to UPI, Paytm, USDT or PayPal instantly.</p>
+
+        <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
+          <button class="btn btn-primary" style="font-size: 18px; padding: 16px 36px;" onclick="handleStartWatching()" data-i18n="startWatchingBtn">
+            <i class="fa-solid fa-circle-play"></i> Start Watching Ads
+          </button>
+          <button class="btn btn-secondary" style="font-size: 18px; padding: 16px 28px;" onclick="nav('stats')" data-i18n="viewStatsBtn">
+            <i class="fa-solid fa-chart-line"></i> View Earnings
+          </button>
+        </div>
+      </div>
+
+      <!-- Banner Ad Slot -->
+      <div class="glass" style="padding: 15px; margin: 30px 0; text-align: center;" id="homepageBannerSlot">
+        <!-- Injected via JS -->
+      </div>
+
+      <!-- How It Works -->
+      <div style="margin: 40px 0;">
+        <h2 style="text-align: center; font-size: 28px; margin-bottom: 30px;" data-i18n="howItWorksTitle">How It Works</h2>
+        <div class="grid-3">
+          <div class="glass" style="padding: 24px; text-align: center;">
+            <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(0,255,136,0.15); color: var(--neon-green); display: grid; place-items: center; margin: 0 auto 15px; font-size: 22px; font-weight: 800;">1</div>
+            <h3 style="margin-bottom: 10px;" data-i18n="step1Title">Create Account</h3>
+            <p class="text-muted" data-i18n="step1Desc">Register in 10 seconds. Get unique referral code and bonus daily ad limit.</p>
+          </div>
+
+          <div class="glass" style="padding: 24px; text-align: center;">
+            <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(0,229,255,0.15); color: var(--neon-cyan); display: grid; place-items: center; margin: 0 auto 15px; font-size: 22px; font-weight: 800;">2</div>
+            <h3 style="margin-bottom: 10px;" data-i18n="step2Title">Watch Ads</h3>
+            <p class="text-muted" data-i18n="step2Desc">View full-screen high-paying interstitial & popunder ads. Complete short 20s timer.</p>
+          </div>
+
+          <div class="glass" style="padding: 24px; text-align: center;">
+            <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(245,158,11,0.15); color: var(--gold); display: grid; place-items: center; margin: 0 auto 15px; font-size: 22px; font-weight: 800;">3</div>
+            <h3 style="margin-bottom: 10px;" data-i18n="step3Title">Withdraw Earnings</h3>
+            <p class="text-muted" data-i18n="step3Desc">Reach minimum $5 / ₹400 and request instant cashout via UPI, Paytm, USDT or PayPal.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Stats & Leaderboard -->
+      <div class="glass" style="padding: 30px; margin: 30px 0;">
+        <h3 style="margin-bottom: 20px; font-size: 22px;" data-i18n="leaderboardTitle"><i class="fa-solid fa-trophy text-gold"></i> Top Earners Leaderboard</h3>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>User</th>
+                <th>Ads Watched</th>
+                <th>Total Earned (Coins)</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardTableBody">
+              <tr><td colspan="4" class="text-muted" style="text-align:center;">Loading leaderboard…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE 2: USER DASHBOARD -->
+    <section id="pageDashboard" class="hidden">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;">
+        <div>
+          <h1 style="font-size: 28px;" data-i18n="dashboardTitle">User Dashboard</h1>
+          <p class="text-muted" id="userWelcomeText">Welcome back!</p>
+        </div>
+        <button class="btn btn-primary" onclick="nav('watch')">
+          <i class="fa-solid fa-circle-play"></i> <span data-i18n="watchAdsNow">Watch Ads Now</span>
+        </button>
+      </div>
+
+      <!-- User Stats Cards -->
+      <div class="grid-3" style="margin-bottom: 25px;">
+        <div class="glass" style="padding: 20px;">
+          <div class="text-muted" style="font-size: 13px; text-transform: uppercase;" data-i18n="currentBalance">Current Balance</div>
+          <div style="font-size: 32px; font-weight: 800; color: var(--gold); margin: 6px 0;">
+            <i class="fa-solid fa-coins"></i> <span id="dashBalanceCoins">0.0</span> <span style="font-size: 14px; color: #fff;">Coins</span>
+          </div>
+          <div style="font-size: 14px; color: var(--neon-green);">
+            ≈ $<span id="dashBalanceUsd">0.00</span> / ₹<span id="dashBalanceInr">0.00</span>
+          </div>
+        </div>
+
+        <div class="glass" style="padding: 20px;">
+          <div class="text-muted" style="font-size: 13px; text-transform: uppercase;" data-i18n="adsWatchedToday">Daily Ads Progress</div>
+          <div style="font-size: 28px; font-weight: 800; color: var(--neon-cyan); margin: 6px 0;">
+            <span id="dashAdsToday">0</span> / <span id="dashDailyLimit">50</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="dashDailyProgressBar"></div>
+          </div>
+        </div>
+
+        <div class="glass" style="padding: 20px;">
+          <div class="text-muted" style="font-size: 13px; text-transform: uppercase;" data-i18n="totalAdsWatched">Lifetime Earned</div>
+          <div style="font-size: 28px; font-weight: 800; color: var(--neon-green); margin: 6px 0;">
+            <span id="dashTotalEarned">0.0</span> Coins
+          </div>
+          <div style="font-size: 13px;" class="text-muted">
+            Total Ads: <span id="dashTotalAds" class="text-green">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions & Referral Box -->
+      <div class="grid-3" style="margin-bottom: 25px;">
+        <div class="glass" style="padding: 24px; grid-column: span 2;">
+          <h3 style="margin-bottom: 12px;" data-i18n="referralTitle"><i class="fa-solid fa-users text-cyan"></i> Referral Link & 15% Commission</h3>
+          <p class="text-muted" style="font-size: 14px; margin-bottom: 15px;" data-i18n="referralDesc">Share your unique referral link with friends. You will earn 15% commission on all ad view coins they earn forever!</p>
+
+          <div style="display: flex; gap: 10px;">
+            <input type="text" id="referralLinkInput" class="glass-input" readonly value="Loading referral link...">
+            <button class="btn btn-cyan" onclick="copyReferralLink()"><i class="fa-solid fa-copy"></i> Copy</button>
+          </div>
+
+          <div style="margin-top: 15px; font-size: 14px;">
+            Total Referrals: <strong id="dashTotalReferrals" class="text-cyan">0</strong>
+          </div>
+        </div>
+
+        <div class="glass" style="padding: 24px; display: flex; flex-direction: column; justify-content: center; gap: 12px;">
+          <button class="btn btn-primary" onclick="nav('watch')"><i class="fa-solid fa-play"></i> Watch Next Ad</button>
+          <button class="btn btn-secondary" onclick="nav('withdraw')"><i class="fa-solid fa-wallet"></i> Withdraw Cash</button>
+        </div>
+      </div>
+
+      <!-- Withdrawals History -->
+      <div class="glass" style="padding: 24px;">
+        <h3 style="margin-bottom: 15px;" data-i18n="withdrawalHistory">Withdrawal History</h3>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Method</th>
+                <th>Amount ($ / ₹)</th>
+                <th>Coins</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="userWithdrawalsTableBody">
+              <tr><td colspan="5" class="text-muted" style="text-align: center;">No withdrawals yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE 3: WATCH ADS PAGE -->
+    <section id="pageWatch" class="hidden">
+      <div class="glass" style="max-width: 750px; margin: 0 auto; padding: 30px; text-align: center;">
+        <div class="badge">
+          <i class="fa-solid fa-eye"></i> <span data-i18n="adAreaTitle">High-Paying Ad Area</span>
+        </div>
+        <h2 style="font-size: 26px; margin-bottom: 10px;" data-i18n="watchAdHeadline">Watch Full Ad to Earn Reward</h2>
+        <p class="text-muted" style="margin-bottom: 20px;" data-i18n="watchAdInstruction">Do not close or switch tab until timer finishes. Reward will be added automatically.</p>
+
+        <!-- Dynamic Ad Render Frame -->
+        <div class="ad-container-area" id="watchAdContainer">
+          <p class="text-muted" id="adPlaceholderText">Click "Start Viewing Ad" below to launch high-paying ad.</p>
+          <div id="dynamicAdInjectSlot" style="width: 100%;"></div>
+        </div>
+
+        <!-- Timer Section -->
+        <div id="adTimerSection" class="hidden" style="margin: 20px 0;">
+          <div style="font-size: 22px; font-weight: 800; color: var(--neon-cyan); margin-bottom: 8px;">
+            <i class="fa-solid fa-clock"></i> <span id="adCountdownText">20</span>s
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="adTimerProgressBar" style="width: 100%;"></div>
+          </div>
+          <p id="tabWarningText" class="text-gold hidden" style="margin-top: 8px; font-size: 13px;">
+            <i class="fa-solid fa-triangle-exclamation"></i> Tab hidden! Timer paused. Return to this tab to resume.
+          </p>
+        </div>
+
+        <!-- Buttons -->
+        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
+          <button class="btn btn-primary" id="startWatchAdBtn" onclick="initWatchAdFlow()">
+            <i class="fa-solid fa-play"></i> <span data-i18n="startAdBtn">Start Viewing Ad</span>
+          </button>
+
+          <button class="btn btn-primary hidden" id="claimRewardBtn" onclick="submitClaimReward()">
+            <i class="fa-solid fa-gift"></i> <span data-i18n="claimRewardBtn">Claim Reward (+2.0 Coins)</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE 4: WITHDRAWAL PAGE -->
+    <section id="pageWithdraw" class="hidden">
+      <div class="glass" style="max-width: 600px; margin: 0 auto; padding: 30px;">
+        <h2 style="font-size: 26px; margin-bottom: 10px;" data-i18n="withdrawHeading"><i class="fa-solid fa-wallet text-green"></i> Request Cash Withdrawal</h2>
+        <p class="text-muted" style="margin-bottom: 20px;" data-i18n="withdrawSub">Minimum payout: <strong>$5.00 / ₹400</strong> (500 Coins).</p>
+
+        <form id="withdrawForm" onsubmit="handleWithdrawSubmit(event)">
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px;" data-i18n="payoutMethod">Select Payment Method</label>
+            <select id="withdrawMethod" class="glass-input" style="background: rgba(18, 24, 38, 0.9);">
+              <option value="UPI">UPI (Google Pay / PhonePe / Paytm UPI)</option>
+              <option value="Paytm">Paytm Wallet</option>
+              <option value="USDT">USDT Crypto (TRC20 / BEP20)</option>
+              <option value="PayPal">PayPal Email</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px;" data-i18n="withdrawalAmount">Amount ($ USD)</label>
+            <input type="number" id="withdrawAmountUsd" class="glass-input" min="5" step="0.5" value="5.0" required oninput="calcWithdrawInr()">
+            <div style="font-size: 12px; color: var(--neon-green); margin-top: 5px;">
+              = ₹<span id="calcInrVal">400</span> (Requires <span id="calcCoinsVal">500</span> Coins)
+            </div>
+          </div>
+
+          <div style="margin-bottom: 20px;">
+            <label style="display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px;" data-i18n="paymentDetails">Payment ID / UPI / Wallet Address</label>
+            <input type="text" id="withdrawAccountDetails" class="glass-input" placeholder="e.g. 9876543210@paytm or USDT address" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 16px;">
+            <i class="fa-solid fa-paper-plane"></i> Submit Withdrawal Request
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- PAGE 5: ADMIN PANEL (/raj) -->
+    <section id="pageAdmin" class="hidden">
+      <!-- Admin Login View -->
+      <div id="adminLoginView" class="glass" style="max-width: 450px; margin: 40px auto; padding: 30px;">
+        <h2 style="font-size: 24px; text-align: center; margin-bottom: 8px;"><i class="fa-solid fa-user-shield text-cyan"></i> Admin Panel</h2>
+        <p class="text-muted" style="text-align: center; font-size: 13px; margin-bottom: 20px;">Enter credentials to access master controls</p>
+
+        <form onsubmit="handleAdminLogin(event)">
+          <div style="margin-bottom: 15px;">
+            <label style="font-size: 12px; color: var(--text-muted);">Username</label>
+            <input type="text" id="adminUserVal" class="glass-input" placeholder="rajpapa" required>
+          </div>
+          <div style="margin-bottom: 20px;">
+            <label style="font-size: 12px; color: var(--text-muted);">Password</label>
+            <input type="password" id="adminPassVal" class="glass-input" placeholder="28@RajPapa" required>
+          </div>
+          <button type="submit" class="btn btn-cyan" style="width: 100%;">Master Login</button>
+        </form>
+      </div>
+
+      <!-- Admin Dashboard View -->
+      <div id="adminDashboardView" class="hidden">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
+          <h2><i class="fa-solid fa-crown text-gold"></i> Master Admin Controls</h2>
+          <button class="btn btn-danger" onclick="adminLogout()">Logout Admin</button>
+        </div>
+
+        <!-- Admin Stats -->
+        <div class="grid-3" style="margin-bottom: 25px;">
+          <div class="glass" style="padding: 20px;">
+            <div class="text-muted" style="font-size: 12px;">Total Users</div>
+            <div style="font-size: 28px; font-weight: 800; color: var(--neon-green);" id="admTotalUsers">0</div>
+          </div>
+          <div class="glass" style="padding: 20px;">
+            <div class="text-muted" style="font-size: 12px;">Pending Withdrawals</div>
+            <div style="font-size: 28px; font-weight: 800; color: var(--gold);" id="admPendingWithdrawals">0</div>
+          </div>
+          <div class="glass" style="padding: 20px;">
+            <div class="text-muted" style="font-size: 12px;">Total Paid Out</div>
+            <div style="font-size: 28px; font-weight: 800; color: var(--neon-cyan);" id="admTotalPaid">$0.00</div>
+          </div>
+        </div>
+
+        <!-- High-Paying Ad Code Manager -->
+        <div class="glass" style="padding: 25px; margin-bottom: 25px;">
+          <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-code text-green"></i> Ad Network Script Manager (Adsterra / HilltopAds / Monetag)</h3>
+          <p class="text-muted" style="font-size: 13px; margin-bottom: 15px;">Paste your highest paying ad scripts here. They will automatically execute on the website.</p>
+
+          <form onsubmit="handleSaveAdCodes(event)">
+            <div style="margin-bottom: 15px;">
+              <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Full-Page Interstitial Script (Adsterra / HilltopAds)</label>
+              <textarea id="admInterstitialCode" class="glass-input" rows="3" style="font-family: monospace; font-size: 12px;"></textarea>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+              <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Popunder Script (On Page Load / Click)</label>
+              <textarea id="admPopunderCode" class="glass-input" rows="3" style="font-family: monospace; font-size: 12px;"></textarea>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+              <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Banner Ad HTML/JS Code</label>
+              <textarea id="admBannerCode" class="glass-input" rows="3" style="font-family: monospace; font-size: 12px;"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save High-Paying Ad Codes</button>
+          </form>
+        </div>
+
+        <!-- User Management Table -->
+        <div class="glass" style="padding: 25px; margin-bottom: 25px;">
+          <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-users text-cyan"></i> Registered Users Manager</h3>
+          <div style="overflow-x: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Balance (Coins)</th>
+                  <th>Ads Watched</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="adminUsersTableBody">
+                <tr><td colspan="7" class="text-muted">Loading users...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Withdrawal Requests Manager -->
+        <div class="glass" style="padding: 25px;">
+          <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-money-bill-transfer text-gold"></i> Withdrawal Requests</h3>
+          <div style="overflow-x: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>User</th>
+                  <th>Amount ($ / ₹)</th>
+                  <th>Method</th>
+                  <th>Account Details</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="adminWithdrawalsTableBody">
+                <tr><td colspan="7" class="text-muted">Loading withdrawal requests...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Auth Modal (Login / Register) -->
+  <div id="authModal" class="modal-overlay hidden">
+    <div class="glass" style="max-width: 420px; width: 100%; padding: 30px; position: relative;">
+      <button style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: #fff; font-size: 20px; cursor: pointer;" onclick="closeAuthModal()">&times;</button>
+
+      <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--card-border); padding-bottom: 10px;">
+        <button id="authTabLogin" class="btn btn-secondary" style="flex: 1;" onclick="switchAuthTab('login')">Login</button>
+        <button id="authTabRegister" class="btn btn-secondary" style="flex: 1;" onclick="switchAuthTab('register')">Register</button>
+      </div>
+
+      <!-- Login Form -->
+      <form id="authLoginForm" onsubmit="handleLoginSubmit(event)">
+        <div style="margin-bottom: 15px;">
+          <label style="font-size: 12px; color: var(--text-muted);">Email or Username</label>
+          <input type="text" id="loginEmailVal" class="glass-input" required>
+        </div>
+        <div style="margin-bottom: 20px;">
+          <label style="font-size: 12px; color: var(--text-muted);">Password</label>
+          <input type="password" id="loginPassVal" class="glass-input" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In</button>
+      </form>
+
+      <!-- Register Form -->
+      <form id="authRegisterForm" class="hidden" onsubmit="handleRegisterSubmit(event)">
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 12px; color: var(--text-muted);">Email Address</label>
+          <input type="email" id="regEmailVal" class="glass-input" required>
+        </div>
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 12px; color: var(--text-muted);">Username</label>
+          <input type="text" id="regUserVal" class="glass-input" required>
+        </div>
+        <div style="margin-bottom: 12px;">
+          <label style="font-size: 12px; color: var(--text-muted);">Password</label>
+          <input type="password" id="regPassVal" class="glass-input" required>
+        </div>
+        <div style="margin-bottom: 20px;">
+          <label style="font-size: 12px; color: var(--text-muted);">Referral Code (Optional)</label>
+          <input type="text" id="regRefVal" class="glass-input" placeholder="e.g. A1B2C3D4">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%;">Create Account</button>
+      </form>
+    </div>
   </div>
 
-  <section class="card" aria-live="polite">
-    <div class="label">Destination Channel</div>
-    <div id="targetTitle" class="target-title">Loading destination…</div>
-
-    <div class="status-container">
-      <div id="spinner" class="spinner"></div>
-      <div id="status" class="status-text">Connecting securely to Telegram…</div>
+  <!-- Coin Reward Burst Modal Animation -->
+  <div id="coinRewardModal">
+    <div class="glass coin-box">
+      <i class="fa-solid fa-coins coin-icon"></i>
+      <h2 style="font-size: 32px; color: var(--neon-green);" id="coinModalRewardText">+2.0 COINS!</h2>
+      <p style="margin: 10px 0 20px; color: #fff;">Reward Added to Your Balance</p>
+      <button class="btn btn-primary" onclick="closeCoinRewardModal()">Awesome!</button>
     </div>
+  </div>
 
-    <div class="btn-group">
-      <button id="joinButton" class="hidden" type="button">📢 Join Required Channel</button>
-      <button id="recheckButton" class="secondary hidden" type="button">🔄 I Joined — Check Again</button>
-      <button id="watchButton" class="hidden" type="button" disabled>🎬 Watch Ad to Unlock</button>
-      <button id="returnButton" class="secondary hidden" type="button">🚀 Return to Telegram Bot</button>
-    </div>
-  </section>
-
-  <section class="card">
-    <div class="label">How it works</div>
-    <ol class="steps-list">
-      <li class="step-item">
-        <span class="step-num">1</span>
-        <span>Join the required force-sub channel if requested.</span>
-      </li>
-      <li class="step-item">
-        <span class="step-num">2</span>
-        <span>Tap "Watch Ad to Unlock" and view the rewarded ad completely.</span>
-      </li>
-      <li class="step-item">
-        <span class="step-num">3</span>
-        <span>After verification, return to the bot and tap "Get Channel Link".</span>
-      </li>
-    </ol>
-    <p class="fineprint">Note: Access is granted automatically once the ad network confirms a qualifying view. Non-valued or uncompleted ads will not unlock access.</p>
-  </section>
-</main>
-
-<script>
-(() => {
-  const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-  const $ = (id) => document.getElementById(id);
-  const statusEl = $('status');
-  const spinnerEl = $('spinner');
-  const targetEl = $('targetTitle');
-  const joinButton = $('joinButton');
-  const recheckButton = $('recheckButton');
-  const watchButton = $('watchButton');
-  const returnButton = $('returnButton');
-  const campaign = new URLSearchParams(window.location.search).get('campaign') || '';
-
-  let session = null;
-  let config = null;
-  let sdkReady = false;
-  let busy = false;
-
-  function haptic(type = 'light') {
-    if (!tg || !tg.HapticFeedback) return;
-    if (type === 'success' || type === 'error' || type === 'warning') {
-      tg.HapticFeedback.notificationOccurred(type);
-    } else {
-      tg.HapticFeedback.impactOccurred(type);
-    }
-  }
-
-  function setStatus(text, kind = '', showSpinner = false) {
-    statusEl.textContent = text;
-    statusEl.className = 'status-text' + (kind ? ' ' + kind : '');
-    if (showSpinner) {
-      spinnerEl.classList.remove('hidden');
-    } else {
-      spinnerEl.classList.add('hidden');
-    }
-  }
-
-  function hideAllActions() {
-    joinButton.classList.add('hidden');
-    recheckButton.classList.add('hidden');
-    watchButton.classList.add('hidden');
-    returnButton.classList.add('hidden');
-  }
-
-  function getInitData() {
-    return tg && typeof tg.initData === 'string' ? tg.initData : '';
-  }
-
-  async function api(path, options = {}) {
-    const response = await fetch(path, {
-      method: options.method || 'GET',
-      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-      body: options.body ? JSON.stringify(options.body) : undefined,
-      cache: 'no-store'
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.detail || data.message || 'Request failed');
-    return data;
-  }
-
-  function loadAdSdk() {
-    if (!config || !config.adsConfigured) return;
-    const script = document.createElement('script');
-    script.src = config.sdkUrl;
-    script.async = true;
-    script.dataset.zone = String(config.zoneId);
-    script.dataset.sdk = 'show_' + String(config.zoneId);
-    script.onload = () => {
-      sdkReady = typeof window['show_' + String(config.zoneId)] === 'function';
-      if (sdkReady && session && session.forceSubscribed && !session.unlocked) {
-        watchButton.disabled = false;
+  <script>
+    // Internationalization (Language Toggle: EN / HI)
+    const i18n = {
+      en: {
+        login: "Login",
+        register: "Register",
+        dashboard: "Dashboard",
+        heroBadge: "High Paying PTC Ads Platform",
+        heroTitle: "Watch Simple Ads & Earn Real Cash Daily",
+        heroDesc: "Monetize your free time! Watch 15-30 second high-paying partner ads, earn coins, and withdraw directly to UPI, Paytm, USDT or PayPal instantly.",
+        startWatchingBtn: "Start Watching Ads",
+        viewStatsBtn: "View Earnings",
+        howItWorksTitle: "How It Works",
+        step1Title: "Create Account",
+        step1Desc: "Register in 10 seconds. Get unique referral code and bonus daily ad limit.",
+        step2Title: "Watch Ads",
+        step2Desc: "View full-screen high-paying interstitial & popunder ads. Complete short 20s timer.",
+        step3Title: "Withdraw Earnings",
+        step3Desc: "Reach minimum $5 / ₹400 and request instant cashout via UPI, Paytm, USDT or PayPal.",
+        leaderboardTitle: "Top Earners Leaderboard",
+        dashboardTitle: "User Dashboard",
+        watchAdsNow: "Watch Ads Now",
+        currentBalance: "Current Balance",
+        adsWatchedToday: "Daily Ads Progress",
+        totalAdsWatched: "Lifetime Earned",
+        referralTitle: "Referral Link & 15% Commission",
+        referralDesc: "Share your unique referral link with friends. You will earn 15% commission on all ad view coins they earn forever!",
+        withdrawalHistory: "Withdrawal History",
+        adAreaTitle: "High-Paying Ad Area",
+        watchAdHeadline: "Watch Full Ad to Earn Reward",
+        watchAdInstruction: "Do not close or switch tab until timer finishes. Reward will be added automatically.",
+        startAdBtn: "Start Viewing Ad",
+        claimRewardBtn: "Claim Reward (+2.0 Coins)",
+        withdrawHeading: "Request Cash Withdrawal",
+        withdrawSub: "Minimum payout: $5.00 / ₹400 (500 Coins).",
+        payoutMethod: "Select Payment Method",
+        withdrawalAmount: "Amount ($ USD)",
+        paymentDetails: "Payment ID / UPI / Wallet Address"
+      },
+      hi: {
+        login: "लॉगिन करें",
+        register: "रजिस्टर करें",
+        dashboard: "डैशबोर्ड",
+        heroBadge: "हाई पेइंग विज्ञापन और कमाई प्लेटफॉर्म",
+        heroTitle: "सरल विज्ञापन देखें और रोजाना असली पैसा कमाएं",
+        heroDesc: "अपने खाली समय का लाभ उठाएं! 15-30 सेकंड के विज्ञापन देखें, कॉइन कमाएं और सीधे UPI, Paytm, USDT या PayPal पर पैसे निकालें।",
+        startWatchingBtn: "विज्ञापन देखना शुरू करें",
+        viewStatsBtn: "कमाई देखें",
+        howItWorksTitle: "यह कैसे काम करता है",
+        step1Title: "अकाउंट बनाएं",
+        step1Desc: "10 सेकंड में रजिस्टर करें। अपना रेफरल कोड पाएं और रोजाना विज्ञापन देखना शुरू करें।",
+        step2Title: "विज्ञापन देखें",
+        step2Desc: "हाई पेइंग फुल स्क्रीन और पॉप-अंडर विज्ञापन देखें। 20 सेकंड का टाइमर पूरा करें।",
+        step3Title: "पैसे निकालें",
+        step3Desc: "कम से कम $5 / ₹400 कमाएं और UPI, Paytm, USDT या PayPal के माध्यम से कैशआउट करें।",
+        leaderboardTitle: "शीर्ष कमाई करने वाले लीडरबोर्ड",
+        dashboardTitle: "यूजर डैशबोर्ड",
+        watchAdsNow: "अब विज्ञापन देखें",
+        currentBalance: "वर्तमान बैलेंस",
+        adsWatchedToday: "आज की प्रगति",
+        totalAdsWatched: "कुल कमाई",
+        referralTitle: "रेफरल लिंक और 15% कमीशन",
+        referralDesc: "दोस्तों के साथ अपना लिंक शेयर करें। उनके द्वारा कमाए गए हर विज्ञापन कॉइन पर 15% कमीशन पाएं!",
+        withdrawalHistory: "निकासी इतिहास",
+        adAreaTitle: "हाई-पेइंग विज्ञापन क्षेत्र",
+        watchAdHeadline: "पुरस्कार पाने के लिए पूरा विज्ञापन देखें",
+        watchAdInstruction: "टाइमर खत्म होने तक टैब बंद न करें। पुरस्कार अपने आप जोड़ दिया जाएगा।",
+        startAdBtn: "विज्ञापन देखना शुरू करें",
+        claimRewardBtn: "पुरस्कार दावा करें (+2.0 कॉइन्स)",
+        withdrawHeading: "कैश निकासी का अनुरोध करें",
+        withdrawSub: "न्यूनतम भुगतान: $5.00 / ₹400 (500 कॉइन्स)।",
+        payoutMethod: "भुगतान विधि चुनें",
+        withdrawalAmount: "राशि ($ USD)",
+        paymentDetails: "पेमेंट आईडी / UPI / वॉलेट एड्रेस"
       }
-      if (!sdkReady) setStatus('Ad SDK initialization incomplete.', 'warn', false);
     };
-    script.onerror = () => setStatus('Could not connect to ad provider.', 'error', false);
-    document.head.appendChild(script);
-  }
 
-  async function refreshSession() {
-    if (!campaign || campaign.length > 32) {
-      throw new Error('Invalid campaign link. Please reopen from Telegram bot.');
-    }
-    if (!getInitData()) {
-      throw new Error('Please open this Mini App inside Telegram.');
-    }
-    session = await api('/api/session', { method: 'POST', body: { initData: getInitData(), campaign } });
-    targetEl.textContent = session.targetTitle || 'Channel';
-    hideAllActions();
+    let currentLang = 'en';
+    let userToken = localStorage.getItem('adEarnUserToken') || null;
+    let adminToken = localStorage.getItem('adEarnAdminToken') || null;
+    let currentUser = null;
+    let currentAdSession = null;
+    let adTimerInterval = null;
+    let adTimeRemaining = 20;
 
-    if (!session.forceSubscribed) {
-      haptic('warning');
-      setStatus('Please join ' + (session.forceTitle || 'the required channel') + ' first.', 'warn', false);
-      if (session.forceJoinUrl) {
-        joinButton.classList.remove('hidden');
-        joinButton.onclick = () => {
-          haptic('light');
-          if (tg && tg.openTelegramLink) tg.openTelegramLink(session.forceJoinUrl);
-          else window.open(session.forceJoinUrl, '_blank', 'noopener');
-        };
-      }
-      recheckButton.classList.remove('hidden');
-      recheckButton.onclick = async () => {
-        haptic('light');
-        recheckButton.disabled = true;
-        try {
-          await refreshSession();
-        } catch (error) {
-          setStatus(error.message, 'warn', false);
-        } finally {
-          recheckButton.disabled = false;
+    function toggleLang() {
+      currentLang = currentLang === 'en' ? 'hi' : 'en';
+      document.getElementById('currentLangLabel').textContent = currentLang.toUpperCase();
+      applyLanguage();
+    }
+
+    function applyLanguage() {
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (i18n[currentLang] && i18n[currentLang][key]) {
+          el.textContent = i18n[currentLang][key];
         }
-      };
-      return;
+      });
     }
 
-    if (session.unlocked) {
-      haptic('success');
-      setStatus('Reward confirmed! Return to the bot to get your link.', 'good', false);
-      returnButton.classList.remove('hidden');
-      returnButton.onclick = () => {
-        haptic('light');
-        if (tg) tg.close();
-      };
-      return;
+    // SPA Navigation Router
+    function nav(page) {
+      document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+
+      if (page === 'home') {
+        document.getElementById('pageHome').classList.remove('hidden');
+        loadLeaderboardAndStats();
+      } else if (page === 'dashboard') {
+        if (!userToken) return openAuthModal('login');
+        document.getElementById('pageDashboard').classList.remove('hidden');
+        loadDashboardData();
+      } else if (page === 'watch') {
+        if (!userToken) return openAuthModal('login');
+        document.getElementById('pageWatch').classList.remove('hidden');
+        resetAdWatchArea();
+      } else if (page === 'withdraw') {
+        if (!userToken) return openAuthModal('login');
+        document.getElementById('pageWithdraw').classList.remove('hidden');
+        loadUserWithdrawals();
+      } else if (page === 'admin' || window.location.pathname.startsWith('/raj')) {
+        document.getElementById('pageAdmin').classList.remove('hidden');
+        if (adminToken) {
+          document.getElementById('adminLoginView').classList.add('hidden');
+          document.getElementById('adminDashboardView').classList.remove('hidden');
+          loadAdminDashboardData();
+        } else {
+          document.getElementById('adminLoginView').classList.remove('hidden');
+          document.getElementById('adminDashboardView').classList.add('hidden');
+        }
+      }
+      window.scrollTo(0, 0);
     }
 
-    if (!session.adsConfigured) {
-      setStatus('Rewarded ads setup in progress by admin.', 'warn', false);
-      return;
-    }
-
-    setStatus(sdkReady ? 'Ready! Tap below to watch the ad.' : 'Preparing rewarded ad…', '', !sdkReady);
-    watchButton.classList.remove('hidden');
-    watchButton.disabled = !sdkReady;
-  }
-
-  async function watchAd() {
-    if (busy || !session || !sdkReady || !config) return;
-    haptic('medium');
-    busy = true;
-    watchButton.disabled = true;
-    setStatus('Preparing verified ad session…', '', true);
-
-    try {
-      const intent = await api('/api/ad-intent', { method: 'POST', body: { initData: getInitData(), campaign } });
-      if (intent.alreadyUnlocked) {
-        haptic('success');
-        setStatus('Reward already confirmed! Return to the bot.', 'good', false);
-        returnButton.classList.remove('hidden');
-        returnButton.onclick = () => { if (tg) tg.close(); };
-        watchButton.classList.add('hidden');
-        return;
+    // Check Route on Load
+    window.addEventListener('DOMContentLoaded', () => {
+      // Check ref in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const refCode = urlParams.get('ref');
+      if (refCode) {
+        localStorage.setItem('adEarnRefCode', refCode);
       }
 
-      const showAd = window['show_' + String(config.zoneId)];
-      if (typeof showAd !== 'function') throw new Error('Ad is currently unavailable. Try again shortly.');
+      if (window.location.pathname.startsWith('/raj')) {
+        nav('admin');
+      } else {
+        nav('home');
+      }
 
-      setStatus('Ad playing… Please wait until it finishes.', '', true);
-      let result;
+      if (userToken) {
+        fetchUserProfile();
+      }
+      loadPublicAdCodes();
+    });
+
+    // API Helper
+    async function apiCall(endpoint, method = 'GET', body = null, token = null) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (adminToken) headers['X-Admin-Token'] = adminToken;
+
+      const opts = { method, headers };
+      if (body) opts.body = JSON.stringify(body);
+
+      const res = await fetch(endpoint, opts);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.detail || data.message || 'API Request failed');
+      }
+      return data;
+    }
+
+    // Public Stats & Leaderboard
+    async function loadLeaderboardAndStats() {
       try {
-        result = await showAd({ ymid: intent.ymid, requestVar: 'channel_gate_unlock' });
-      } catch (adError) {
-        throw new Error('Ad was closed or could not be verified.');
-      }
+        const data = await apiCall('/api/stats');
+        const tbody = document.getElementById('leaderboardTableBody');
+        tbody.innerHTML = '';
 
-      if (!result || result.reward_event_type !== 'valued') {
-        haptic('error');
-        setStatus('Non-qualifying ad view. Please try again.', 'warn', false);
-        return;
-      }
-
-      setStatus('Ad completed! Verifying with server…', '', true);
-      for (let attempt = 0; attempt < 24; attempt++) {
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        const state = await api('/api/ad-status?' + new URLSearchParams({ initData: getInitData(), ymid: intent.ymid }));
-        if (state.status === 'rewarded') {
-          haptic('success');
-          setStatus('Reward verified! Return to the bot to claim link.', 'good', false);
-          watchButton.classList.add('hidden');
-          returnButton.classList.remove('hidden');
-          returnButton.onclick = () => { if (tg) tg.close(); };
-          return;
+        if (data.leaderboard && data.leaderboard.length > 0) {
+          data.leaderboard.forEach((u, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><span style="font-weight: bold; color: ${idx === 0 ? 'var(--gold)' : 'var(--neon-green)'}">#${idx + 1}</span></td>
+              <td><strong>${u.username}</strong></td>
+              <td>${u.total_ads_watched}</td>
+              <td class="text-gold"><strong>${u.total_earned_coins} Coins</strong></td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = `<tr><td colspan="4" class="text-muted" style="text-align:center;">No leaderboard entries yet.</td></tr>`;
         }
-        if (state.status === 'non_valued') {
-          haptic('error');
-          setStatus('Ad event was non-valued. Try again later.', 'warn', false);
-          return;
-        }
+      } catch (err) {
+        console.error(err);
       }
-
-      setStatus('Verification pending. Return to bot and check status.', 'warn', false);
-      returnButton.classList.remove('hidden');
-      returnButton.onclick = () => { if (tg) tg.close(); };
-    } catch (error) {
-      haptic('error');
-      setStatus(error.message || 'Something went wrong. Try again.', 'error', false);
-    } finally {
-      busy = false;
-      if (watchButton && !watchButton.classList.contains('hidden')) watchButton.disabled = !sdkReady;
     }
-  }
 
-  watchButton.addEventListener('click', watchAd);
-
-  async function init() {
-    if (tg) {
-      tg.ready();
-      if (typeof tg.expand === 'function') tg.expand();
+    // Public Ad Codes Injector
+    async function loadPublicAdCodes() {
+      try {
+        const config = await apiCall('/api/config');
+        if (config.adCodes && config.adCodes.banner) {
+          document.getElementById('homepageBannerSlot').innerHTML = config.adCodes.banner;
+        }
+        if (config.adCodes && config.adCodes.popunder) {
+          // Dynamically inject popunder
+          const div = document.createElement('div');
+          div.innerHTML = config.adCodes.popunder;
+          document.body.appendChild(div);
+        }
+      } catch (e) {}
     }
-    try {
-      config = await api('/api/config');
-      loadAdSdk();
-      await refreshSession();
-    } catch (error) {
-      targetEl.textContent = 'Unable to load campaign';
-      setStatus(error.message || 'Initialization failed.', 'error', false);
-    }
-  }
 
-  init();
-})();
-</script>
+    // Auth Modal Handlers
+    function openAuthModal(tab = 'login') {
+      document.getElementById('authModal').classList.remove('hidden');
+      switchAuthTab(tab);
+
+      const savedRef = localStorage.getItem('adEarnRefCode');
+      if (savedRef) {
+        document.getElementById('regRefVal').value = savedRef;
+      }
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModal').classList.add('hidden');
+    }
+
+    function switchAuthTab(tab) {
+      if (tab === 'login') {
+        document.getElementById('authLoginForm').classList.remove('hidden');
+        document.getElementById('authRegisterForm').classList.add('hidden');
+        document.getElementById('authTabLogin').classList.replace('btn-secondary', 'btn-primary');
+        document.getElementById('authTabRegister').classList.replace('btn-primary', 'btn-secondary');
+      } else {
+        document.getElementById('authLoginForm').classList.add('hidden');
+        document.getElementById('authRegisterForm').classList.remove('hidden');
+        document.getElementById('authTabRegister').classList.replace('btn-secondary', 'btn-primary');
+        document.getElementById('authTabLogin').classList.replace('btn-primary', 'btn-secondary');
+      }
+    }
+
+    async function handleLoginSubmit(e) {
+      e.preventDefault();
+      try {
+        const loginVal = document.getElementById('loginEmailVal').value;
+        const passVal = document.getElementById('loginPassVal').value;
+
+        const res = await apiCall('/api/auth/login', 'POST', { login: loginVal, password: passVal });
+        userToken = res.token;
+        localStorage.setItem('adEarnUserToken', userToken);
+        closeAuthModal();
+        await fetchUserProfile();
+        nav('dashboard');
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function handleRegisterSubmit(e) {
+      e.preventDefault();
+      try {
+        const email = document.getElementById('regEmailVal').value;
+        const username = document.getElementById('regUserVal').value;
+        const password = document.getElementById('regPassVal').value;
+        const referralCode = document.getElementById('regRefVal').value;
+
+        const res = await apiCall('/api/auth/register', 'POST', { email, username, password, referralCode });
+        userToken = res.token;
+        localStorage.setItem('adEarnUserToken', userToken);
+        closeAuthModal();
+        await fetchUserProfile();
+        nav('dashboard');
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function fetchUserProfile() {
+      if (!userToken) return;
+      try {
+        const res = await apiCall('/api/auth/me', 'GET', null, userToken);
+        currentUser = res.user;
+
+        document.getElementById('navGuestActions').classList.add('hidden');
+        document.getElementById('navUserActions').classList.remove('hidden');
+        document.getElementById('userNavBalance').textContent = currentUser.balanceCoins.toFixed(1);
+
+        document.getElementById('userWelcomeText').textContent = `Welcome back, @${currentUser.username}!`;
+      } catch (err) {
+        logout();
+      }
+    }
+
+    function logout() {
+      userToken = null;
+      currentUser = null;
+      localStorage.removeItem('adEarnUserToken');
+      document.getElementById('navGuestActions').classList.remove('hidden');
+      document.getElementById('navUserActions').classList.add('hidden');
+      nav('home');
+    }
+
+    // Dashboard Data Loader
+    async function loadDashboardData() {
+      await fetchUserProfile();
+      if (!currentUser) return;
+
+      document.getElementById('dashBalanceCoins').textContent = currentUser.balanceCoins.toFixed(1);
+      document.getElementById('dashBalanceUsd').textContent = (currentUser.balanceCoins / 100.0).toFixed(2);
+      document.getElementById('dashBalanceInr').textContent = ((currentUser.balanceCoins / 100.0) * 80.0).toFixed(2);
+
+      document.getElementById('dashAdsToday').textContent = currentUser.dailyAdsToday;
+      document.getElementById('dashDailyLimit').textContent = currentUser.dailyAdLimit;
+      const pct = Math.min(100, (currentUser.dailyAdsToday / currentUser.dailyAdLimit) * 100);
+      document.getElementById('dashDailyProgressBar').style.width = pct + '%';
+
+      document.getElementById('dashTotalEarned').textContent = currentUser.totalEarnedCoins.toFixed(1);
+      document.getElementById('dashTotalAds').textContent = currentUser.totalAdsWatched;
+
+      const refLink = `${window.location.origin}/?ref=${currentUser.referralCode}`;
+      document.getElementById('referralLinkInput').value = refLink;
+      document.getElementById('dashTotalReferrals').textContent = currentUser.referralStats ? currentUser.referralStats.total_referrals : 0;
+
+      loadUserWithdrawals();
+    }
+
+    function copyReferralLink() {
+      const input = document.getElementById('referralLinkInput');
+      input.select();
+      navigator.clipboard.writeText(input.value);
+      alert('Referral link copied to clipboard!');
+    }
+
+    function handleStartWatching() {
+      if (!userToken) {
+        openAuthModal('register');
+      } else {
+        nav('watch');
+      }
+    }
+
+    // Watch Ad Interactive Engine
+    function resetAdWatchArea() {
+      if (adTimerInterval) clearInterval(adTimerInterval);
+      document.getElementById('startWatchAdBtn').classList.remove('hidden');
+      document.getElementById('claimRewardBtn').classList.add('hidden');
+      document.getElementById('adTimerSection').classList.add('hidden');
+      document.getElementById('adPlaceholderText').classList.remove('hidden');
+      document.getElementById('dynamicAdInjectSlot').innerHTML = '';
+      currentAdSession = null;
+    }
+
+    async function initWatchAdFlow() {
+      try {
+        const res = await apiCall('/api/user/watch-ad', 'POST', {}, userToken);
+        currentAdSession = res;
+
+        document.getElementById('startWatchAdBtn').classList.add('hidden');
+        document.getElementById('adPlaceholderText').classList.add('hidden');
+        document.getElementById('adTimerSection').classList.remove('hidden');
+
+        // Inject Interstitial & Popunder ad codes
+        const adSlot = document.getElementById('dynamicAdInjectSlot');
+        adSlot.innerHTML = res.adCodes.interstitial || res.adCodes.banner || '<div class="text-green">Ad Playing...</div>';
+
+        // Execute dynamic scripts inside adSlot if any
+        const scripts = adSlot.querySelectorAll('script');
+        scripts.forEach(s => {
+          const newScript = document.createElement('script');
+          newScript.textContent = s.textContent;
+          document.body.appendChild(newScript);
+        });
+
+        startAdTimer(res.timerSeconds);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function startAdTimer(seconds) {
+      adTimeRemaining = seconds;
+      updateTimerUI(adTimeRemaining, seconds);
+
+      adTimerInterval = setInterval(() => {
+        if (!document.hidden) {
+          document.getElementById('tabWarningText').classList.add('hidden');
+          adTimeRemaining--;
+          updateTimerUI(adTimeRemaining, seconds);
+
+          if (adTimeRemaining <= 0) {
+            clearInterval(adTimerInterval);
+            document.getElementById('adTimerSection').classList.add('hidden');
+            document.getElementById('claimRewardBtn').classList.remove('hidden');
+          }
+        } else {
+          document.getElementById('tabWarningText').classList.remove('hidden');
+        }
+      }, 1000);
+    }
+
+    function updateTimerUI(rem, total) {
+      document.getElementById('adCountdownText').textContent = rem;
+      const pct = (rem / total) * 100;
+      document.getElementById('adTimerProgressBar').style.width = pct + '%';
+    }
+
+    async function submitClaimReward() {
+      if (!currentAdSession) return;
+      try {
+        const res = await apiCall('/api/user/claim-reward', 'POST', { sessionId: currentAdSession.sessionId }, userToken);
+        if (res.ok) {
+          document.getElementById('coinModalRewardText').textContent = `+${res.reward_coins.toFixed(1)} COINS!`;
+          document.getElementById('coinRewardModal').classList.add('active');
+          await fetchUserProfile();
+          resetAdWatchArea();
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function closeCoinRewardModal() {
+      document.getElementById('coinRewardModal').classList.remove('active');
+      nav('dashboard');
+    }
+
+    // Withdrawals Flow
+    function calcWithdrawInr() {
+      const usd = parseFloat(document.getElementById('withdrawAmountUsd').value) || 5;
+      document.getElementById('calcInrVal').textContent = (usd * 80).toFixed(0);
+      document.getElementById('calcCoinsVal').textContent = (usd * 100).toFixed(0);
+    }
+
+    async function handleWithdrawSubmit(e) {
+      e.preventDefault();
+      try {
+        const usd = parseFloat(document.getElementById('withdrawAmountUsd').value);
+        const method = document.getElementById('withdrawMethod').value;
+        const details = document.getElementById('withdrawAccountDetails').value;
+
+        const res = await apiCall('/api/user/withdraw', 'POST', { amountUsd: usd, method, accountDetails: details }, userToken);
+        alert(res.message || 'Withdrawal request submitted!');
+        fetchUserProfile();
+        nav('dashboard');
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function loadUserWithdrawals() {
+      if (!userToken) return;
+      try {
+        const res = await apiCall('/api/user/withdrawals', 'GET', null, userToken);
+        const tbody = document.getElementById('userWithdrawalsTableBody');
+        tbody.innerHTML = '';
+
+        if (res.withdrawals && res.withdrawals.length > 0) {
+          res.withdrawals.forEach(w => {
+            const tr = document.createElement('tr');
+            let statusColor = 'var(--gold)';
+            if (w.status === 'approved') statusColor = 'var(--neon-green)';
+            if (w.status === 'rejected') statusColor = 'var(--error)';
+
+            tr.innerHTML = `
+              <td>${w.created_at.split('T')[0]}</td>
+              <td><strong>${w.method}</strong></td>
+              <td>$${w.amount_usd.toFixed(2)} / ₹${w.amount_inr.toFixed(0)}</td>
+              <td>${w.coins_deducted} Coins</td>
+              <td><span style="color: ${statusColor}; font-weight: bold; text-transform: uppercase;">${w.status}</span></td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = `<tr><td colspan="5" class="text-muted" style="text-align: center;">No withdrawals yet.</td></tr>`;
+        }
+      } catch (err) {}
+    }
+
+    // ADMIN PANEL (/raj) ENGINE
+    async function handleAdminLogin(e) {
+      e.preventDefault();
+      try {
+        const u = document.getElementById('adminUserVal').value;
+        const p = document.getElementById('adminPassVal').value;
+
+        const res = await apiCall('/api/admin/login', 'POST', { username: u, password: p });
+        adminToken = res.adminToken;
+        localStorage.setItem('adEarnAdminToken', adminToken);
+
+        document.getElementById('adminLoginView').classList.add('hidden');
+        document.getElementById('adminDashboardView').classList.remove('hidden');
+        loadAdminDashboardData();
+      } catch (err) {
+        alert('Invalid admin username or password!');
+      }
+    }
+
+    function adminLogout() {
+      adminToken = null;
+      localStorage.removeItem('adEarnAdminToken');
+      nav('home');
+    }
+
+    async function loadAdminDashboardData() {
+      try {
+        const statsData = await apiCall('/api/admin/stats');
+        document.getElementById('admTotalUsers').textContent = statsData.totalUsersCount;
+        document.getElementById('admPendingWithdrawals').textContent = statsData.pendingWithdrawalsCount;
+        document.getElementById('admTotalPaid').textContent = `$${statsData.stats.total_paid_usd.toFixed(2)}`;
+
+        // Load Ad Codes
+        const adCodeRes = await apiCall('/api/admin/ad-codes');
+        if (adCodeRes.adCodes) {
+          document.getElementById('admInterstitialCode').value = adCodeRes.adCodes.interstitial || '';
+          document.getElementById('admPopunderCode').value = adCodeRes.adCodes.popunder || '';
+          document.getElementById('admBannerCode').value = adCodeRes.adCodes.banner || '';
+        }
+
+        // Load Users Table
+        const userRes = await apiCall('/api/admin/users');
+        const userTbody = document.getElementById('adminUsersTableBody');
+        userTbody.innerHTML = '';
+        userRes.users.forEach(u => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>#${u.id}</td>
+            <td><strong>${u.username}</strong></td>
+            <td>${u.email}</td>
+            <td>
+              <input type="number" value="${u.balance_coins}" style="width: 80px;" class="glass-input" onchange="updateUserBalance(${u.id}, this.value)">
+            </td>
+            <td>${u.total_ads_watched}</td>
+            <td>${u.is_banned ? '<span style="color:var(--error);">BANNED</span>' : '<span style="color:var(--neon-green);">ACTIVE</span>'}</td>
+            <td>
+              <button class="btn btn-${u.is_banned ? 'primary' : 'danger'}" style="padding: 4px 10px; font-size: 12px;" onclick="toggleUserBan(${u.id}, ${!u.is_banned})">
+                ${u.is_banned ? 'Unban' : 'Ban User'}
+              </button>
+            </td>
+          `;
+          userTbody.appendChild(tr);
+        });
+
+        // Load Withdrawals Table
+        const withdrawRes = await apiCall('/api/admin/withdrawals');
+        const wTbody = document.getElementById('adminWithdrawalsTableBody');
+        wTbody.innerHTML = '';
+        withdrawRes.withdrawals.forEach(w => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>#${w.id}</td>
+            <td><strong>${w.username}</strong> (${w.email})</td>
+            <td>$${w.amount_usd.toFixed(2)} / ₹${w.amount_inr.toFixed(0)}</td>
+            <td><strong>${w.method}</strong></td>
+            <td><code>${w.account_details}</code></td>
+            <td><strong>${w.status.toUpperCase()}</strong></td>
+            <td>
+              ${w.status === 'pending' ? `
+                <button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="updateWithdrawStatus(${w.id}, 'approved')">Approve</button>
+                <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="updateWithdrawStatus(${w.id}, 'rejected')">Reject</button>
+              ` : 'Processed'}
+            </td>
+          `;
+          wTbody.appendChild(tr);
+        });
+
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function handleSaveAdCodes(e) {
+      e.preventDefault();
+      try {
+        const interstitial = document.getElementById('admInterstitialCode').value;
+        const popunder = document.getElementById('admPopunderCode').value;
+        const banner = document.getElementById('admBannerCode').value;
+
+        await apiCall('/api/admin/ad-codes', 'POST', { interstitial, popunder, banner });
+        alert('High-paying ad codes saved successfully!');
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function toggleUserBan(userId, isBanned) {
+      try {
+        await apiCall('/api/admin/user/ban', 'POST', { userId, isBanned });
+        loadAdminDashboardData();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function updateUserBalance(userId, newBalance) {
+      try {
+        await apiCall('/api/admin/user/balance', 'POST', { userId: parseInt(userId), newBalance: parseFloat(newBalance) });
+        alert('User balance updated!');
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function updateWithdrawStatus(withdrawalId, status) {
+      try {
+        await apiCall('/api/admin/withdrawal/status', 'POST', { withdrawalId, status });
+        alert(`Withdrawal #${withdrawalId} status set to ${status}!`);
+        loadAdminDashboardData();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+  </script>
 </body>
 </html>

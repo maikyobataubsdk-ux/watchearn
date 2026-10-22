@@ -4,42 +4,22 @@ from pathlib import Path
 
 test_db_path = Path(__file__).parent / "test_data.sqlite3"
 if test_db_path.exists():
-    test_db_path.unlink()
+    try:
+        test_db_path.unlink()
+    except Exception:
+        pass
 
-# Set dummy env variables before importing app modules
-os.environ["BOT_TOKEN"] = "123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
-os.environ["ADMIN_USER_ID"] = "12345678"
-os.environ["WEBAPP_URL"] = "https://miniapp.example.com"
-os.environ["MONETAG_SDK_URL"] = "https://example.com/sdk.js"
-os.environ["MONETAG_ZONE_ID"] = "12345"
-os.environ["MONETAG_POSTBACK_SECRET"] = "testsecret123"
 os.environ["DATABASE_PATH"] = str(test_db_path)
 
 from fastapi.testclient import TestClient
-from telegram_auth import validate_init_data, TelegramAuthError
-from db import (
-    init_db, create_campaign, get_campaign, create_ad_intent,
-    handle_postback, save_unlock, get_unlock, has_unlock, has_rewarded_intent
-)
 import web
+import db
 
 
-class TestTelegramAuth(unittest.TestCase):
-    def test_validate_init_data_invalid_hash(self):
-        invalid_init_data = "user=%7B%22id%22%3A12345%7D&auth_date=1600000000&hash=invalidhash"
-        with self.assertRaises(TelegramAuthError):
-            validate_init_data(invalid_init_data)
-
-    def test_validate_init_data_empty(self):
-        with self.assertRaises(TelegramAuthError):
-            validate_init_data("")
-
-
-class TestDatabaseAndAPI(unittest.TestCase):
+class TestAdEarnPTCPlatform(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        init_db()
-        create_campaign("testtoken123", "-100123456789", "Test Target Channel", "direct", 12345678)
+        db.init_db()
         cls.client = TestClient(web.app)
 
     @classmethod
@@ -50,42 +30,148 @@ class TestDatabaseAndAPI(unittest.TestCase):
             except Exception:
                 pass
 
-    def test_campaign_created(self):
-        camp = get_campaign("testtoken123")
-        self.assertIsNotNone(camp)
-        self.assertEqual(camp["target_title"], "Test Target Channel")
-
-    def test_health_endpoint(self):
+    def test_01_health_and_config(self):
         res = self.client.get("/health")
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.json(), {"ok": True})
 
-    def test_config_endpoint(self):
-        res = self.client.get("/api/config")
+        res_config = self.client.get("/api/config")
+        self.assertEqual(res_config.status_code, 200)
+        data = res_config.json()
+        self.assertEqual(data["coinsPerAd"], 2.0)
+        self.assertEqual(data["minWithdrawalUsd"], 5.0)
+
+    def test_02_user_registration_and_referral(self):
+        # Register User A (Referrer)
+        res_a = self.client.post("/api/auth/register", json={
+            "email": "userA@example.com",
+            "username": "userA",
+            "password": "password123"
+        })
+        self.assertEqual(res_a.status_code, 200)
+        data_a = res_a.json()
+        self.assertTrue(data_a["ok"])
+        self.assertIn("token", data_a)
+        ref_code_a = data_a["user"]["referralCode"]
+
+        # Register User B (Referred by User A)
+        res_b = self.client.post("/api/auth/register", json={
+            "email": "userB@example.com",
+            "username": "userB",
+            "password": "password123",
+            "referralCode": ref_code_a
+        })
+        self.assertEqual(res_b.status_code, 200)
+        data_b = res_b.json()
+        token_b = data_b["token"]
+
+        # Verify User B is linked to User A
+        user_b_db = db.get_user_by_username("userB")
+        user_a_db = db.get_user_by_username("userA")
+        self.assertEqual(user_b_db["referred_by"], user_a_db["id"])
+
+    def test_03_user_login_and_me(self):
+        res = self.client.post("/api/auth/login", json={
+            "login": "userA@example.com",
+            "password": "password123"
+        })
         self.assertEqual(res.status_code, 200)
-        data = res.json()
-        self.assertEqual(data["zoneId"], "12345")
-        self.assertTrue(data["adsConfigured"])
+        token_a = res.json()["token"]
 
-    def test_postback_handler(self):
-        ymid = "testymid123456789"
-        create_ad_intent(ymid, 99999, "testtoken123")
+        res_me = self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {token_a}"})
+        self.assertEqual(res_me.status_code, 200)
+        me_data = res_me.json()
+        self.assertEqual(me_data["user"]["username"], "userA")
 
-        # Test invalid secret
-        res = self.client.get(f"/monetag/postback?secret=wrongsecret&ymid={ymid}&event_type=impression&reward_event_type=valued")
-        self.assertEqual(res.status_code, 403)
+    def test_04_ad_watching_and_referral_commission(self):
+        # User B logs in and watches an ad
+        login_b = self.client.post("/api/auth/login", json={
+            "login": "userB",
+            "password": "password123"
+        }).json()
+        token_b = login_b["token"]
 
-        # Test valid postback
-        res = self.client.get(f"/monetag/postback?secret=testsecret123&ymid={ymid}&event_type=impression&reward_event_type=valued")
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.text, "ok")
-        self.assertTrue(has_rewarded_intent(99999, "testtoken123"))
+        watch_res = self.client.post("/api/user/watch-ad", headers={"Authorization": f"Bearer {token_b}"})
+        self.assertEqual(watch_res.status_code, 200)
+        session_id = watch_res.json()["sessionId"]
 
-    def test_unlock_records(self):
-        save_unlock(88888, "testtoken123", "https://t.me/+invitelink")
-        self.assertTrue(has_unlock(88888, "testtoken123"))
-        unlock = get_unlock(88888, "testtoken123")
-        self.assertEqual(unlock["invite_link"], "https://t.me/+invitelink")
+        # Claim reward for User B
+        claim_res = self.client.post("/api/user/claim-reward", json={"sessionId": session_id}, headers={"Authorization": f"Bearer {token_b}"})
+        self.assertEqual(claim_res.status_code, 200)
+        claim_data = claim_res.json()
+        self.assertTrue(claim_data["ok"])
+        self.assertEqual(claim_data["reward_coins"], 2.0)
+
+        # User B balance should now be 2.0 coins
+        user_b_db = db.get_user_by_username("userB")
+        self.assertEqual(user_b_db["balance_coins"], 2.0)
+
+        # User A should have received 15% referral bonus (0.3 coins)
+        user_a_db = db.get_user_by_username("userA")
+        self.assertEqual(user_a_db["balance_coins"], 0.3)
+
+    def test_05_withdrawal_flow(self):
+        user_a = db.get_user_by_username("userA")
+        # Give User A enough coins for withdrawal (600 coins = $6.00)
+        db.adjust_user_balance(user_a["id"], 600.0)
+
+        login_a = self.client.post("/api/auth/login", json={
+            "login": "userA",
+            "password": "password123"
+        }).json()
+        token_a = login_a["token"]
+
+        withdraw_res = self.client.post("/api/user/withdraw", json={
+            "amountUsd": 5.0,
+            "method": "UPI",
+            "accountDetails": "testuser@upi"
+        }, headers={"Authorization": f"Bearer {token_a}"})
+
+        self.assertEqual(withdraw_res.status_code, 200)
+        self.assertTrue(withdraw_res.json()["ok"])
+
+        # Check balance reduced by 500 coins (600 - 500 = 100)
+        user_a_after = db.get_user_by_username("userA")
+        self.assertEqual(user_a_after["balance_coins"], 100.0)
+
+    def test_06_admin_panel_authentication_and_controls(self):
+        # Fail invalid admin credentials
+        fail_login = self.client.post("/api/admin/login", json={"username": "wrong", "password": "wrong"})
+        self.assertEqual(fail_login.status_code, 401)
+
+        # Success admin login with rajpapa / 28@RajPapa
+        admin_login = self.client.post("/api/admin/login", json={"username": "rajpapa", "password": "28@RajPapa"})
+        self.assertEqual(admin_login.status_code, 200)
+        admin_token = admin_login.json()["adminToken"]
+
+        # Admin stats
+        stats_res = self.client.get("/api/admin/stats", headers={"X-Admin-Token": admin_token})
+        self.assertEqual(stats_res.status_code, 200)
+        self.assertGreaterEqual(stats_res.json()["totalUsersCount"], 2)
+
+        # Save Adsterra / HilltopAds Ad Codes
+        ad_code_res = self.client.post("/api/admin/ad-codes", json={
+            "interstitial": "<script>console.log('Adsterra Interstitial');</script>",
+            "popunder": "<script>console.log('HilltopAds Popunder');</script>",
+            "banner": "<div>High Paying Banner Ad</div>"
+        }, headers={"X-Admin-Token": admin_token})
+
+        self.assertEqual(ad_code_res.status_code, 200)
+        self.assertTrue(ad_code_res.json()["ok"])
+
+        # Approve pending withdrawal
+        w_res = self.client.get("/api/admin/withdrawals", headers={"X-Admin-Token": admin_token})
+        withdrawals = w_res.json()["withdrawals"]
+        self.assertGreaterEqual(len(withdrawals), 1)
+        pending_id = withdrawals[0]["id"]
+
+        approve_res = self.client.post("/api/admin/withdrawal/status", json={
+            "withdrawalId": pending_id,
+            "status": "approved"
+        }, headers={"X-Admin-Token": admin_token})
+
+        self.assertEqual(approve_res.status_code, 200)
+        self.assertTrue(approve_res.json()["ok"])
 
 
 if __name__ == "__main__":
