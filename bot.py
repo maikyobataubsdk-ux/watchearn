@@ -56,19 +56,37 @@ async def member_of_force_channel(user_id: int) -> bool:
 
 def main_welcome_keyboard(token: str = "") -> InlineKeyboardMarkup:
     web_url = get_webapp_url(token)
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="⭐ Premium Pass", callback_data="btn_premium"),
-            InlineKeyboardButton(text="📚 Tutorial", callback_data="btn_tutorial")
-        ],
+    force_join_url = get_setting("force_join_url")
+
+    buttons = [
         [
             InlineKeyboardButton(text="🚀 Open Blazeculture App", web_app=WebAppInfo(url=web_url))
         ],
         [
-            InlineKeyboardButton(text="💼 Promote Channel", callback_data="btn_promote"),
-            InlineKeyboardButton(text="🔓 Channel Link", callback_data=f"getlink:{token}" if token else "btn_getlink")
+            InlineKeyboardButton(text="⭐ VIP Premium Pass", callback_data="btn_premium"),
+            InlineKeyboardButton(text="💼 Promote Channel", callback_data="btn_promote")
+        ],
+        [
+            InlineKeyboardButton(text="📊 Platform Stats", callback_data="btn_stats"),
+            InlineKeyboardButton(text="👥 My Referrals", callback_data="btn_referral")
+        ],
+        [
+            InlineKeyboardButton(text="📚 How To Earn", callback_data="btn_tutorial"),
+            InlineKeyboardButton(text="💬 Official Support", callback_data="btn_support")
         ]
-    ])
+    ]
+
+    if token:
+        buttons.insert(1, [
+            InlineKeyboardButton(text="🔓 Get Channel Link", callback_data=f"getlink:{token}")
+        ])
+
+    if force_join_url:
+        buttons.append([
+            InlineKeyboardButton(text="📢 Official Channel", url=force_join_url)
+        ])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def force_join_keyboard(token: str | None = None) -> InlineKeyboardMarkup:
@@ -122,6 +140,8 @@ async def show_campaign_flow(message: Message, token: str, user_id: int) -> None
 @router.message(CommandStart())
 async def start_handler(message: Message) -> None:
     user_id = message.from_user.id if message.from_user else 0
+    first_name = escape(message.from_user.first_name) if message.from_user and message.from_user.first_name else "User"
+
     parts = (message.text or "").split(maxsplit=1)
     token = parts[1].strip() if len(parts) > 1 else ""
     if token and get_campaign(token):
@@ -129,12 +149,65 @@ async def start_handler(message: Message) -> None:
         return
 
     greeting = (
-        "HI THERE... 🛰️ ─ ✦ <b>M R  R A J</b> ✦ ─ 💥\n\n"
-        "<b>I AM BLAZECULTURE BOT...!</b>\n"
-        "I CAN PROVIDE EXCLUSIVE FILES & CHANNEL PROMOTIONS THROUGH A SPECIFIC LINK...!\n\n"
-        "⚡ <i>POWERED BY BLAZECULTURE PLATFORM</i>"
+        f"👋 <b>Welcome, {first_name}!</b> ─ ✦ <b>M R  R A J</b> ✦ 💥\n\n"
+        "<b>I AM BLAZECULTURE ADVANCED BOT!</b> 🚀\n\n"
+        "✨ <b>What you can do here:</b>\n"
+        "• 🎬 <b>Watch Ads & Earn Coins:</b> High-paying PTC rewards.\n"
+        "• 💼 <b>Promote Telegram Channels:</b> Instant paid broadcasts across target audience.\n"
+        "• 💸 <b>Channel Revenue Sharing:</b> Connect your channel & earn money per join.\n"
+        "• ⭐ <b>VIP Premium Pass:</b> Bypass ads completely & access links instantly.\n\n"
+        "⚡ <i>Tap below to launch the Mini App or explore features!</i>"
     )
     await message.answer(greeting, reply_markup=main_welcome_keyboard())
+
+
+@router.message(Command("admin"))
+async def admin_command_handler(message: Message) -> None:
+    user_id = message.from_user.id if message.from_user else 0
+    if not is_admin(user_id):
+        await message.answer("⚠️ <b>Access Denied</b>\n\nYou do not have master administrator privileges.")
+        return
+
+    admin_app_url = f"{WEBAPP_URL}/admin"
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="👑 Launch Master Admin Panel", web_app=WebAppInfo(url=admin_app_url))],
+        [InlineKeyboardButton(text="📊 View System Status", callback_data="btn_admin_status")]
+    ])
+    await message.answer(
+        "👑 <b>Master Admin Control Center</b>\n\n"
+        "Welcome Master Admin! You can manage user VIP statuses, approve channel promotions, "
+        "process cash withdrawals, configure bot settings, and update ad network scripts.",
+        reply_markup=kb
+    )
+
+
+@router.message(Command("promote"))
+async def promote_cmd_handler(message: Message) -> None:
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🚀 Launch Promotion Portal", web_app=WebAppInfo(url=WEBAPP_URL))]
+    ])
+    await message.answer(
+        "💼 <b>Blazeculture Channel Promotion Hub</b>\n\n"
+        "Promote your Telegram channel or group to thousands of real active users!\n\n"
+        "1️⃣ Tap button below to open Promotion Portal\n"
+        "2️⃣ Enter your channel link to analyze audience\n"
+        "3️⃣ Select budget & pay via UPI/QR Code\n"
+        "4️⃣ Automatic broadcast is triggered on approval!",
+        reply_markup=kb
+    )
+
+
+@router.message(Command("mychannels"))
+async def mychannels_cmd_handler(message: Message) -> None:
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📺 Open Channel Earnings Hub", web_app=WebAppInfo(url=WEBAPP_URL))]
+    ])
+    await message.answer(
+        "📺 <b>My Connected Channels & Earnings</b>\n\n"
+        "Connect your Telegram channels to Blazeculture network and earn ₹0.50 INR for every 2 user joins automatically tracked!\n\n"
+        "Tap below to view your connected channels and analytics.",
+        reply_markup=kb
+    )
 
 
 @router.message(Command("help"))
@@ -310,14 +383,94 @@ async def premium_info_callback(callback: CallbackQuery) -> None:
         await callback.answer("⭐ Blazeculture Premium Pass allows instant access to all channel links without watching ads! Contact @Tgfuckerx or upgrade in Mini App.", show_alert=True)
 
 
+@router.callback_query(F.data == "btn_stats")
+async def stats_callback(callback: CallbackQuery) -> None:
+    from db import get_global_stats
+    stats = get_global_stats()
+    text = (
+        "📊 <b>Blazeculture Live Platform Stats</b>\n\n"
+        f"👥 Total Users: <b>{stats.get('total_users', 0):,}</b>\n"
+        f"🎬 Ads Watched: <b>{stats.get('total_ads_watched', 0):,}</b>\n"
+        f"💰 Total Cash Paid: <b>${stats.get('total_paid_usd', 0.0):.2f} / ₹{stats.get('total_paid_inr', 0.0):.2f}</b>\n"
+        f"🎯 Active Promotions: <b>{stats.get('active_promotions', 0):,}</b>\n\n"
+        "🚀 <i>Earn coins daily by viewing ads in our Mini App!</i>"
+    )
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🚀 Launch Web App", web_app=WebAppInfo(url=WEBAPP_URL))]
+        ]))
+
+
+@router.callback_query(F.data == "btn_referral")
+async def referral_callback(callback: CallbackQuery) -> None:
+    user_id = callback.from_user.id if callback.from_user else 0
+    ref_link = f"https://t.me/{bot_username}?start=ref_{user_id}"
+    text = (
+        "👥 <b>Blazeculture Referral Program</b>\n\n"
+        "Earn <b>15% Lifetime Commission</b> on all ad coins earned by users you invite!\n\n"
+        f"🔗 <b>Your Unique Referral Link:</b>\n<code>{escape(ref_link)}</code>\n\n"
+        "Share this link in Telegram groups, channels, or social media!"
+    )
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(text)
+
+
+@router.callback_query(F.data == "btn_support")
+async def support_callback(callback: CallbackQuery) -> None:
+    text = (
+        "💬 <b>Official Blazeculture Support</b>\n\n"
+        "Need help with payments, promotion campaigns, or VIP Premium Pass?\n"
+        "Contact our official support handle: <b>@Tgfuckerx</b>"
+    )
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💬 Contact Support (@Tgfuckerx)", url="https://t.me/Tgfuckerx")]
+        ]))
+
+
+@router.callback_query(F.data == "btn_admin_status")
+async def admin_status_callback(callback: CallbackQuery) -> None:
+    user_id = callback.from_user.id if callback.from_user else 0
+    if not is_admin(user_id):
+        await callback.answer("⚠️ Access restricted.", show_alert=True)
+        return
+    force = get_setting("force_chat_title") or "Disabled"
+    target = get_setting("target_chat_title") or "Not configured"
+    mode = get_setting("target_invite_mode") or "Not configured"
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(
+            "📊 <b>Master Admin System Status</b>\n\n"
+            f"📢 Force-sub Channel: <b>{escape(force)}</b>\n"
+            f"🎯 Target Channel: <b>{escape(target)}</b>\n"
+            f"⚙️ Invite Mode: <b>{escape(mode)}</b>\n"
+            f"🌐 Web App URL: <b>{WEBAPP_URL}</b>"
+        )
+
+
 @router.callback_query(F.data == "btn_tutorial")
 async def tutorial_callback(callback: CallbackQuery) -> None:
-    await callback.answer("📚 Open Mini App or tap Watch Ad on any campaign link to earn coins & unlock channels!", show_alert=True)
+    text = (
+        "📚 <b>How To Earn & Use Blazeculture</b>\n\n"
+        "1️⃣ <b>Watch Ads to Earn Coins:</b> Open Mini App and watch 20s ads to earn coins daily.\n"
+        "2️⃣ <b>Unlock Telegram Channel Links:</b> Open campaign deep links, complete required ad view, and claim invite link.\n"
+        "3️⃣ <b>Channel Promotion:</b> Submit your channel link and budget to broadcast across our network.\n"
+        "4️⃣ <b>Connect & Earn Revenue:</b> Add bot as admin to your channel and earn ₹0.50 INR per 2 user joins!\n"
+        "5️⃣ <b>Instant Withdrawals:</b> Cash out via UPI, Paytm, USDT, or PayPal."
+    )
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🚀 Start Earn Now", web_app=WebAppInfo(url=WEBAPP_URL))]
+        ]))
 
 
 @router.callback_query(F.data == "btn_promote")
 async def promote_callback(callback: CallbackQuery) -> None:
-    await callback.answer("💼 Launching Promotion Portal in Mini App...", show_alert=False)
+    await callback.answer("💼 Launching Promotion Portal...", show_alert=False)
     if callback.message:
         await callback.message.answer(
             "💼 <b>Blazeculture Paid Channel Promotions</b>\n\n"

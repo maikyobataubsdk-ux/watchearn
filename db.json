@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-22T18:27:13+00:00",
+  "updated_at": "2026-10-22T19:26:48+00:00",
   "users": [
     {
       "id": 1,
@@ -10,7 +10,7 @@
       "total_ads_watched": 1,
       "is_premium": 1,
       "is_banned": 0,
-      "created_at": "2026-10-22T18:27:13+00:00"
+      "created_at": "2026-10-22T19:26:48+00:00"
     },
     {
       "id": 2,
@@ -21,7 +21,7 @@
       "total_ads_watched": 1,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-10-22T18:27:13+00:00"
+      "created_at": "2026-10-22T19:26:48+00:00"
     },
     {
       "id": 3,
@@ -32,7 +32,7 @@
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-10-22T18:27:13+00:00"
+      "created_at": "2026-10-22T19:26:48+00:00"
     },
     {
       "id": 4,
@@ -43,7 +43,7 @@
       "total_ads_watched": 1,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-10-22T18:27:13+00:00"
+      "created_at": "2026-10-22T19:26:48+00:00"
     }
   ],
   "withdrawals": [
@@ -56,7 +56,7 @@
       "method": "UPI",
       "account_details": "testuser@upi",
       "status": "pending",
-      "created_at": "2026-10-22T18:27:13+00:00"
+      "created_at": "2026-10-22T19:26:48+00:00"
     }
   ],
   "promotions": [
@@ -64,29 +64,29 @@
       "id": 1,
       "user_id": 1,
       "channel_url": "https://t.me/testchannel",
-      "channel_id": "https://t.me/testchannel",
-      "channel_title": "Channel (https://t.me/testchannel)",
+      "channel_id": "@testchannel",
+      "channel_title": "Channel (@testchannel)",
       "price_inr": 100.0,
       "target_joins": 100,
       "current_joins": 0,
       "current_views": 0,
       "status": "approved",
       "transaction_ref": "TXN123456",
-      "created_at": "2026-10-22T18:27:13+00:00"
+      "created_at": "2026-10-22T19:26:48+00:00"
     }
   ],
   "connected_channels": [
     {
       "id": 1,
       "owner_user_id": 2,
-      "channel_id": "https://t.me/myownerchannel",
-      "channel_title": "Channel (https://t.me/myownerchannel)",
+      "channel_id": "@myownerchannel",
+      "channel_title": "Channel (@myownerchannel)",
       "channel_username": "myownerchannel",
-      "total_joins": 2,
+      "total_joins": 0,
       "total_lefts": 0,
       "total_views": 0,
-      "total_earned_inr": 0.5,
-      "created_at": "2026-10-22T18:27:13+00:00"
+      "total_earned_inr": 0.0,
+      "created_at": "2026-10-22T19:26:48+00:00"
     }
   ],
   "settings": {

@@ -566,14 +566,21 @@ def record_channel_join_event(channel_id: str, user_id: int) -> dict:
     payout_per_2_joins = float(settings.get("payout_per_2_joins_inr", "0.50"))
     payout_per_join = payout_per_2_joins / 2.0  # 0.25 INR per user join
 
+    clean_id = str(channel_id)
+    username_part = clean_id.split("t.me/")[-1].lstrip("@").strip("/")
+    at_username = f"@{username_part}" if username_part else clean_id
+
     with db() as conn:
         conn.execute(
             "INSERT INTO join_analytics (channel_id, user_id, status, created_at) VALUES (?, ?, 'joined', ?)",
-            (str(channel_id), user_id, utcnow()),
+            (clean_id, user_id, utcnow()),
         )
 
         # Update connected channel stats
-        ch = conn.execute("SELECT * FROM connected_channels WHERE channel_id=?", (str(channel_id),)).fetchone()
+        ch = conn.execute(
+            "SELECT * FROM connected_channels WHERE channel_id=? OR channel_id=? OR channel_username=?",
+            (clean_id, at_username, username_part),
+        ).fetchone()
         if ch:
             earned_bonus = payout_per_join
             conn.execute(
@@ -609,15 +616,19 @@ def record_channel_join_event(channel_id: str, user_id: int) -> dict:
 
 
 def record_channel_left_event(channel_id: str, user_id: int) -> dict:
+    clean_id = str(channel_id)
+    username_part = clean_id.split("t.me/")[-1].lstrip("@").strip("/")
+    at_username = f"@{username_part}" if username_part else clean_id
+
     with db() as conn:
         conn.execute(
             "INSERT INTO join_analytics (channel_id, user_id, status, created_at) VALUES (?, ?, 'left', ?)",
-            (str(channel_id), user_id, utcnow()),
+            (clean_id, user_id, utcnow()),
         )
 
         conn.execute(
-            "UPDATE connected_channels SET total_lefts = total_lefts + 1 WHERE channel_id=?",
-            (str(channel_id),),
+            "UPDATE connected_channels SET total_lefts = total_lefts + 1 WHERE channel_id=? OR channel_id=? OR channel_username=?",
+            (clean_id, at_username, username_part),
         )
 
         return {"ok": True}

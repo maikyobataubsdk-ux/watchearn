@@ -261,6 +261,39 @@ class TestBlazeculturePTCPlatform(unittest.TestCase):
         self.assertEqual(qr_res.status_code, 200)
         self.assertIn("payment_qr.jpg", qr_res.json()["qr_image_url"])
 
+    def test_13_channel_normalization_and_admin_route(self):
+        # Test normalize_telegram_channel
+        u1, i1, c1 = web.normalize_telegram_channel("https://t.me/mytestchannel")
+        self.assertEqual(u1, "https://t.me/mytestchannel")
+        self.assertEqual(i1, "@mytestchannel")
+        self.assertEqual(c1, "mytestchannel")
+
+        u2, i2, c2 = web.normalize_telegram_channel("@mytestchannel")
+        self.assertEqual(u2, "https://t.me/mytestchannel")
+        self.assertEqual(i2, "@mytestchannel")
+        self.assertEqual(c2, "mytestchannel")
+
+        u3, i3, c3 = web.normalize_telegram_channel("mytestchannel")
+        self.assertEqual(u3, "https://t.me/mytestchannel")
+        self.assertEqual(i3, "@mytestchannel")
+
+        u4, i4, c4 = web.normalize_telegram_channel("https://t.me/+AbCdEf123")
+        self.assertEqual(u4, "https://t.me/+AbCdEf123")
+        self.assertEqual(i4, "+AbCdEf123")
+
+        # Test /admin route endpoint
+        admin_res = self.client.get("/admin")
+        self.assertEqual(admin_res.status_code, 200)
+        self.assertIn("Blazeculture", admin_res.text)
+
+        # Test analyze_channel with different link formats
+        login_a = self.client.post("/api/auth/login", json={"login": "userA", "password": "password123"}).json()
+        token_a = login_a["token"]
+
+        analyze_res = self.client.post("/api/promotions/analyze", json={"channel_link": "@mytestchannel"}, headers={"Authorization": f"Bearer {token_a}"})
+        self.assertEqual(analyze_res.status_code, 200)
+        self.assertEqual(analyze_res.json()["channel_link"], "https://t.me/mytestchannel")
+
 
 if __name__ == "__main__":
     unittest.main()

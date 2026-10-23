@@ -1411,7 +1411,7 @@
         // Check if coming via bot campaign link
         if (activeCampaignToken) {
           await loadAndActivateCampaign(activeCampaignToken);
-        } else if (!window.location.pathname.startsWith('/raj')) {
+        } else if (!window.location.pathname.startsWith('/raj') && !window.location.pathname.startsWith('/admin')) {
           nav('home');
         }
       } catch (err) {
@@ -1458,7 +1458,7 @@
 
     // Check Route on Load
     window.addEventListener('DOMContentLoaded', () => {
-      if (window.location.pathname.startsWith('/raj')) {
+      if (window.location.pathname.startsWith('/raj') || window.location.pathname.startsWith('/admin')) {
         nav('admin');
       }
       initTelegramMiniAppAuth();
