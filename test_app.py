@@ -294,6 +294,47 @@ class TestBlazeculturePTCPlatform(unittest.TestCase):
         self.assertEqual(analyze_res.status_code, 200)
         self.assertEqual(analyze_res.json()["channel_link"], "https://t.me/mytestchannel")
 
+    def test_14_admin_raj_routes_and_static_files(self):
+        # Test /raj variations and SPA routes
+        for path in ["/raj", "/raj/", "/raj/dashboard", "/admin", "/admin/", "/admin/settings", "/watch", "/promote", "/channels", "/dashboard", "/withdraw"]:
+            res = self.client.get(path)
+            self.assertEqual(res.status_code, 200, f"Path {path} failed")
+            self.assertIn("Blazeculture", res.text)
+
+        # Test static file serving
+        qr_res = self.client.get("/static/payment_qr.jpg")
+        self.assertEqual(qr_res.status_code, 200)
+
+        logo_res = self.client.get("/static/logo.png")
+        self.assertEqual(logo_res.status_code, 200)
+
+    def test_15_channel_link_formats_and_aliases(self):
+        # Test channel analysis with different link formats and without auth token
+        formats = [
+            ("@mychannel", "https://t.me/mychannel"),
+            ("https://t.me/mychannel", "https://t.me/mychannel"),
+            ("https://t.me/s/mychannel", "https://t.me/mychannel"),
+            ("https://t.me/joinchat/ABC123XYZ", "https://t.me/joinchat/ABC123XYZ"),
+            ("https://t.me/+ABC123XYZ", "https://t.me/+ABC123XYZ"),
+        ]
+        for inp, expected_url in formats:
+            res = self.client.post("/api/promotions/analyze", json={"channel_link": inp})
+            self.assertEqual(res.status_code, 200, f"Failed for input: {inp}")
+            self.assertEqual(res.json()["channel_link"], expected_url)
+
+        # Test alias routes and flexible field names
+        alias_routes = [
+            "/api/promotions/analyze/",
+            "/api/channel/analyze",
+            "/api/channels/analyze",
+            "/api/analyze-channel",
+            "/api/analyze"
+        ]
+        for route in alias_routes:
+            res = self.client.post(route, json={"channelUrl": "@testalias"})
+            self.assertEqual(res.status_code, 200, f"Failed for route: {route}")
+            self.assertTrue(res.json()["ok"])
+
 
 if __name__ == "__main__":
     unittest.main()

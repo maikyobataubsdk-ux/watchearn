@@ -8,6 +8,7 @@ import httpx
 from fastapi import FastAPI, HTTPException, Request, Depends, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import db
@@ -99,6 +100,10 @@ class WithdrawRequest(BaseModel):
 class AnalyzeChannelRequest(BaseModel):
     channel_link: Optional[str] = None
     channelUrl: Optional[str] = None
+    channel_url: Optional[str] = None
+    url: Optional[str] = None
+    link: Optional[str] = None
+    channel: Optional[str] = None
 
 
 class SubmitPromotionRequest(BaseModel):
@@ -213,6 +218,21 @@ def get_current_user(authorization: Optional[str] = Header(None), token: Optiona
     return user
 
 
+def get_optional_user(authorization: Optional[str] = Header(None), token: Optional[str] = Query(None)) -> Optional[dict]:
+    auth_token = None
+    if authorization and authorization.startswith("Bearer "):
+        auth_token = authorization.split(" ", 1)[1]
+    elif token:
+        auth_token = token
+
+    if not auth_token or auth_token not in USER_SESSIONS:
+        return None
+
+    user_id = USER_SESSIONS[auth_token]
+    user = get_user_by_id(user_id)
+    return user
+
+
 def require_admin(x_admin_token: Optional[str] = Header(None)) -> bool:
     if not x_admin_token or x_admin_token not in ADMIN_SESSIONS:
         raise HTTPException(status_code=401, detail="Admin authorization required.")
@@ -229,28 +249,49 @@ def normalize_telegram_channel(input_str: str) -> tuple[str, str, str]:
         return "", "", ""
 
     s = s.rstrip("/")
-    s = s.replace("telegram.me/", "t.me/")
+    s = s.replace("telegram.me/", "t.me/").replace("http://", "https://")
 
     if "t.me/" in s:
         path = s.split("t.me/")[-1].split("?")[0].strip()
-        parts = [p for p in path.split("/") if p]
-        if not parts:
-            return "", "", ""
-        target = parts[0].strip()
     else:
-        target = s.lstrip("@").split("?")[0].split("/")[0].strip()
+        path = s.lstrip("@").split("?")[0].strip()
 
+    parts = [p for p in path.split("/") if p]
+    if not parts:
+        return "", "", ""
+
+    # Case 1: joinchat link e.g. t.me/joinchat/ABC123XYZ
+    if parts[0] == "joinchat" and len(parts) > 1:
+        code = parts[1]
+        return f"https://t.me/joinchat/{code}", code, ""
+    elif parts[0].startswith("joinchat"):
+        code = parts[0].replace("joinchat", "").lstrip("/")
+        return f"https://t.me/joinchat/{code}", code, ""
+
+    # Case 2: plus invite code (+...)
+    if parts[0].startswith("+"):
+        code = parts[0]
+        return f"https://t.me/{code}", code, ""
+
+    # Case 3: /s/ channel preview link e.g. t.me/s/channelname
+    if parts[0] == "s" and len(parts) > 1:
+        target = parts[1]
+    # Case 4: /c/ private channel link e.g. t.me/c/123456789/10
+    elif parts[0] == "c" and len(parts) > 1:
+        channel_num = parts[1]
+        c_id = f"-100{channel_num}" if not channel_num.startswith("-") else channel_num
+        return f"https://t.me/c/{channel_num}", c_id, ""
+    else:
+        target = parts[0]
+
+    target = target.lstrip("@").strip()
     if not target:
         return "", "", ""
 
-    if target.startswith("+") or target.startswith("joinchat"):
-        code = target if target.startswith("+") else target.replace("joinchat/", "")
-        clean_url = f"https://t.me/{code}"
-        channel_id = code
-        channel_username = ""
-        return clean_url, channel_id, channel_username
+    if target.startswith("+"):
+        return f"https://t.me/{target}", target, ""
 
-    username = target.replace("@", "")
+    username = target
     clean_url = f"https://t.me/{username}"
     channel_id = f"@{username}"
     channel_username = username
@@ -263,7 +304,7 @@ async def async_fetch_tg_channel_info(channel_username: str, channel_id: str) ->
         return None
 
     chat_ref = f"@{channel_username}" if channel_username else channel_id
-    if not chat_ref.startswith("@") and not chat_ref.startswith("-"):
+    if not chat_ref or (not chat_ref.startswith("@") and not chat_ref.startswith("-") and not chat_ref.startswith("+")):
         return None
 
     try:
@@ -296,11 +337,24 @@ async def startup() -> None:
     init_db()
 
 
+# Serve Static Assets
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
+
+
 # Static & Root Page
 @app.get("/", response_class=HTMLResponse)
 @app.get("/raj", response_class=HTMLResponse)
+@app.get("/raj/", response_class=HTMLResponse)
+@app.get("/raj/{full_path:path}", response_class=HTMLResponse)
 @app.get("/admin", response_class=HTMLResponse)
-async def serve_index() -> HTMLResponse:
+@app.get("/admin/", response_class=HTMLResponse)
+@app.get("/admin/{full_path:path}", response_class=HTMLResponse)
+@app.get("/watch", response_class=HTMLResponse)
+@app.get("/promote", response_class=HTMLResponse)
+@app.get("/channels", response_class=HTMLResponse)
+@app.get("/dashboard", response_class=HTMLResponse)
+@app.get("/withdraw", response_class=HTMLResponse)
+async def serve_index(full_path: Optional[str] = None) -> HTMLResponse:
     html_file = BASE_DIR / "static" / "Index.html"
     if not html_file.exists():
         html_file = BASE_DIR / "static" / "index.html"
@@ -628,8 +682,21 @@ async def get_payment_qr_public() -> dict:
 
 
 @app.post("/api/promotions/analyze")
-async def analyze_channel(body: AnalyzeChannelRequest, user: dict = Depends(get_current_user)) -> dict:
-    raw_input = (body.channel_link or body.channelUrl or "").strip()
+@app.post("/api/promotions/analyze/")
+@app.post("/api/channel/analyze")
+@app.post("/api/channels/analyze")
+@app.post("/api/analyze-channel")
+@app.post("/api/analyze")
+async def analyze_channel(body: AnalyzeChannelRequest, user: Optional[dict] = Depends(get_optional_user)) -> dict:
+    raw_input = (
+        body.channel_link or
+        body.channelUrl or
+        body.channel_url or
+        body.url or
+        body.link or
+        body.channel or
+        ""
+    ).strip()
     if not raw_input:
         raise HTTPException(status_code=400, detail="Please enter a Telegram channel link, @username, or invite code.")
 
