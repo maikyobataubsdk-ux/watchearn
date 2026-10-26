@@ -837,9 +837,9 @@
             </div>
           </div>
 
-          <!-- Step 2: Campaign Details & Payment -->
+          <!-- Step 2: Campaign Details & Wallet / YOUPI Payment -->
           <div id="promoStep2Area" class="hidden">
-            <h3 style="font-size: 17px; margin-bottom: 15px; color: var(--gold);"><i class="fa-solid fa-qrcode"></i> Step 2: Select Package & Scan Admin QR Code</h3>
+            <h3 style="font-size: 17px; margin-bottom: 15px; color: var(--gold);"><i class="fa-solid fa-wallet"></i> Step 2: Select Package & Payment Method</h3>
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
               <div class="glass" style="padding: 15px; text-align: center; border: 1px solid var(--neon-green);">
@@ -859,13 +859,19 @@
               </div>
             </div>
 
-            <div class="glass" style="padding: 20px; text-align: center; margin-bottom: 20px;">
-              <h4 style="margin-bottom: 12px;">Scan QR to Pay via UPI / Paytm / PhonePe</h4>
-              <div class="qr-frame" style="margin-bottom: 12px;">
-                <img id="promoQrImage" src="/static/logo.png" alt="Payment QR Code">
+            <!-- Wallet & YOUPI Payment Summary Box -->
+            <div class="glass" id="promoWalletStatusCard" style="padding: 20px; margin-bottom: 20px; border: 1px solid var(--neon-green); background: rgba(0, 255, 136, 0.05);">
+              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+                <div style="font-weight: 800; font-size: 16px; color: var(--neon-green);">
+                  <i class="fa-solid fa-wallet"></i> Wallet Balance: ₹<span id="promoAvailWalletBalanceText">0.00</span>
+                </div>
+                <button type="button" class="btn btn-primary" style="padding: 4px 12px; font-size: 12px;" onclick="openAddMoneyModal()">
+                  <i class="fa-solid fa-plus"></i> Add Money
+                </button>
               </div>
-              <div style="font-size: 14px; font-weight: bold; color: var(--neon-green);" id="promoUpiIdText">UPI ID: blazeculture@upi</div>
-              <p class="text-muted" style="font-size: 12px; margin-top: 6px;">Pay the exact amount for your chosen promotion budget.</p>
+              <div id="promoPaymentInfoNotice" style="font-size: 13px; color: var(--text-main); line-height: 1.5;">
+                Checking wallet balance...
+              </div>
             </div>
 
             <form onsubmit="handlePromoSubmit(event)">
@@ -901,7 +907,7 @@
 
               <div style="margin-bottom: 15px; padding: 12px; background: rgba(0,255,136,0.1); border-radius: 10px; border: 1px dashed var(--neon-green);">
                 <div style="font-size: 13px; color: #fff;">
-                  Total Amount to Deduct from Wallet: <strong id="promoTotalPricePreviewText" style="color: var(--neon-green); font-size: 16px;">₹100.00 INR</strong>
+                  Total Amount Required: <strong id="promoTotalPricePreviewText" style="color: var(--neon-green); font-size: 16px;">₹100.00 INR</strong>
                 </div>
               </div>
 
@@ -910,7 +916,7 @@
                 <textarea id="promoMsgVal" class="glass-input" rows="3" placeholder="Join @yourchannel for daily high-paying tasks and exclusive giveaways!" required></textarea>
               </div>
 
-              <button type="submit" class="btn btn-purple" style="width: 100%; font-size: 16px;">
+              <button type="submit" id="promoSubmitBtn" class="btn btn-purple" style="width: 100%; font-size: 16px;">
                 <i class="fa-solid fa-paper-plane"></i> Pay & Start Automated Channel Promotion
               </button>
             </form>
@@ -1939,12 +1945,10 @@
     }
 
     // PROMOTION SYSTEM HANDLERS
+    let currentWalletBalanceInr = 0;
+
     async function loadPaymentQr() {
-      try {
-        const data = await apiCall('/api/promotions/payment-qr');
-        if (data.upi_id) document.getElementById('promoUpiIdText').textContent = `UPI ID: ${data.upi_id}`;
-        if (data.qr_image_url) document.getElementById('promoQrImage').src = data.qr_image_url;
-      } catch (err) {}
+      await updatePromoPricePreview();
     }
 
     async function analyzePromoChannel() {
@@ -1963,46 +1967,128 @@
         document.getElementById('pMembers').textContent = res.members_count;
         document.getElementById('pBotAdminStatus').textContent = res.bot_is_admin ? 'YES (Full Powers Enabled)' : 'NO (Please Add Bot as Admin)';
         document.getElementById('pBotAdminStatus').style.color = res.bot_is_admin ? 'var(--neon-green)' : 'var(--error)';
+
+        await updatePromoPricePreview();
       } catch (err) {
         alert(err.message);
       }
     }
 
-    function updatePromoPricePreview() {
-      const budget = parseFloat(document.getElementById('promoBudgetVal').value) || 100;
+    async function updatePromoPricePreview() {
+      const budget = parseFloat(document.getElementById('promoBudgetVal')?.value) || 100;
       const isCatSpecific = document.getElementById('promoCategorySpecificToggle')?.checked || false;
       const total = isCatSpecific ? budget * 1.20 : budget;
       const elem = document.getElementById('promoTotalPricePreviewText');
       if (elem) elem.textContent = `₹${total.toFixed(2)} INR`;
+
+      if (userToken) {
+        try {
+          const wal = await apiCall('/api/wallet/balance', 'GET', null, userToken);
+          currentWalletBalanceInr = wal.balance_inr || 0;
+        } catch (e) {}
+      }
+
+      const balElem = document.getElementById('promoAvailWalletBalanceText');
+      if (balElem) balElem.textContent = currentWalletBalanceInr.toFixed(2);
+
+      const noticeElem = document.getElementById('promoPaymentInfoNotice');
+      const submitBtn = document.getElementById('promoSubmitBtn');
+
+      if (currentWalletBalanceInr >= total) {
+        if (noticeElem) {
+          noticeElem.innerHTML = `<span style="color:var(--neon-green); font-weight:bold;"><i class="fa-solid fa-circle-check"></i> Sufficient Wallet Balance!</span> ₹${total.toFixed(2)} will be deducted directly from your wallet balance on submission.`;
+        }
+        if (submitBtn) {
+          submitBtn.className = "btn btn-primary";
+          submitBtn.innerHTML = `<i class="fa-solid fa-bolt"></i> Pay ₹${total.toFixed(2)} from Wallet & Start Promotion`;
+        }
+      } else {
+        const shortfall = total - currentWalletBalanceInr;
+        if (noticeElem) {
+          noticeElem.innerHTML = `<span style="color:var(--gold); font-weight:bold;"><i class="fa-solid fa-triangle-exclamation"></i> Low Wallet Balance!</span> Available: ₹${currentWalletBalanceInr.toFixed(2)} | Shortfall: <strong style="color:var(--error);">₹${shortfall.toFixed(2)}</strong>.<br>Submit button below will open YOUPI PG Gateway to pay ₹${shortfall.toFixed(2)} shortfall directly via UPI!`;
+        }
+        if (submitBtn) {
+          submitBtn.className = "btn btn-purple";
+          submitBtn.innerHTML = `<i class="fa-solid fa-credit-card"></i> Pay ₹${shortfall.toFixed(2)} via YOUPI Gateway & Start Promotion`;
+        }
+      }
     }
 
     async function handlePromoSubmit(e) {
       e.preventDefault();
-      try {
-        const budget = parseFloat(document.getElementById('promoBudgetVal').value);
-        const adMessage = document.getElementById('promoMsgVal').value;
-        const channelLink = document.getElementById('promoChannelLink').value;
-        const category = document.getElementById('promoCategorySelect').value;
-        const isCategorySpecific = document.getElementById('promoCategorySpecificToggle').checked;
+      const budget = parseFloat(document.getElementById('promoBudgetVal').value) || 100;
+      const isCategorySpecific = document.getElementById('promoCategorySpecificToggle')?.checked || false;
+      const total = isCategorySpecific ? budget * 1.20 : budget;
+      const adMessage = document.getElementById('promoMsgVal').value;
+      const channelLink = document.getElementById('promoChannelLink').value;
+      const category = document.getElementById('promoCategorySelect').value;
 
-        const res = await apiCall('/api/promotions/submit', 'POST', {
-          channel_link: channelLink,
-          ad_message: adMessage,
-          budget_inr: budget,
-          category: category,
-          is_category_specific: isCategorySpecific,
-        }, userToken);
+      let walletInr = currentWalletBalanceInr;
+      if (userToken) {
+        try {
+          const wal = await apiCall('/api/wallet/balance', 'GET', null, userToken);
+          walletInr = wal.balance_inr || 0;
+          currentWalletBalanceInr = walletInr;
+        } catch (err) {}
+      }
 
-        alert(res.message || 'Promotion submitted successfully!');
-        refreshWalletBalance();
-        loadMyPromotions();
-      } catch (err) {
-        if (err.message && err.message.includes('Insufficient wallet balance')) {
-          if (confirm(`${err.message}\n\nWould you like to open the Wallet Top Up window now?`)) {
+      const shortfall = total - walletInr;
+
+      const executePromotionSubmit = async (txnRef = null) => {
+        try {
+          const payload = {
+            channel_link: channelLink,
+            ad_message: adMessage,
+            budget_inr: budget,
+            category: category,
+            is_category_specific: isCategorySpecific,
+          };
+          if (txnRef) payload.payment_txn_ref = txnRef;
+
+          const res = await apiCall('/api/promotions/submit', 'POST', payload, userToken);
+          alert(res.message || 'Promotion submitted successfully!');
+          refreshWalletBalance();
+          await updatePromoPricePreview();
+          loadMyPromotions();
+        } catch (err) {
+          alert(err.message || 'Failed to submit promotion.');
+        }
+      };
+
+      if (shortfall <= 0) {
+        await executePromotionSubmit();
+      } else {
+        const telegram_user_id = currentUser ? (currentUser.telegram_id || currentUser.id) : 1001;
+        const order_id = `PROMO-${telegram_user_id}-${Date.now()}`;
+
+        if (window.Youpi && typeof window.Youpi.pay === 'function') {
+          window.Youpi.pay({
+            order_id: order_id,
+            amount: Math.ceil(shortfall),
+            currency: 'INR',
+            customer: {
+              name: currentUser ? (currentUser.first_name || currentUser.username) : 'User',
+              phone: '9999999999',
+              email: `${telegram_user_id}@telegram.user`
+            },
+            metadata: {
+              telegram_user_id: telegram_user_id,
+              purpose: 'PROMOTION_PAYMENT_SHORTFALL'
+            },
+            handler: async function(response) {
+              if (response && (response.status === 'SUCCESS' || response.event === 'SUCCESS')) {
+                alert(`🎉 Payment of ₹${shortfall.toFixed(2)} Successful! Top-up received.`);
+                await refreshWalletBalance();
+                await executePromotionSubmit(response.order_id || order_id);
+              } else {
+                alert('Payment pending or not completed. Please try again.');
+              }
+            }
+          });
+        } else {
+          if (confirm(`Wallet balance shortfall of ₹${shortfall.toFixed(2)}. Open Wallet Top Up window now?`)) {
             openAddMoneyModal();
           }
-        } else {
-          alert(err.message);
         }
       }
     }
