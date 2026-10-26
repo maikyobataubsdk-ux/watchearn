@@ -624,6 +624,44 @@ def get_user_connected_channels(owner_user_id: int) -> list[dict]:
         return [dict(r) for r in rows]
 
 
+def delete_connected_channel(owner_user_id: int, channel_id: str) -> dict:
+    with db() as conn:
+        clean_id = str(channel_id).strip()
+        username_part = clean_id.split("t.me/")[-1].lstrip("@").strip("/")
+        at_username = f"@{username_part}" if username_part else clean_id
+
+        row = conn.execute(
+            """
+            SELECT * FROM connected_channels
+            WHERE owner_user_id=? AND (channel_id=? OR channel_id=? OR channel_username=? OR id=?)
+            """,
+            (owner_user_id, clean_id, at_username, username_part, clean_id),
+        ).fetchone()
+        if not row:
+            return {"ok": False, "error": "Channel not found or you do not have permission to delete it."}
+        conn.execute("DELETE FROM connected_channels WHERE id=?", (row["id"],))
+        return {"ok": True, "message": f"Channel '{row['channel_title']}' removed successfully."}
+
+
+def admin_delete_connected_channel(channel_id: str) -> dict:
+    with db() as conn:
+        clean_id = str(channel_id).strip()
+        username_part = clean_id.split("t.me/")[-1].lstrip("@").strip("/")
+        at_username = f"@{username_part}" if username_part else clean_id
+
+        row = conn.execute(
+            """
+            SELECT * FROM connected_channels
+            WHERE channel_id=? OR channel_id=? OR channel_username=? OR id=?
+            """,
+            (clean_id, at_username, username_part, clean_id),
+        ).fetchone()
+        if not row:
+            return {"ok": False, "error": "Channel not found."}
+        conn.execute("DELETE FROM connected_channels WHERE id=?", (row["id"],))
+        return {"ok": True, "message": f"Channel '{row['channel_title']}' removed by admin."}
+
+
 def get_all_connected_channels() -> list[dict]:
     with db() as conn:
         rows = conn.execute(
@@ -1008,6 +1046,46 @@ def get_wallet_transactions(telegram_id: int, limit: int = 50) -> list[dict]:
             (telegram_id, limit),
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+def admin_credit_user_wallet(user_id: int, amount_inr: float, description: str = "Admin Funds Credit") -> dict:
+    user = get_user_by_id(user_id)
+    if not user:
+        return {"ok": False, "error": f"User ID {user_id} not found."}
+
+    tg_id = user.get("telegram_id") or user["id"]
+    amount_paise = int(round(amount_inr * 100))
+    if amount_paise <= 0:
+        return {"ok": False, "error": "Amount must be greater than zero."}
+
+    get_or_create_wallet(tg_id)
+    now = utcnow()
+    order_id = f"ADMIN-{tg_id}-{uuid.uuid4().hex[:8].upper()}"
+
+    with db() as conn:
+        conn.execute(
+            """
+            INSERT INTO wallet_transactions (telegram_id, type, amount_paise, utr, order_id, description, created_at)
+            VALUES (?, 'admin_credit', ?, 'ADMIN_GRANT', ?, ?, ?)
+            """,
+            (tg_id, amount_paise, order_id, description or "Admin Grant Credit", now),
+        )
+        conn.execute(
+            """
+            UPDATE wallets
+            SET balance_paise = balance_paise + ?,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (amount_paise, now, tg_id),
+        )
+        row_w = conn.execute("SELECT * FROM wallets WHERE telegram_id=?", (tg_id,)).fetchone()
+        return {
+            "ok": True,
+            "message": f"Successfully credited ₹{amount_inr:.2f} to user '{user['username']}' account.",
+            "new_balance_paise": row_w["balance_paise"],
+            "new_balance_inr": row_w["balance_paise"] / 100.0,
+        }
 
 
 def deduct_wallet_balance_paise(telegram_id: int, amount_paise: int, description: str = "Channel Promotion Payment") -> dict:

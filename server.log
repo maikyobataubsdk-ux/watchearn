@@ -1,42 +1,14 @@
-/app/web.py:304: DeprecationWarning:
-        on_event is deprecated, use lifespan event handlers instead.
-
-        Read more about it in the
-        [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
-
-  @app.on_event("startup")
-INFO:     Started server process [78327]
+INFO:     Started server process [111807]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:42744 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:42744 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:42744 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:42744 - "POST /api/auth/telegram-mini-app HTTP/1.1" 200 OK
-INFO:     127.0.0.1:42750 - "GET /api/config HTTP/1.1" 200 OK
-INFO:     127.0.0.1:42750 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:42750 - "GET /api/promotions/payment-qr HTTP/1.1" 200 OK
-INFO:     127.0.0.1:42744 - "GET /api/promotions/my HTTP/1.1" 200 OK
-INFO:     127.0.0.1:42744 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:45378 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45378 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:45378 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:45378 - "POST /api/auth/telegram-mini-app HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45382 - "GET /api/config HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45382 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45382 - "GET /api/promotions/payment-qr HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45378 - "GET /api/promotions/my HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45378 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:45378 - "POST /api/promotions/analyze HTTP/1.1" 200 OK
-INFO:     127.0.0.1:45378 - "GET /api/channels/my HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39892 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39892 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:39892 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:39892 - "POST /api/auth/telegram-mini-app HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39896 - "GET /api/config HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39896 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39896 - "GET /api/promotions/payment-qr HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39892 - "GET /api/promotions/my HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39892 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:39892 - "POST /api/promotions/analyze HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39892 - "GET /api/channels/my HTTP/1.1" 200 OK
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:41810 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58784 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58784 - "GET /static/logo.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58784 - "POST /api/auth/telegram-mini-app HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58790 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58790 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58790 - "GET /api/wallet/balance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58784 - "GET /api/promotions/my HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58784 - "POST /api/promotions/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58784 - "GET /api/wallet/balance HTTP/1.1" 200 OK

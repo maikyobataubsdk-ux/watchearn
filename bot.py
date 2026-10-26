@@ -637,8 +637,26 @@ async def process_promotion_rotations() -> None:
 
         for ch in batch:
             try:
+                # Per-channel special tracking invite link generation
+                tracking_url = promo["channel_url"]
+                try:
+                    target_chat_arg = int(promo["channel_id"]) if str(promo["channel_id"]).lstrip("-").isdigit() else promo["channel_id"]
+                    invite = await bot.create_chat_invite_link(
+                        chat_id=target_chat_arg,
+                        name=f"promo_{promo['id']}_ch_{ch['id']}",
+                        creates_join_request=False
+                    )
+                    if invite and invite.invite_link:
+                        tracking_url = invite.invite_link
+                except Exception:
+                    pass
+
+                ch_inline_btn = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="👉 Join Channel Now", url=tracking_url)]
+                ])
+
                 chat_id_arg = int(ch["channel_id"]) if str(ch["channel_id"]).lstrip("-").isdigit() else ch["channel_id"]
-                sent_msg = await bot.send_message(chat_id=chat_id_arg, text=msg_content, reply_markup=inline_btn)
+                sent_msg = await bot.send_message(chat_id=chat_id_arg, text=msg_content, reply_markup=ch_inline_btn)
                 record_promo_rotation(
                     promotion_id=promo["id"],
                     channel_id=ch["channel_id"],
@@ -661,6 +679,10 @@ async def rotation_background_loop() -> None:
 # Real-time ChatMemberUpdated Handler for Join/Left & Earning Analytics
 @router.chat_member()
 async def chat_member_update_handler(event: ChatMemberUpdated) -> None:
+    # Anti-Bot Protection: Ignore all bot accounts completely!
+    if event.new_chat_member and event.new_chat_member.user and event.new_chat_member.user.is_bot:
+        return
+
     chat_id = str(event.chat.id)
     old_status = event.old_chat_member.status
     new_status = event.new_chat_member.status
