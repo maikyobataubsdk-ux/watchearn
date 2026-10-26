@@ -464,6 +464,62 @@ class TestBlazeculturePTCPlatform(unittest.TestCase):
         self.assertTrue(len(cat_chans) >= 1)
         self.assertEqual(cat_chans[0]["category"], "Tech & Coding")
 
+    def test_17_admin_add_funds_and_channel_deletion(self):
+        login_c = self.client.post("/api/auth/login", json={"login": "userC", "password": "password123"}).json()
+        token_c = login_c["token"]
+        user_c = db.get_user_by_username("userC")
+
+        # 1. Admin Login
+        admin_login = self.client.post("/api/admin/login", json={"username": "rajpapa", "password": "28@RajPapa"}).json()
+        admin_token = admin_login["adminToken"]
+
+        # 2. Admin Add ₹500 Funds to User C Wallet
+        add_res = self.client.post("/api/admin/user/add-funds", json={
+            "userId": user_c["id"],
+            "amountInr": 500.0,
+            "description": "Bonus Grant from Master Admin"
+        }, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(add_res.status_code, 200)
+        self.assertTrue(add_res.json()["ok"])
+
+        # Check User C updated wallet balance (was ₹30, now ₹530)
+        bal_res = self.client.get("/api/wallet/balance", headers={"Authorization": f"Bearer {token_c}"})
+        self.assertEqual(bal_res.json()["balance_paise"], 53000)
+        self.assertEqual(bal_res.json()["balance_inr"], 530.0)
+
+        # 3. Connect a new channel for User C
+        conn_res = self.client.post("/api/channels/connect", json={
+            "channel_link": "https://t.me/channel_to_delete",
+            "category": "General"
+        }, headers={"Authorization": f"Bearer {token_c}"})
+        self.assertEqual(conn_res.status_code, 200)
+
+        # 4. User Deletes Connected Channel
+        del_user_res = self.client.post("/api/channels/delete", json={
+            "channel_id": "https://t.me/channel_to_delete"
+        }, headers={"Authorization": f"Bearer {token_c}"})
+        self.assertEqual(del_user_res.status_code, 200)
+        self.assertTrue(del_user_res.json()["ok"])
+
+        # Verify channel no longer in user's list
+        chans_after = self.client.get("/api/channels/my", headers={"Authorization": f"Bearer {token_c}"}).json()["channels"]
+        has_deleted = any(c["channel_id"] == "https://t.me/channel_to_delete" for c in chans_after)
+        self.assertFalse(has_deleted)
+
+        # 5. Connect channel for Admin deletion test
+        conn_adm = self.client.post("/api/channels/connect", json={
+            "channel_link": "https://t.me/channel_adm_delete",
+            "category": "Gaming & eSports"
+        }, headers={"Authorization": f"Bearer {token_c}"})
+        self.assertEqual(conn_adm.status_code, 200)
+
+        # Admin Deletes Channel
+        del_adm_res = self.client.post("/api/admin/channels/delete", json={
+            "channel_id": "https://t.me/channel_adm_delete"
+        }, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(del_adm_res.status_code, 200)
+        self.assertTrue(del_adm_res.json()["ok"])
+
 
 if __name__ == "__main__":
     unittest.main()

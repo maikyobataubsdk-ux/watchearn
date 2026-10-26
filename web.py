@@ -26,9 +26,10 @@ from db import (
     get_referral_stats, get_settings, update_settings, get_ad_codes, update_ad_codes,
     hash_password, create_promotion, get_user_promotions, get_all_promotions,
     update_promotion_status, connect_channel, get_user_connected_channels, get_all_connected_channels,
+    delete_connected_channel, admin_delete_connected_channel,
     get_campaign, record_rewarded_intent,
     get_or_create_wallet, get_wallet_balance, credit_wallet_deposit, get_wallet_transactions,
-    deduct_wallet_balance_paise,
+    deduct_wallet_balance_paise, admin_credit_user_wallet,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -137,6 +138,11 @@ class ConnectChannelRequest(BaseModel):
     category: Optional[str] = "General"
 
 
+class DeleteChannelRequest(BaseModel):
+    channel_id: Optional[str] = None
+    channelId: Optional[str] = None
+
+
 class AdminLoginRequest(BaseModel):
     username: str
     password: str
@@ -155,6 +161,12 @@ class AdminPremiumRequest(BaseModel):
 class AdminBalanceRequest(BaseModel):
     userId: int
     newBalance: float
+
+
+class AdminAddFundsRequest(BaseModel):
+    userId: int
+    amountInr: float = Field(gt=0)
+    description: Optional[str] = "Admin Funds Addition"
 
 
 class AdminWithdrawalStatusRequest(BaseModel):
@@ -770,6 +782,28 @@ async def my_connected_channels(user: dict = Depends(get_current_user)) -> dict:
     return {"ok": True, "channels": channels}
 
 
+@app.post("/api/channels/delete")
+async def user_delete_channel(body: DeleteChannelRequest, user: dict = Depends(get_current_user)) -> dict:
+    c_id = body.channel_id or body.channelId
+    if not c_id:
+        raise HTTPException(status_code=400, detail="channel_id is required.")
+    res = delete_connected_channel(user["id"], c_id)
+    if not res.get("ok"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Failed to delete channel."))
+    return res
+
+
+@app.post("/api/admin/channels/delete")
+async def admin_delete_channel(body: DeleteChannelRequest, _: bool = Depends(require_admin)) -> dict:
+    c_id = body.channel_id or body.channelId
+    if not c_id:
+        raise HTTPException(status_code=400, detail="channel_id is required.")
+    res = admin_delete_connected_channel(c_id)
+    if not res.get("ok"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Failed to delete channel."))
+    return res
+
+
 # YOUPI PG & Wallet Endpoints
 YOUPI_WEBHOOK_SECRET = "69447d0ed8ea359cba870ab6b792e716813dc2006522154b45268577f851c7c0"
 
@@ -989,6 +1023,14 @@ async def admin_premium_user(body: AdminPremiumRequest, _: bool = Depends(requir
 async def admin_adjust_balance(body: AdminBalanceRequest, _: bool = Depends(require_admin)) -> dict:
     adjust_user_balance(body.userId, body.newBalance)
     return {"ok": True, "message": f"User ID {body.userId} balance updated to {body.newBalance}"}
+
+
+@app.post("/api/admin/user/add-funds")
+async def admin_add_funds(body: AdminAddFundsRequest, _: bool = Depends(require_admin)) -> dict:
+    res = admin_credit_user_wallet(body.userId, body.amountInr, body.description or "Admin Funds Addition")
+    if not res.get("ok"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Failed to add funds."))
+    return res
 
 
 @app.get("/api/admin/withdrawals")
