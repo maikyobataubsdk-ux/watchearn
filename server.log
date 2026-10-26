@@ -1,41 +1,23 @@
-/app/web.py:294: DeprecationWarning:
+/app/web.py:299: DeprecationWarning:
         on_event is deprecated, use lifespan event handlers instead.
 
         Read more about it in the
         [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
 
   @app.on_event("startup")
-INFO:     Started server process [71958]
+INFO:     Started server process [53958]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:42570 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:34848 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:34848 - "POST /api/auth/telegram-mini-app HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34862 - "GET /api/config HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34862 - "GET /api/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34862 - "GET /api/promotions/payment-qr HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "GET /api/promotions/my HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:34848 - "GET /api/channels/my HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "GET /api/auth/me HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "GET /api/user/withdrawals HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "GET /admin HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:34848 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:34862 - "GET /api/config HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "POST /api/auth/telegram-mini-app HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "POST /api/admin/login HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "GET /api/admin/stats HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "GET /api/admin/payment-qr HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "GET /api/admin/bot-config HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "GET /api/admin/promotions HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "GET /api/admin/ad-codes HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "GET /api/admin/users HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34848 - "GET /api/admin/withdrawals HTTP/1.1" 200 OK
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
-INFO:     Finished server process [71958]
+INFO:     127.0.0.1:55990 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45736 - "GET /?tg_user_id=100200300 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45736 - "GET /static/logo.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:45736 - "GET /static/logo.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:45752 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45736 - "POST /api/auth/telegram-mini-app HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45736 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45736 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45736 - "GET /api/wallet/balance HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45756 - "GET /api/user/withdrawals HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45752 - "GET /api/wallet/transactions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:45766 - "GET /api/wallet/balance HTTP/1.1" 200 OK

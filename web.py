@@ -1,5 +1,9 @@
 from __future__ import annotations
+import hmac
+import hashlib
+import json
 import secrets
+import time
 import uuid
 from pathlib import Path
 from typing import Optional
@@ -23,6 +27,7 @@ from db import (
     hash_password, create_promotion, get_user_promotions, get_all_promotions,
     update_promotion_status, connect_channel, get_user_connected_channels, get_all_connected_channels,
     get_campaign, record_rewarded_intent,
+    get_or_create_wallet, get_wallet_balance, credit_wallet_deposit, get_wallet_transactions,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -728,6 +733,127 @@ async def user_connect_channel(body: ConnectChannelRequest, user: dict = Depends
 async def my_connected_channels(user: dict = Depends(get_current_user)) -> dict:
     channels = get_user_connected_channels(user["id"])
     return {"ok": True, "channels": channels}
+
+
+# YOUPI PG & Wallet Endpoints
+YOUPI_WEBHOOK_SECRET = "69447d0ed8ea359cba870ab6b792e716813dc2006522154b45268577f851c7c0"
+
+
+@app.get("/api/wallet/balance")
+async def wallet_balance(user: dict = Depends(get_current_user)) -> dict:
+    tg_id = user.get("telegram_id") or user["id"]
+    paise = get_wallet_balance(tg_id)
+    return {
+        "ok": True,
+        "telegram_id": tg_id,
+        "balance_paise": paise,
+        "balance_inr": paise / 100.0,
+    }
+
+
+@app.get("/api/wallet/transactions")
+async def wallet_transactions(user: dict = Depends(get_current_user)) -> dict:
+    tg_id = user.get("telegram_id") or user["id"]
+    txns = get_wallet_transactions(tg_id)
+    return {
+        "ok": True,
+        "transactions": txns,
+    }
+
+
+@app.post("/api/youpi-webhook")
+async def youpi_webhook(request: Request) -> dict:
+    raw_body = await request.body()
+    headers = request.headers
+
+    # Signature & Timestamp Headers
+    timestamp_str = headers.get("X-Gateway-Timestamp") or headers.get("x-gateway-timestamp") or ""
+    signature_header = (
+        headers.get("X-Gateway-Signature")
+        or headers.get("X-Signature")
+        or headers.get("X-Youpi-Signature")
+        or headers.get("x-gateway-signature")
+        or headers.get("x-signature")
+        or ""
+    )
+
+    if not timestamp_str or not signature_header:
+        raise HTTPException(status_code=400, detail="Missing signature or timestamp header.")
+
+    # Timestamp Drift Check (< 2 hours = 7200 seconds)
+    try:
+        ts = float(timestamp_str)
+        if ts > 1e11:  # milliseconds
+            ts = ts / 1000.0
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid timestamp format.")
+
+    current_ts = time.time()
+    if abs(current_ts - ts) > 7200:
+        raise HTTPException(status_code=400, detail="Timestamp drift exceeds 2 hours.")
+
+    # HMAC-SHA256 Verification: HMAC-SHA256 over (rawBody + "." + X-Gateway-Timestamp) with secret
+    payload_to_sign = raw_body.decode("utf-8", errors="replace") + "." + timestamp_str
+    expected_sig = hmac.new(
+        YOUPI_WEBHOOK_SECRET.encode("utf-8"),
+        payload_to_sign.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+
+    if not hmac.compare_digest(expected_sig.lower(), signature_header.lower()):
+        raise HTTPException(status_code=401, detail="Invalid signature.")
+
+    # Parse body after signature verification
+    try:
+        data = json.loads(raw_body)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body.")
+
+    payload = data.get("data") if isinstance(data.get("data"), dict) else data
+
+    event = data.get("event") or payload.get("event") or payload.get("status")
+    method = payload.get("method") or payload.get("payment_method") or data.get("method") or "UPI"
+
+    if event == "SUCCESS" and str(method).upper() == "UPI":
+        amount_raw = payload.get("amount") or data.get("amount") or 0
+        try:
+            amount_float = float(amount_raw)
+        except (ValueError, TypeError):
+            amount_float = 0.0
+
+        # Amount conversion to paise (if in rupees)
+        if "amount_paise" in payload:
+            amount_paise = int(payload["amount_paise"])
+        else:
+            amount_paise = int(round(amount_float * 100))
+
+        utr = payload.get("utr") or payload.get("rrn") or data.get("utr") or ""
+        order_id = payload.get("order_id") or data.get("order_id") or ""
+        metadata = payload.get("metadata") or data.get("metadata") or {}
+
+        tg_user_id = metadata.get("telegram_user_id")
+        if not tg_user_id and order_id and order_id.startswith("WALLET-"):
+            parts = order_id.split("-")
+            if len(parts) >= 2 and parts[1].isdigit():
+                tg_user_id = int(parts[1])
+
+        if tg_user_id and amount_paise > 0:
+            cust = payload.get("customer") or {}
+            cust_name = cust.get("name") or ""
+            cust_phone = cust.get("phone") or ""
+            desc = f"YOUPI PG Wallet Topup (UTR: {utr})"
+            if cust_name or cust_phone:
+                desc += f" - {cust_name} ({cust_phone})"
+
+            credit_wallet_deposit(
+                telegram_id=int(tg_user_id),
+                amount_paise=amount_paise,
+                utr=str(utr),
+                order_id=str(order_id) if order_id else None,
+                description=desc
+            )
+
+    return {"received": True}
 
 
 # Admin Endpoints (/raj)

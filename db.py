@@ -53,6 +53,8 @@ def _sync_json_backup(conn: sqlite3.Connection) -> None:
             "withdrawals": [dict(r) for r in conn.execute("SELECT * FROM withdrawals ORDER BY id DESC LIMIT 100").fetchall()],
             "promotions": [dict(r) for r in conn.execute("SELECT * FROM promotions ORDER BY id DESC LIMIT 100").fetchall()],
             "connected_channels": [dict(r) for r in conn.execute("SELECT * FROM connected_channels ORDER BY id DESC LIMIT 100").fetchall()],
+            "wallets": [dict(r) for r in conn.execute("SELECT * FROM wallets ORDER BY telegram_id DESC LIMIT 100").fetchall()],
+            "wallet_transactions": [dict(r) for r in conn.execute("SELECT * FROM wallet_transactions ORDER BY id DESC LIMIT 100").fetchall()],
             "settings": {r["key"]: r["value"] for r in conn.execute("SELECT * FROM settings").fetchall()},
             "ad_codes": {r["key"]: r["value"] for r in conn.execute("SELECT * FROM ad_codes").fetchall()}
         }
@@ -66,6 +68,24 @@ def init_db() -> None:
     with db() as conn:
         conn.executescript(
             """
+            CREATE TABLE IF NOT EXISTS wallets (
+                telegram_id INTEGER PRIMARY KEY,
+                balance_paise INTEGER DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS wallet_transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                telegram_id INTEGER NOT NULL,
+                type TEXT NOT NULL,
+                amount_paise INTEGER NOT NULL,
+                utr TEXT,
+                order_id TEXT UNIQUE,
+                description TEXT,
+                created_at TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 telegram_id INTEGER UNIQUE,
@@ -867,3 +887,68 @@ def get_referral_stats(user_id: int) -> dict:
             "total_referrals": ref_count,
             "referrals": [dict(r) for r in ref_users],
         }
+
+
+# Wallet Functions
+def get_or_create_wallet(telegram_id: int) -> dict:
+    now = utcnow()
+    with db() as conn:
+        conn.execute(
+            """
+            INSERT INTO wallets (telegram_id, balance_paise, created_at, updated_at)
+            VALUES (?, 0, ?, ?)
+            ON CONFLICT(telegram_id) DO NOTHING
+            """,
+            (telegram_id, now, now),
+        )
+        row = conn.execute("SELECT * FROM wallets WHERE telegram_id=?", (telegram_id,)).fetchone()
+        return dict(row)
+
+
+def get_wallet_balance(telegram_id: int) -> int:
+    w = get_or_create_wallet(telegram_id)
+    return w["balance_paise"]
+
+
+def credit_wallet_deposit(telegram_id: int, amount_paise: int, utr: str | None = None, order_id: str | None = None, description: str | None = None) -> dict:
+    """
+    Credits user wallet and logs transaction.
+    Returns dict with 'already_processed': True if order_id was already processed, or 'ok': True on success.
+    """
+    get_or_create_wallet(telegram_id)
+    now = utcnow()
+    with db() as conn:
+        if order_id:
+            existing = conn.execute("SELECT * FROM wallet_transactions WHERE order_id=?", (order_id,)).fetchone()
+            if existing:
+                row_w = conn.execute("SELECT * FROM wallets WHERE telegram_id=?", (telegram_id,)).fetchone()
+                return {"ok": True, "already_processed": True, "balance_paise": row_w["balance_paise"]}
+
+        conn.execute(
+            """
+            INSERT INTO wallet_transactions (telegram_id, type, amount_paise, utr, order_id, description, created_at)
+            VALUES (?, 'deposit', ?, ?, ?, ?, ?)
+            """,
+            (telegram_id, amount_paise, utr, order_id, description or "YOUPI PG Deposit", now),
+        )
+        conn.execute(
+            """
+            UPDATE wallets
+            SET balance_paise = balance_paise + ?,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (amount_paise, now, telegram_id),
+        )
+        row_w = conn.execute("SELECT * FROM wallets WHERE telegram_id=?", (telegram_id,)).fetchone()
+        return {"ok": True, "already_processed": False, "balance_paise": row_w["balance_paise"]}
+
+
+def get_wallet_transactions(telegram_id: int, limit: int = 50) -> list[dict]:
+    get_or_create_wallet(telegram_id)
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM wallet_transactions WHERE telegram_id=? ORDER BY id DESC LIMIT ?",
+            (telegram_id, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
