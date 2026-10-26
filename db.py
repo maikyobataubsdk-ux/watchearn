@@ -159,6 +159,10 @@ def init_db() -> None:
                 current_views INTEGER DEFAULT 0,
                 status TEXT DEFAULT 'pending_approval',
                 transaction_ref TEXT NOT NULL,
+                category TEXT DEFAULT 'General',
+                is_category_specific INTEGER DEFAULT 0,
+                total_price_inr REAL DEFAULT 0.0,
+                ad_message TEXT DEFAULT '',
                 created_at TEXT NOT NULL,
                 FOREIGN KEY(user_id) REFERENCES users(id)
             );
@@ -169,12 +173,24 @@ def init_db() -> None:
                 channel_id TEXT UNIQUE NOT NULL,
                 channel_title TEXT NOT NULL,
                 channel_username TEXT,
+                category TEXT DEFAULT 'General',
                 total_joins INTEGER DEFAULT 0,
                 total_lefts INTEGER DEFAULT 0,
                 total_views INTEGER DEFAULT 0,
                 total_earned_inr REAL DEFAULT 0.0,
                 created_at TEXT NOT NULL,
                 FOREIGN KEY(owner_user_id) REFERENCES users(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS promo_rotations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                promotion_id INTEGER NOT NULL,
+                channel_id TEXT NOT NULL,
+                message_id INTEGER NOT NULL,
+                posted_at TEXT NOT NULL,
+                delete_at TEXT NOT NULL,
+                status TEXT DEFAULT 'active',
+                FOREIGN KEY(promotion_id) REFERENCES promotions(id)
             );
 
             CREATE TABLE IF NOT EXISTS join_analytics (
@@ -239,6 +255,26 @@ def init_db() -> None:
             pass
         try:
             conn.execute("ALTER TABLE users ADD COLUMN photo_url TEXT")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("ALTER TABLE connected_channels ADD COLUMN category TEXT DEFAULT 'General'")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("ALTER TABLE promotions ADD COLUMN category TEXT DEFAULT 'General'")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("ALTER TABLE promotions ADD COLUMN is_category_specific INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("ALTER TABLE promotions ADD COLUMN total_price_inr REAL DEFAULT 0.0")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("ALTER TABLE promotions ADD COLUMN ad_message TEXT DEFAULT ''")
         except sqlite3.OperationalError:
             pass
 
@@ -503,14 +539,33 @@ def get_unlock(user_id: int, token: str) -> dict | None:
 
 
 # Promotion & Analytics Functions
-def create_promotion(user_id: int, channel_url: str, channel_id: str, channel_title: str, price_inr: float, target_joins: int, transaction_ref: str) -> dict:
+def create_promotion(
+    user_id: int,
+    channel_url: str,
+    channel_id: str,
+    channel_title: str,
+    price_inr: float,
+    target_joins: int,
+    transaction_ref: str,
+    category: str = "General",
+    is_category_specific: bool = False,
+    total_price_inr: float = 0.0,
+    ad_message: str = "",
+    status: str = "active"
+) -> dict:
+    tot_price = total_price_inr if total_price_inr > 0 else price_inr
     with db() as conn:
         cursor = conn.execute(
             """
-            INSERT INTO promotions (user_id, channel_url, channel_id, channel_title, price_inr, target_joins, current_joins, current_views, status, transaction_ref, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, 0, 0, 'pending_approval', ?, ?)
+            INSERT INTO promotions (
+                user_id, channel_url, channel_id, channel_title, price_inr, target_joins, current_joins, current_views, status, transaction_ref, category, is_category_specific, total_price_inr, ad_message, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (user_id, channel_url, str(channel_id), channel_title, price_inr, target_joins, transaction_ref, utcnow()),
+            (
+                user_id, channel_url, str(channel_id), channel_title, price_inr, target_joins,
+                status, transaction_ref, category, 1 if is_category_specific else 0, tot_price, ad_message, utcnow()
+            ),
         )
         promo_id = cursor.lastrowid
         row = conn.execute("SELECT * FROM promotions WHERE id=?", (promo_id,)).fetchone()
@@ -545,18 +600,19 @@ def update_promotion_status(promo_id: int, status: str) -> dict:
         return {"ok": True}
 
 
-def connect_channel(owner_user_id: int, channel_id: str, channel_title: str, channel_username: str = "") -> dict:
+def connect_channel(owner_user_id: int, channel_id: str, channel_title: str, channel_username: str = "", category: str = "General") -> dict:
     with db() as conn:
         conn.execute(
             """
-            INSERT INTO connected_channels (owner_user_id, channel_id, channel_title, channel_username, created_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO connected_channels (owner_user_id, channel_id, channel_title, channel_username, category, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(channel_id) DO UPDATE SET
                 owner_user_id=excluded.owner_user_id,
                 channel_title=excluded.channel_title,
-                channel_username=excluded.channel_username
+                channel_username=excluded.channel_username,
+                category=excluded.category
             """,
-            (owner_user_id, str(channel_id), channel_title, channel_username, utcnow()),
+            (owner_user_id, str(channel_id), channel_title, channel_username, category or "General", utcnow()),
         )
         row = conn.execute("SELECT * FROM connected_channels WHERE channel_id=?", (str(channel_id),)).fetchone()
         return dict(row)
@@ -952,3 +1008,104 @@ def get_wallet_transactions(telegram_id: int, limit: int = 50) -> list[dict]:
             (telegram_id, limit),
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+def deduct_wallet_balance_paise(telegram_id: int, amount_paise: int, description: str = "Channel Promotion Payment") -> dict:
+    """
+    Deducts user wallet balance in paise if sufficient balance is available.
+    Returns dict with 'ok': True and new balance, or 'ok': False if insufficient balance.
+    """
+    w = get_or_create_wallet(telegram_id)
+    current_bal = w["balance_paise"]
+    if current_bal < amount_paise:
+        return {
+            "ok": False,
+            "error": f"Insufficient wallet balance. Required: ₹{amount_paise/100:.2f}, Available: ₹{current_bal/100:.2f}. Please add money to your wallet.",
+            "current_balance_paise": current_bal,
+            "required_paise": amount_paise,
+        }
+
+    now = utcnow()
+    order_id = f"PROMO-{telegram_id}-{uuid.uuid4().hex[:8].upper()}"
+    with db() as conn:
+        conn.execute(
+            """
+            INSERT INTO wallet_transactions (telegram_id, type, amount_paise, utr, order_id, description, created_at)
+            VALUES (?, 'debit', ?, NULL, ?, ?, ?)
+            """,
+            (telegram_id, amount_paise, order_id, description, now),
+        )
+        conn.execute(
+            """
+            UPDATE wallets
+            SET balance_paise = balance_paise - ?,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (amount_paise, now, telegram_id),
+        )
+        row_w = conn.execute("SELECT * FROM wallets WHERE telegram_id=?", (telegram_id,)).fetchone()
+        return {"ok": True, "balance_paise": row_w["balance_paise"], "order_id": order_id}
+
+
+# Promotion Batch Rotation Helpers
+def get_connected_channels_by_category(category: str | None = None, limit: int = 50) -> list[dict]:
+    with db() as conn:
+        if category and category.strip().lower() != "general":
+            rows = conn.execute(
+                "SELECT * FROM connected_channels WHERE LOWER(category)=LOWER(?) ORDER BY id ASC LIMIT ?",
+                (category.strip(), limit),
+            ).fetchall()
+            if rows:
+                return [dict(r) for r in rows]
+
+        rows = conn.execute("SELECT * FROM connected_channels ORDER BY id ASC LIMIT ?", (limit,)).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_active_promotions_for_rotation() -> list[dict]:
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM promotions WHERE status='active' AND current_joins < target_joins ORDER BY id ASC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_rotated_channel_ids_for_promotion(promotion_id: int) -> set[str]:
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT channel_id FROM promo_rotations WHERE promotion_id=?", (promotion_id,)
+        ).fetchall()
+        return {r["channel_id"] for r in rows}
+
+
+def record_promo_rotation(promotion_id: int, channel_id: str, message_id: int, delete_at: str) -> dict:
+    with db() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO promo_rotations (promotion_id, channel_id, message_id, posted_at, delete_at, status)
+            VALUES (?, ?, ?, ?, ?, 'active')
+            """,
+            (promotion_id, str(channel_id), message_id, utcnow(), delete_at),
+        )
+        row = conn.execute("SELECT * FROM promo_rotations WHERE id=?", (cursor.lastrowid,)).fetchone()
+        return dict(row)
+
+
+def get_active_promo_rotations_due_for_deletion(now_iso: str) -> list[dict]:
+    with db() as conn:
+        rows = conn.execute(
+            """
+            SELECT r.*, p.current_joins, p.target_joins, p.status as promo_status
+            FROM promo_rotations r
+            JOIN promotions p ON r.promotion_id = p.id
+            WHERE r.status='active' AND r.delete_at <= ?
+            """,
+            (now_iso,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def mark_promo_rotation_deleted(rotation_id: int) -> None:
+    with db() as conn:
+        conn.execute("UPDATE promo_rotations SET status='deleted' WHERE id=?", (rotation_id,))

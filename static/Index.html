@@ -870,8 +870,39 @@
 
             <form onsubmit="handlePromoSubmit(event)">
               <div style="margin-bottom: 15px;">
-                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Promotion Budget (INR ₹)</label>
-                <input type="number" id="promoBudgetVal" class="glass-input" min="50" step="50" value="100" required>
+                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Target Channel Category</label>
+                <select id="promoCategorySelect" class="glass-input" style="background: rgba(18, 24, 38, 0.9);">
+                  <option value="General">General / All Categories</option>
+                  <option value="Tech & Coding">Tech & Coding</option>
+                  <option value="Movies & Entertainment">Movies & Entertainment</option>
+                  <option value="Gaming & eSports">Gaming & eSports</option>
+                  <option value="Crypto & Finance">Crypto & Finance</option>
+                  <option value="Education & Jobs">Education & Jobs</option>
+                  <option value="Shopping & Deals">Shopping & Deals</option>
+                  <option value="Lifestyle & News">Lifestyle & News</option>
+                  <option value="Others">Others</option>
+                </select>
+              </div>
+
+              <div style="margin-bottom: 15px; background: rgba(168,85,247,0.1); padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(168,85,247,0.3);">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; font-weight: bold; color: var(--purple);">
+                  <input type="checkbox" id="promoCategorySpecificToggle" onchange="updatePromoPricePreview()" style="width: 18px; height: 18px; accent-color: var(--purple);">
+                  🎯 Promote Category-Wise (+20% Extra Charge)
+                </label>
+                <p style="font-size: 12px; color: var(--text-muted); margin-top: 5px;">
+                  Target audience matching your exact category! A 20% surcharge is added to base budget and deducted directly from your wallet balance.
+                </p>
+              </div>
+
+              <div style="margin-bottom: 15px;">
+                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Base Promotion Budget (INR ₹)</label>
+                <input type="number" id="promoBudgetVal" class="glass-input" min="50" step="50" value="100" required oninput="updatePromoPricePreview()">
+              </div>
+
+              <div style="margin-bottom: 15px; padding: 12px; background: rgba(0,255,136,0.1); border-radius: 10px; border: 1px dashed var(--neon-green);">
+                <div style="font-size: 13px; color: #fff;">
+                  Total Amount to Deduct from Wallet: <strong id="promoTotalPricePreviewText" style="color: var(--neon-green); font-size: 16px;">₹100.00 INR</strong>
+                </div>
               </div>
 
               <div style="margin-bottom: 15px;">
@@ -879,13 +910,8 @@
                 <textarea id="promoMsgVal" class="glass-input" rows="3" placeholder="Join @yourchannel for daily high-paying tasks and exclusive giveaways!" required></textarea>
               </div>
 
-              <div style="margin-bottom: 20px;">
-                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Payment UTR / Transaction Reference ID</label>
-                <input type="text" id="promoTxnRefVal" class="glass-input" placeholder="e.g. 429381029381 or Paytm TXN ID" required>
-              </div>
-
               <button type="submit" class="btn btn-purple" style="width: 100%; font-size: 16px;">
-                <i class="fa-solid fa-paper-plane"></i> Submit Promotion for Admin Approval
+                <i class="fa-solid fa-paper-plane"></i> Pay & Start Automated Channel Promotion
               </button>
             </form>
           </div>
@@ -928,9 +954,28 @@
             </ol>
           </div>
 
-          <form onsubmit="handleConnectChannel(event)" style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <input type="text" id="connectChannelLinkInput" class="glass-input" placeholder="https://t.me/yourchannel or @yourchannel" required>
-            <button type="submit" class="btn btn-primary" style="white-space: nowrap;"><i class="fa-solid fa-plug"></i> Connect & Verify</button>
+          <form onsubmit="handleConnectChannel(event)" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+            <div>
+              <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Channel Link or @Username</label>
+              <input type="text" id="connectChannelLinkInput" class="glass-input" placeholder="https://t.me/yourchannel or @yourchannel" required>
+            </div>
+
+            <div>
+              <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Channel Category</label>
+              <select id="connectChannelCategorySelect" class="glass-input" style="background: rgba(18, 24, 38, 0.9);">
+                <option value="General">General / All Categories</option>
+                <option value="Tech & Coding">Tech & Coding</option>
+                <option value="Movies & Entertainment">Movies & Entertainment</option>
+                <option value="Gaming & eSports">Gaming & eSports</option>
+                <option value="Crypto & Finance">Crypto & Finance</option>
+                <option value="Education & Jobs">Education & Jobs</option>
+                <option value="Shopping & Deals">Shopping & Deals</option>
+                <option value="Lifestyle & News">Lifestyle & News</option>
+                <option value="Others">Others</option>
+              </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="white-space: nowrap;"><i class="fa-solid fa-plug"></i> Connect & Verify Admin</button>
           </form>
         </div>
 
@@ -1239,14 +1284,9 @@
       <p class="text-muted" style="font-size: 13px; margin-bottom: 20px;">Instant UPI payment gateway checkout. Funds are added to your wallet automatically on success.</p>
 
       <form onsubmit="initiateYoupiCheckout(event)">
-        <div style="margin-bottom: 15px;">
+        <div style="margin-bottom: 20px;">
           <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Top Up Amount (₹ INR)</label>
           <input type="number" id="addMoneyAmountInput" class="glass-input" min="10" max="50000" step="10" value="100" required>
-        </div>
-
-        <div style="margin-bottom: 20px;">
-          <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Mobile Phone Number</label>
-          <input type="tel" id="addMoneyPhoneInput" class="glass-input" placeholder="e.g. 9876543210" required pattern="[0-9]{10}">
         </div>
 
         <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 16px;" id="payNowBtn">
@@ -1640,15 +1680,9 @@
     async function initiateYoupiCheckout(e) {
       e.preventDefault();
       const amount = parseFloat(document.getElementById('addMoneyAmountInput').value);
-      const userPhone = document.getElementById('addMoneyPhoneInput').value.trim();
 
       if (!amount || amount < 10) {
         alert('Minimum top-up amount is ₹10');
-        return;
-      }
-
-      if (!userPhone || userPhone.length < 10) {
-        alert('Please enter a valid 10-digit mobile phone number');
         return;
       }
 
@@ -1664,7 +1698,7 @@
           currency: 'INR',
           customer: {
             name: currentUser ? (currentUser.first_name || currentUser.username) : 'User',
-            phone: userPhone,
+            phone: '9999999999',
             email: `${telegram_user_id}@telegram.user`
           },
           metadata: {
@@ -1849,38 +1883,52 @@
       const body = document.getElementById('legalModalBody');
 
       if (type === 'tos') {
-        title.textContent = '📜 Terms of Service';
+        title.textContent = '📜 Terms & Conditions';
         body.innerHTML = `
-          <p><strong>1. Acceptance of Terms</strong><br>By accessing or using the Blazeculture PTC and Telegram promotion platform, you agree to be bound by these Terms of Service. If you do not agree, please discontinue service usage immediately.</p>
+          <p><strong>1. Acceptance of Terms</strong><br>By accessing or using Blazeculture, you agree to comply with all terms and conditions outlined herein. If you disagree with any part, please discontinue platform usage.</p>
           <br>
-          <p><strong>2. Account & Usage Rules</strong><br>Users must be at least 18 years of age or have legal guardian consent. Automated bots, multiple account cheating, or fraud will result in immediate termination and forfeiture of balance.</p>
+          <p><strong>2. User Accounts & Fair Play</strong><br>Users are allowed one account per individual and device. Using VPNs, proxy services, multi-account automation, or bots to fake ad views or channel joins will result in permanent account termination and forfeiture of wallet funds.</p>
           <br>
-          <p><strong>3. Advertising & Promotion Policy</strong><br>Promoters must ensure submitted channels do not contain illegal, harmful, adult, or copyrighted content. Blazeculture reserves full rights to reject non-compliant campaigns.</p>
+          <p><strong>3. Channel Promotions & 20% Category Surcharge</strong><br>Promoters can run general or category-specific campaigns. Category-specific promotions incur a 20% surcharge added to base budget and are deducted directly from user wallet balance. Promotions run in 5-channel batches with 3-hour post lifetime auto-deletions if targets remain unfulfilled.</p>
           <br>
-          <p><strong>4. Support & Official Handles</strong><br>For questions or assistance regarding your account, contact official support at <strong>@Tgfuckerx</strong>.</p>
+          <p><strong>4. Official Support</strong><br>For questions or assistance regarding payments, promotions, or payouts, contact official support at <strong>@Tgfuckerx</strong>.</p>
         `;
       } else if (type === 'privacy') {
         title.textContent = '🔒 Privacy Policy';
         body.innerHTML = `
-          <p><strong>1. Data Collection</strong><br>We collect minimal required data including Telegram user ID, username, IP address, and transaction records for service delivery and fraud prevention.</p>
+          <p><strong>1. Information Collection</strong><br>We collect minimal required profile data (Telegram User ID, username, name, IP address, wallet transaction logs) necessary to provide service, record ad views, and process wallet deposits and payouts.</p>
           <br>
-          <p><strong>2. Use of Information</strong><br>Your information is used strictly to process rewards, track promotion campaign metrics, and verify payouts. We do NOT sell or share personal data with third parties.</p>
+          <p><strong>2. Usage & Data Security</strong><br>Your information is used strictly to deliver services, calculate referral bonuses, and secure transactions. We do NOT sell, rent, or disclose personal information to external commercial third parties.</p>
           <br>
-          <p><strong>3. Security</strong><br>We implement industry-standard encryption and security protocols to safeguard user data and payment details.</p>
+          <p><strong>3. Wallet Security</strong><br>All financial balances and payments are encrypted and logged with cryptographic transaction reference hashes.</p>
         `;
       } else if (type === 'refund') {
         title.textContent = '💳 Refund & Cancellation Policy';
         body.innerHTML = `
-          <p><strong>1. Promotion Refunds</strong><br>Promotion orders that are rejected by administrators will have funds credited back or refunded upon request via support (<strong>@Tgfuckerx</strong>).</p>
+          <p><strong>1. Wallet Money Additions</strong><br>Wallet deposits made via UPI / YOUPI PG are non-refundable once credited. Funds in your wallet can be used anytime for channel promotion campaigns or PTC tasks.</p>
           <br>
-          <p><strong>2. Completed Campaigns</strong><br>Once a channel promotion campaign has been approved and broadcasted across our network, refunds are non-applicable.</p>
+          <p><strong>2. Promotion Campaign Refunds</strong><br>If a promotion campaign cannot be delivered or is rejected by administration, the full amount will be credited back to your Blazeculture wallet balance instantly.</p>
+          <br>
+          <p><strong>3. Support Queries</strong><br>For deposit dispute resolution, please contact support handle <strong>@Tgfuckerx</strong> with transaction UTR numbers.</p>
         `;
       } else if (type === 'disclaimer') {
-        title.textContent = '⚖️ Earnings & Promotion Disclaimer';
+        title.textContent = '⚖️ Earnings & Channel Promotion Disclaimer';
         body.innerHTML = `
-          <p><strong>1. Earnings Disclaimer</strong><br>Coin rewards and channel earnings depend on active user engagement and ad views. Historical results do not guarantee future earnings.</p>
+          <p><strong>1. Revenue & Earnings Disclaimer</strong><br>Ad viewing coin earnings and channel owner revenue splits depend on active user engagement and genuine channel joins. Historical earnings do not guarantee future yields.</p>
           <br>
-          <p><strong>2. Promotion Results</strong><br>Channel growth and join numbers depend on channel niche, appeal, and audience activity. Targeted estimates are for illustrative purposes.</p>
+          <p><strong>2. Channel Growth Results</strong><br>Target join estimates are based on campaign budget. Actual subscriber retention and engagement depend on channel content quality and audience appeal.</p>
+        `;
+      } else if (type === 'dmca') {
+        title.textContent = '🛡️ DMCA & Copyright Policy';
+        body.innerHTML = `
+          <p><strong>1. Copyright Compliance</strong><br>Blazeculture respects intellectual property rights. Users and channel owners are prohibited from promoting copyrighted or infringing materials.</p>
+          <br>
+          <p><strong>2. Takedown Requests</strong><br>To submit a copyright violation complaint, notify our legal handle <strong>@Tgfuckerx</strong> with proof of ownership and channel link. Incomplete notices will be removed within 24 hours.</p>
+        `;
+      } else if (type === 'about') {
+        title.textContent = 'ℹ️ About Blazeculture Ecosystem';
+        body.innerHTML = `
+          <p><strong>Blazeculture</strong> is a high-paying PTC ad platform and Telegram channel promotion ecosystem. Our automated platform allows users to earn coins watching ads, promotes channels across connected partner networks with category targeting, and shares revenue with channel owners on user joins.</p>
         `;
       }
       modal.classList.remove('hidden');
@@ -1920,25 +1968,42 @@
       }
     }
 
+    function updatePromoPricePreview() {
+      const budget = parseFloat(document.getElementById('promoBudgetVal').value) || 100;
+      const isCatSpecific = document.getElementById('promoCategorySpecificToggle')?.checked || false;
+      const total = isCatSpecific ? budget * 1.20 : budget;
+      const elem = document.getElementById('promoTotalPricePreviewText');
+      if (elem) elem.textContent = `₹${total.toFixed(2)} INR`;
+    }
+
     async function handlePromoSubmit(e) {
       e.preventDefault();
       try {
         const budget = parseFloat(document.getElementById('promoBudgetVal').value);
         const adMessage = document.getElementById('promoMsgVal').value;
-        const txnRef = document.getElementById('promoTxnRefVal').value;
         const channelLink = document.getElementById('promoChannelLink').value;
+        const category = document.getElementById('promoCategorySelect').value;
+        const isCategorySpecific = document.getElementById('promoCategorySpecificToggle').checked;
 
         const res = await apiCall('/api/promotions/submit', 'POST', {
           channel_link: channelLink,
           ad_message: adMessage,
           budget_inr: budget,
-          payment_txn_ref: txnRef
+          category: category,
+          is_category_specific: isCategorySpecific,
         }, userToken);
 
         alert(res.message || 'Promotion submitted successfully!');
+        refreshWalletBalance();
         loadMyPromotions();
       } catch (err) {
-        alert(err.message);
+        if (err.message && err.message.includes('Insufficient wallet balance')) {
+          if (confirm(`${err.message}\n\nWould you like to open the Wallet Top Up window now?`)) {
+            openAddMoneyModal();
+          }
+        } else {
+          alert(err.message);
+        }
       }
     }
 
@@ -1975,7 +2040,8 @@
       e.preventDefault();
       try {
         const link = document.getElementById('connectChannelLinkInput').value.trim();
-        const res = await apiCall('/api/channels/connect', 'POST', { channel_link: link }, userToken);
+        const category = document.getElementById('connectChannelCategorySelect').value;
+        const res = await apiCall('/api/channels/connect', 'POST', { channel_link: link, category: category }, userToken);
         alert(res.message);
         loadMyChannels();
       } catch (err) {

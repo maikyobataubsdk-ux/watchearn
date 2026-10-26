@@ -15,11 +15,15 @@ from aiogram.types import (
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 
 from config import BOT_TOKEN, ADMIN_USER_ID, WEBAPP_URL, validate_common
+from datetime import datetime, timezone, timedelta
 from db import (
     init_db, get_setting, set_setting, create_campaign, get_campaign,
     has_rewarded_intent, get_unlock, save_unlock, get_user_by_id,
     record_channel_join_event, record_channel_left_event, get_user_promotions,
     get_user_connected_channels, get_all_connected_channels,
+    get_active_promotions_for_rotation, get_connected_channels_by_category,
+    get_rotated_channel_ids_for_promotion, record_promo_rotation,
+    get_active_promo_rotations_due_for_deletion, mark_promo_rotation_deleted,
 )
 
 router = Router()
@@ -569,6 +573,91 @@ async def get_link_callback(callback: CallbackQuery) -> None:
         )
 
 
+# Background 3-Hour 5-Channel Rotation & Deletion Task
+async def process_promotion_rotations() -> None:
+    """
+    Background worker loop that manages 5-channel batch rotations:
+    1. Deletes expired posts (3 hours old) from connected channels if subscriber joins target not met.
+    2. Broadcasts active promotion to the next batch of 5 connected channels (matching category if category promotion).
+    """
+    if bot is None:
+        return
+
+    now_dt = datetime.now(timezone.utc)
+    now_iso = now_dt.isoformat(timespec="seconds")
+
+    # Part A: Handle expired posts deletion after 3 hours
+    due_deletions = get_active_promo_rotations_due_for_deletion(now_iso)
+    for rot in due_deletions:
+        # If campaign target joins already reached, mark rotation deleted without deleting message (or clean up)
+        if rot["current_joins"] >= rot["target_joins"] or rot["promo_status"] != "active":
+            mark_promo_rotation_deleted(rot["id"])
+            continue
+
+        try:
+            chat_arg = int(rot["channel_id"]) if str(rot["channel_id"]).lstrip("-").isdigit() else rot["channel_id"]
+            await bot.delete_message(chat_id=chat_arg, message_id=rot["message_id"])
+        except Exception:
+            pass
+        finally:
+            mark_promo_rotation_deleted(rot["id"])
+
+    # Part B: Post active promotions to next batch of 5 channels
+    active_promos = get_active_promotions_for_rotation()
+    for promo in active_promos:
+        already_rotated = get_rotated_channel_ids_for_promotion(promo["id"])
+        category = promo.get("category") if promo.get("is_category_specific") else "General"
+        candidate_channels = get_connected_channels_by_category(category, limit=50)
+
+        # Filter channels not yet posted for this promotion
+        fresh_channels = [c for c in candidate_channels if c["channel_id"] not in already_rotated]
+        if not fresh_channels:
+            # If all candidate channels posted, fall back to any available connected channel
+            all_channels = get_all_connected_channels()
+            fresh_channels = [c for c in all_channels if c["channel_id"] not in already_rotated]
+
+        if not fresh_channels:
+            continue
+
+        # Batch up to 5 channels at a time
+        batch = fresh_channels[:5]
+        delete_at_dt = now_dt + timedelta(hours=3)
+        delete_at_iso = delete_at_dt.isoformat(timespec="seconds")
+
+        # Build inline button pointing to user's promotional channel
+        inline_btn = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="👉 Join Channel Now", url=promo["channel_url"])]
+        ])
+
+        msg_content = (
+            f"📢 <b>SPONSORED PROMOTION</b>\n\n"
+            f"{escape(promo.get('ad_message') or promo['channel_title'])}\n\n"
+            f"👇 <i>Tap below to join directly!</i>"
+        )
+
+        for ch in batch:
+            try:
+                chat_id_arg = int(ch["channel_id"]) if str(ch["channel_id"]).lstrip("-").isdigit() else ch["channel_id"]
+                sent_msg = await bot.send_message(chat_id=chat_id_arg, text=msg_content, reply_markup=inline_btn)
+                record_promo_rotation(
+                    promotion_id=promo["id"],
+                    channel_id=ch["channel_id"],
+                    message_id=sent_msg.message_id,
+                    delete_at=delete_at_iso,
+                )
+            except Exception:
+                pass
+
+
+async def rotation_background_loop() -> None:
+    while True:
+        try:
+            await process_promotion_rotations()
+        except Exception:
+            pass
+        await asyncio.sleep(60)  # Check every 60 seconds
+
+
 # Real-time ChatMemberUpdated Handler for Join/Left & Earning Analytics
 @router.chat_member()
 async def chat_member_update_handler(event: ChatMemberUpdated) -> None:
@@ -600,6 +689,8 @@ async def main() -> None:
     dp = Dispatcher()
     dp.include_router(router)
     print(f"Blazeculture Bot @{bot_username} is polling...")
+    # Start 3-hour 5-channel rotation background loop task
+    asyncio.create_task(rotation_background_loop())
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:

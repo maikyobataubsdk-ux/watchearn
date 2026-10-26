@@ -121,6 +121,10 @@ class TestBlazeculturePTCPlatform(unittest.TestCase):
         self.assertEqual(data["reward_coins"], 2.0)
 
     def test_06_channel_promotion_submission_and_approval(self):
+        # Credit userA wallet with ₹200 (20000 paise) for testing promotion submission
+        user_a = db.get_user_by_username("userA")
+        db.credit_wallet_deposit(user_a["id"], 20000, "TEST_DEPOSIT", "TEST_ORDER_06", "Test deposit for promo")
+
         login_a = self.client.post("/api/auth/login", json={"login": "userA", "password": "password123"}).json()
         token_a = login_a["token"]
 
@@ -399,6 +403,66 @@ class TestBlazeculturePTCPlatform(unittest.TestCase):
             }
         )
         self.assertEqual(wh_old_ts.status_code, 400)
+
+    def test_15_category_promotions_and_wallet_deduction(self):
+        # Register User C
+        res_c = self.client.post("/api/auth/register", json={
+            "email": "userC@example.com",
+            "username": "userC",
+            "password": "password123"
+        })
+        self.assertEqual(res_c.status_code, 200)
+        token_c = res_c.json()["token"]
+        user_c_db = db.get_user_by_username("userC")
+
+        # 1. Attempt promotion submission with 0 wallet balance -> Expect 400 Insufficient Balance
+        fail_promo = self.client.post("/api/promotions/submit", json={
+            "channel_link": "https://t.me/techchannel",
+            "ad_message": "Join best tech channel!",
+            "budget_inr": 100.0,
+            "category": "Tech & Coding",
+            "is_category_specific": True
+        }, headers={"Authorization": f"Bearer {token_c}"})
+        self.assertEqual(fail_promo.status_code, 400)
+        self.assertIn("Insufficient wallet balance", fail_promo.json()["detail"])
+
+        # 2. Deposit ₹150 INR into wallet
+        db.credit_wallet_deposit(user_c_db["id"], 15000, "TEST_DEPOSIT_C", "ORDER_C_15", "Topup 150 INR")
+
+        # 3. Submit 20% surcharge category promotion (₹100 + 20% = ₹120 total)
+        succ_promo = self.client.post("/api/promotions/submit", json={
+            "channel_link": "https://t.me/techchannel",
+            "ad_message": "Join best tech channel!",
+            "budget_inr": 100.0,
+            "category": "Tech & Coding",
+            "is_category_specific": True
+        }, headers={"Authorization": f"Bearer {token_c}"})
+        self.assertEqual(succ_promo.status_code, 200)
+        p_data = succ_promo.json()
+        self.assertTrue(p_data["ok"])
+        self.assertEqual(p_data["promotion"]["total_price_inr"], 120.0)
+        self.assertEqual(p_data["promotion"]["category"], "Tech & Coding")
+
+        # Check remaining wallet balance (₹150 - ₹120 = ₹30 INR = 3000 paise)
+        bal_res = self.client.get("/api/wallet/balance", headers={"Authorization": f"Bearer {token_c}"})
+        self.assertEqual(bal_res.json()["balance_paise"], 3000)
+
+    def test_16_category_channel_connection_and_rotation_helpers(self):
+        login_c = self.client.post("/api/auth/login", json={"login": "userC", "password": "password123"}).json()
+        token_c = login_c["token"]
+
+        # Connect channel with category
+        conn_res = self.client.post("/api/channels/connect", json={
+            "channel_link": "https://t.me/mytechchannel",
+            "category": "Tech & Coding"
+        }, headers={"Authorization": f"Bearer {token_c}"})
+        self.assertEqual(conn_res.status_code, 200)
+        self.assertEqual(conn_res.json()["channel"]["category"], "Tech & Coding")
+
+        # Test db helper get_connected_channels_by_category
+        cat_chans = db.get_connected_channels_by_category("Tech & Coding")
+        self.assertTrue(len(cat_chans) >= 1)
+        self.assertEqual(cat_chans[0]["category"], "Tech & Coding")
 
 
 if __name__ == "__main__":

@@ -28,6 +28,7 @@ from db import (
     update_promotion_status, connect_channel, get_user_connected_channels, get_all_connected_channels,
     get_campaign, record_rewarded_intent,
     get_or_create_wallet, get_wallet_balance, credit_wallet_deposit, get_wallet_transactions,
+    deduct_wallet_balance_paise,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -120,6 +121,9 @@ class SubmitPromotionRequest(BaseModel):
     targetJoins: Optional[int] = 100
     payment_txn_ref: Optional[str] = None
     transactionRef: Optional[str] = None
+    category: Optional[str] = "General"
+    is_category_specific: Optional[bool] = False
+    isCategorySpecific: Optional[bool] = False
 
 
 class ConnectChannelRequest(BaseModel):
@@ -130,6 +134,7 @@ class ConnectChannelRequest(BaseModel):
     channelTitle: Optional[str] = None
     channel_username: Optional[str] = ""
     channelUsername: Optional[str] = ""
+    category: Optional[str] = "General"
 
 
 class AdminLoginRequest(BaseModel):
@@ -679,23 +684,51 @@ async def submit_promotion(body: SubmitPromotionRequest, user: dict = Depends(ge
     url = clean_url or raw_input
     c_id = body.channel_id or body.channelId or channel_id or url
     c_title = body.channel_title or body.channelTitle or f"Channel ({c_id})"
-    price = body.budget_inr or body.priceInr or 100.0
-    joins = body.target_joins or body.targetJoins or int(price * 2)
-    txn_ref = body.payment_txn_ref or body.transactionRef or "TXN_PENDING"
+    base_price = body.budget_inr or body.priceInr or 100.0
+    joins = body.target_joins or body.targetJoins or int(base_price * 2)
+
+    cat = (body.category or "General").strip()
+    is_cat_specific = bool(body.is_category_specific or body.isCategorySpecific)
+
+    # 20% extra charge if category specific promotion is chosen
+    total_price = base_price * 1.20 if is_cat_specific else base_price
+    required_paise = int(round(total_price * 100))
+
+    tg_id = user.get("telegram_id") or user["id"]
+    wallet_res = deduct_wallet_balance_paise(
+        telegram_id=tg_id,
+        amount_paise=required_paise,
+        description=f"Promotion Payment: {c_title} ({cat})"
+    )
+
+    if not wallet_res.get("ok"):
+        raise HTTPException(
+            status_code=400,
+            detail=wallet_res.get("error", "Insufficient wallet balance. Please add money to your wallet.")
+        )
+
+    txn_ref = body.payment_txn_ref or body.transactionRef or wallet_res.get("order_id") or "WALLET_DEBIT"
 
     promo = create_promotion(
         user_id=user["id"],
         channel_url=url,
         channel_id=c_id,
         channel_title=c_title,
-        price_inr=price,
+        price_inr=base_price,
         target_joins=joins,
         transaction_ref=txn_ref,
+        category=cat,
+        is_category_specific=is_cat_specific,
+        total_price_inr=total_price,
+        ad_message=body.ad_message or "",
+        status="active"
     )
+
     return {
         "ok": True,
-        "message": "Promotion request submitted successfully! Pending admin QR payment verification & approval.",
+        "message": f"Promotion active! ₹{total_price:.2f} deducted from wallet balance.",
         "promotion": promo,
+        "wallet_balance_inr": wallet_res["balance_paise"] / 100.0,
     }
 
 
@@ -715,16 +748,18 @@ async def user_connect_channel(body: ConnectChannelRequest, user: dict = Depends
     c_id = body.channel_id or body.channelId or channel_id or url
     c_title = body.channel_title or body.channelTitle or f"Channel ({c_id})"
     c_username = body.channel_username or body.channelUsername or channel_username or url.split("t.me/")[-1]
+    category = body.category or "General"
 
     ch = connect_channel(
         owner_user_id=user["id"],
         channel_id=c_id,
         channel_title=c_title,
         channel_username=c_username,
+        category=category,
     )
     return {
         "ok": True,
-        "message": "Channel connected successfully! Ad earnings and join analytics enabled.",
+        "message": f"Channel ({category}) connected successfully! Ad earnings and join analytics enabled.",
         "channel": ch,
     }
 
