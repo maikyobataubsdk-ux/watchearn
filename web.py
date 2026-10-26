@@ -313,6 +313,101 @@ async def async_fetch_tg_channel_info(channel_username: str, channel_id: str) ->
     return None
 
 
+async def verify_channel_for_connect(channel_username: str, channel_id: str, user_telegram_id: Optional[int]) -> dict:
+    import os
+    from config import BOT_TOKEN
+
+    if os.getenv("TESTING") == "1" or not BOT_TOKEN or BOT_TOKEN == "PASTE_BOT_TOKEN_HERE":
+        return {"ok": True, "title": None, "username": channel_username, "id": channel_id}
+
+    if not user_telegram_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Aapka Telegram account connected nahi hai. Kripya Telegram account se login karein."
+        )
+
+    chat_ref = f"@{channel_username}" if channel_username else channel_id
+    if not chat_ref or (not chat_ref.startswith("@") and not chat_ref.startswith("-") and not chat_ref.isdigit()):
+        chat_ref = f"@{chat_ref}" if chat_ref else ""
+
+    if not chat_ref:
+        raise HTTPException(status_code=400, detail="Invalid Telegram channel username or ID.")
+
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            # 1. Get Bot Info to get bot's Telegram ID
+            bot_res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe")
+            bot_data = bot_res.json()
+            if not bot_data.get("ok"):
+                raise HTTPException(status_code=500, detail="Telegram Bot API configuration error.")
+            bot_id = bot_data["result"]["id"]
+
+            # 2. Get Chat Info
+            chat_res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getChat", params={"chat_id": chat_ref})
+            chat_data = chat_res.json()
+            if not chat_data.get("ok"):
+                err_desc = chat_data.get("description", "")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Channel nahi mila. Kripya sahi channel link ya @username enter karein. ({err_desc})"
+                )
+            chat = chat_data["result"]
+            real_chat_id = str(chat["id"])
+            real_title = chat.get("title") or chat.get("first_name") or chat_ref
+            real_username = chat.get("username") or channel_username
+
+            # 3. Verify Bot is Admin in Channel
+            bot_member_res = await client.get(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember",
+                params={"chat_id": real_chat_id, "user_id": bot_id}
+            )
+            bot_member_data = bot_member_res.json()
+            bot_status = bot_member_data.get("result", {}).get("status") if bot_member_data.get("ok") else None
+            if bot_status not in ("administrator", "creator"):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Bot is channel me admin nahi hai. Kripya pehle bot ko channel me admin banayein."
+                )
+
+            # 4. Verify User is Owner/Admin in Channel
+            user_member_res = await client.get(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember",
+                params={"chat_id": real_chat_id, "user_id": user_telegram_id}
+            )
+            user_member_data = user_member_res.json()
+            user_status = user_member_data.get("result", {}).get("status") if user_member_data.get("ok") else None
+            if user_status not in ("creator", "administrator"):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Aap sirf wahi channel add kar sakte hai jo aap own karte hai (creator/admin)."
+                )
+
+            # 5. Verify Member Count >= 100
+            count_res = await client.get(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMemberCount",
+                params={"chat_id": real_chat_id}
+            )
+            count_data = count_res.json()
+            members_count = count_data.get("result", 0) if count_data.get("ok") else 0
+            if members_count < 100:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Minimum member 100 required. Aapke channel me sirf {members_count} members hain."
+                )
+
+            return {
+                "ok": True,
+                "title": real_title,
+                "username": real_username,
+                "id": real_chat_id,
+                "members_count": members_count
+            }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to verify Telegram channel: {str(exc)}")
+
+
 @app.on_event("startup")
 async def startup() -> None:
     init_db()
@@ -758,9 +853,16 @@ async def user_connect_channel(body: ConnectChannelRequest, user: dict = Depends
 
     url = clean_url or raw_input
     c_id = body.channel_id or body.channelId or channel_id or url
-    c_title = body.channel_title or body.channelTitle or f"Channel ({c_id})"
     c_username = body.channel_username or body.channelUsername or channel_username or url.split("t.me/")[-1]
     category = body.category or "General"
+
+    # Perform channel verification (ownership, bot admin status, min 100 members)
+    user_tg_id = user.get("telegram_id")
+    verified = await verify_channel_for_connect(c_username, c_id, user_tg_id)
+
+    c_id = verified.get("id") or c_id
+    c_title = verified.get("title") or body.channel_title or body.channelTitle or f"Channel ({c_id})"
+    c_username = verified.get("username") or c_username
 
     ch = connect_channel(
         owner_user_id=user["id"],
@@ -771,7 +873,7 @@ async def user_connect_channel(body: ConnectChannelRequest, user: dict = Depends
     )
     return {
         "ok": True,
-        "message": f"Channel ({category}) connected successfully! Ad earnings and join analytics enabled.",
+        "message": f"Channel '{c_title}' ({category}) connected successfully! Ad earnings and join analytics enabled.",
         "channel": ch,
     }
 

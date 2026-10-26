@@ -464,6 +464,106 @@ class TestBlazeculturePTCPlatform(unittest.TestCase):
         self.assertTrue(len(cat_chans) >= 1)
         self.assertEqual(cat_chans[0]["category"], "Tech & Coding")
 
+    def test_18_verify_channel_requirements(self):
+        login_b = self.client.post("/api/auth/login", json={"login": "userB", "password": "password123"}).json()
+        token_b = login_b["token"]
+
+        from unittest.mock import patch, AsyncMock
+
+        with patch.dict("os.environ", {"TESTING": "0"}), patch("config.BOT_TOKEN", "123456789:ABCDEFG"):
+            # Case A: User not connected with Telegram
+            fail_no_tg = self.client.post("/api/channels/connect", json={
+                "channel_link": "@testchannel"
+            }, headers={"Authorization": f"Bearer {token_b}"})
+            self.assertEqual(fail_no_tg.status_code, 400)
+            self.assertIn("Telegram account connected nahi hai", fail_no_tg.json()["detail"])
+
+            # Login as user with telegram_id
+            tg_res = self.client.post("/api/auth/telegram-mini-app", json={
+                "telegram_id": 99887766,
+                "username": "channel_owner_tg"
+            })
+            tg_token = tg_res.json()["token"]
+
+            # Case B: Bot not admin in channel
+            mock_bot_not_admin = AsyncMock()
+            mock_bot_not_admin.get.side_effect = [
+                # 1. getMe
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": 12345, "is_bot": True}}),
+                # 2. getChat
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": -10011223344, "title": "My Channel", "username": "mychan"}}),
+                # 3. getChatMember for bot
+                AsyncMock(json=lambda: {"ok": True, "result": {"status": "member"}}),
+            ]
+
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client_cls.return_value.__aenter__.return_value = mock_bot_not_admin
+                res = self.client.post("/api/channels/connect", json={"channel_link": "@mychan"}, headers={"Authorization": f"Bearer {tg_token}"})
+                self.assertEqual(res.status_code, 400)
+                self.assertIn("Bot is channel me admin nahi hai", res.json()["detail"])
+
+            # Case C: User not owner/admin in channel
+            mock_user_not_owner = AsyncMock()
+            mock_user_not_owner.get.side_effect = [
+                # 1. getMe
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": 12345, "is_bot": True}}),
+                # 2. getChat
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": -10011223344, "title": "My Channel", "username": "mychan"}}),
+                # 3. getChatMember for bot
+                AsyncMock(json=lambda: {"ok": True, "result": {"status": "administrator"}}),
+                # 4. getChatMember for user
+                AsyncMock(json=lambda: {"ok": True, "result": {"status": "member"}}),
+            ]
+
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client_cls.return_value.__aenter__.return_value = mock_user_not_owner
+                res = self.client.post("/api/channels/connect", json={"channel_link": "@mychan"}, headers={"Authorization": f"Bearer {tg_token}"})
+                self.assertEqual(res.status_code, 400)
+                self.assertIn("Aap sirf wahi channel add kar sakte hai jo aap own karte hai", res.json()["detail"])
+
+            # Case D: Channel members < 100
+            mock_low_members = AsyncMock()
+            mock_low_members.get.side_effect = [
+                # 1. getMe
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": 12345, "is_bot": True}}),
+                # 2. getChat
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": -10011223344, "title": "My Channel", "username": "mychan"}}),
+                # 3. getChatMember for bot
+                AsyncMock(json=lambda: {"ok": True, "result": {"status": "administrator"}}),
+                # 4. getChatMember for user
+                AsyncMock(json=lambda: {"ok": True, "result": {"status": "creator"}}),
+                # 5. getChatMemberCount
+                AsyncMock(json=lambda: {"ok": True, "result": 42}),
+            ]
+
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client_cls.return_value.__aenter__.return_value = mock_low_members
+                res = self.client.post("/api/channels/connect", json={"channel_link": "@mychan"}, headers={"Authorization": f"Bearer {tg_token}"})
+                self.assertEqual(res.status_code, 400)
+                self.assertIn("Minimum member 100 required", res.json()["detail"])
+
+            # Case E: Valid channel with >= 100 members, bot admin, user creator
+            mock_valid = AsyncMock()
+            mock_valid.get.side_effect = [
+                # 1. getMe
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": 12345, "is_bot": True}}),
+                # 2. getChat
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": -10011223344, "title": "Valid Big Channel", "username": "validchan"}}),
+                # 3. getChatMember for bot
+                AsyncMock(json=lambda: {"ok": True, "result": {"status": "administrator"}}),
+                # 4. getChatMember for user
+                AsyncMock(json=lambda: {"ok": True, "result": {"status": "creator"}}),
+                # 5. getChatMemberCount
+                AsyncMock(json=lambda: {"ok": True, "result": 1250}),
+            ]
+
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client_cls.return_value.__aenter__.return_value = mock_valid
+                res = self.client.post("/api/channels/connect", json={"channel_link": "@validchan"}, headers={"Authorization": f"Bearer {tg_token}"})
+                self.assertEqual(res.status_code, 200)
+                self.assertTrue(res.json()["ok"])
+                self.assertEqual(res.json()["channel"]["channel_title"], "Valid Big Channel")
+
     def test_17_admin_add_funds_and_channel_deletion(self):
         login_c = self.client.post("/api/auth/login", json={"login": "userC", "password": "password123"}).json()
         token_c = login_c["token"]
