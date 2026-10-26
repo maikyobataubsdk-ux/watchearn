@@ -1,92 +1,72 @@
 {
-  "updated_at": "2026-10-22T19:26:48+00:00",
+  "updated_at": "2026-10-26T06:07:30+00:00",
   "users": [
     {
       "id": 1,
-      "email": "usera@example.com",
-      "username": "userA",
-      "balance_coins": 100.0,
-      "total_earned_coins": 2.3,
-      "total_ads_watched": 1,
-      "is_premium": 1,
-      "is_banned": 0,
-      "created_at": "2026-10-22T19:26:48+00:00"
-    },
-    {
-      "id": 2,
-      "email": "userb@example.com",
-      "username": "userB",
-      "balance_coins": 2.625,
-      "total_earned_coins": 2.625,
-      "total_ads_watched": 1,
-      "is_premium": 0,
-      "is_banned": 0,
-      "created_at": "2026-10-22T19:26:48+00:00"
-    },
-    {
-      "id": 3,
-      "email": "tg_123456789@telegram.org",
-      "username": "tg_user_test",
+      "email": "tg_999111@telegram.org",
+      "username": "test_webhook_user",
       "balance_coins": 0.0,
       "total_earned_coins": 0.0,
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-10-22T19:26:48+00:00"
+      "created_at": "2026-10-26T06:04:27+00:00"
     },
     {
-      "id": 4,
-      "email": "tg_987654321@telegram.org",
-      "username": "tg_campaign_viewer",
-      "balance_coins": 2.0,
-      "total_earned_coins": 2.0,
-      "total_ads_watched": 1,
+      "id": 2,
+      "email": "tg_100200300@telegram.org",
+      "username": "user_100200300",
+      "balance_coins": 0.0,
+      "total_earned_coins": 0.0,
+      "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-10-22T19:26:48+00:00"
+      "created_at": "2026-10-26T06:07:29+00:00"
     }
   ],
-  "withdrawals": [
+  "withdrawals": [],
+  "promotions": [],
+  "connected_channels": [],
+  "wallets": [
     {
-      "id": 1,
-      "user_id": 1,
-      "amount_usd": 5.0,
-      "amount_inr": 400.0,
-      "coins_deducted": 500.0,
-      "method": "UPI",
-      "account_details": "testuser@upi",
-      "status": "pending",
-      "created_at": "2026-10-22T19:26:48+00:00"
+      "telegram_id": 100200300,
+      "balance_paise": 0,
+      "created_at": "2026-10-26T06:07:30+00:00",
+      "updated_at": "2026-10-26T06:07:30+00:00"
+    },
+    {
+      "telegram_id": 999111,
+      "balance_paise": 15000,
+      "created_at": "2026-10-26T06:04:27+00:00",
+      "updated_at": "2026-10-26T06:04:27+00:00"
+    },
+    {
+      "telegram_id": 12345,
+      "balance_paise": 5000,
+      "created_at": "2026-10-26T06:03:10+00:00",
+      "updated_at": "2026-10-26T06:03:10+00:00"
     }
   ],
-  "promotions": [
+  "wallet_transactions": [
+    {
+      "id": 2,
+      "telegram_id": 999111,
+      "type": "deposit",
+      "amount_paise": 15000,
+      "utr": "UTR999888777",
+      "order_id": "WALLET-999111-12345678",
+      "description": "YOUPI PG Wallet Topup (UTR: UTR999888777) - Rajesh (9876543210)",
+      "created_at": "2026-10-26T06:04:27+00:00"
+    },
     {
       "id": 1,
-      "user_id": 1,
-      "channel_url": "https://t.me/testchannel",
-      "channel_id": "@testchannel",
-      "channel_title": "Channel (@testchannel)",
-      "price_inr": 100.0,
-      "target_joins": 100,
-      "current_joins": 0,
-      "current_views": 0,
-      "status": "approved",
-      "transaction_ref": "TXN123456",
-      "created_at": "2026-10-22T19:26:48+00:00"
-    }
-  ],
-  "connected_channels": [
-    {
-      "id": 1,
-      "owner_user_id": 2,
-      "channel_id": "@myownerchannel",
-      "channel_title": "Channel (@myownerchannel)",
-      "channel_username": "myownerchannel",
-      "total_joins": 0,
-      "total_lefts": 0,
-      "total_views": 0,
-      "total_earned_inr": 0.0,
-      "created_at": "2026-10-22T19:26:48+00:00"
+      "telegram_id": 12345,
+      "type": "deposit",
+      "amount_paise": 5000,
+      "utr": "UTR123",
+      "order_id": "ORD123",
+      "description": "YOUPI PG Deposit",
+      "created_at": "2026-10-26T06:03:10+00:00"
     }
   ],
   "settings": {
@@ -96,12 +76,10 @@
     "min_withdrawal_inr": "400.0",
     "coins_per_usd": "100.0",
     "referral_commission_pct": "15.0",
-    "payment_upi_id": "blaze@upi",
-    "payment_qr_url": "/static/payment_qr.jpg",
+    "payment_upi_id": "blazeculture@upi",
+    "payment_qr_url": "/static/logo.png",
     "cost_per_2_joins_inr": "1.0",
-    "payout_per_2_joins_inr": "0.50",
-    "force_chat_title": "Test Force Channel",
-    "target_invite_mode": "request"
+    "payout_per_2_joins_inr": "0.50"
   },
   "ad_codes": {
     "interstitial": "<!-- Adsterra / HilltopAds / Monetag Interstitial Script Placeholder -->\n<script type=\"text/javascript\">\n  // Paste your High-Paying Interstitial Script here\n  console.log('Adsterra / HilltopAds Interstitial Loaded');\n</script>",

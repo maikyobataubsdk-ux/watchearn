@@ -6,6 +6,8 @@
   <title>Blazeculture - Premium Ad Earn & Telegram Channel Promotions Hub</title>
   <!-- Telegram WebApp SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- YOUPI PG Checkout SDK -->
+  <script src="https://pay.blazeculture.in/youpi.js"></script>
   <!-- Google Fonts & FontAwesome Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -471,6 +473,11 @@
 
       <!-- Right Header Controls (Telegram User Profile & Balance & Support) -->
       <div style="display: flex; align-items: center; gap: 8px;">
+        <!-- Wallet INR Balance Pill -->
+        <div class="balance-pill" style="background: rgba(0, 255, 136, 0.15); border-color: rgba(0, 255, 136, 0.4); color: var(--neon-green); cursor: pointer;" onclick="openAddMoneyModal()" title="Click to Add Money">
+          <i class="fa-solid fa-wallet"></i> ₹<span id="userNavWalletBalance">0.00</span>
+        </div>
+
         <!-- Coins Balance Pill -->
         <div class="balance-pill">
           <i class="fa-solid fa-coins"></i> <span id="userNavBalance">0.0</span>
@@ -629,8 +636,22 @@
         </div>
       </div>
 
-      <!-- User Stats Cards -->
+      <!-- Wallet & Coins Stats Cards -->
       <div class="grid-3" style="margin-bottom: 25px;">
+        <!-- INR Wallet Card -->
+        <div class="glass" style="padding: 20px; border: 1px solid var(--neon-green);">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="text-muted" style="font-size: 12px; text-transform: uppercase;">INR Wallet Balance</div>
+            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 12px;" onclick="openAddMoneyModal()"><i class="fa-solid fa-plus"></i> Add Money</button>
+          </div>
+          <div style="font-size: 30px; font-weight: 800; color: var(--neon-green); margin: 6px 0;">
+            ₹<span id="dashWalletInr">0.00</span>
+          </div>
+          <div style="font-size: 12px;" class="text-muted">
+            Paise: <span id="dashWalletPaise" class="text-green">0</span>
+          </div>
+        </div>
+
         <div class="glass" style="padding: 20px;">
           <div class="text-muted" style="font-size: 12px; text-transform: uppercase;" data-i18n="currentBalance">Current Balance</div>
           <div style="font-size: 30px; font-weight: 800; color: var(--gold); margin: 6px 0;">
@@ -682,6 +703,28 @@
           <button class="btn btn-primary" onclick="nav('watch')"><i class="fa-solid fa-play"></i> Watch Next Ad</button>
           <button class="btn btn-purple" onclick="nav('promote')"><i class="fa-solid fa-bullhorn"></i> Start Channel Promo</button>
           <button class="btn btn-secondary" onclick="nav('withdraw')"><i class="fa-solid fa-wallet"></i> Withdraw Cash</button>
+        </div>
+      </div>
+
+      <!-- Wallet Transactions History -->
+      <div class="glass" style="padding: 24px; margin-bottom: 25px;">
+        <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-receipt text-green"></i> Wallet Transactions History</h3>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Amount (₹)</th>
+                <th>UTR Reference</th>
+                <th>Order ID</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody id="userWalletTxnsTableBody">
+              <tr><td colspan="6" class="text-muted" style="text-align: center;">No wallet transactions yet.</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -1188,6 +1231,31 @@
     </div>
   </div>
 
+  <!-- Add Money YOUPI Modal Window -->
+  <div id="addMoneyModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div class="glass" style="max-width: 450px; width: 100%; padding: 30px; position: relative;">
+      <button onclick="closeAddMoneyModal()" style="position: absolute; top: 15px; right: 20px; background: transparent; border: none; color: #fff; font-size: 22px; cursor: pointer;">&times;</button>
+      <h2 style="color: var(--neon-green); margin-bottom: 10px; font-size: 22px;"><i class="fa-solid fa-wallet"></i> Top Up Wallet via YOUPI PG</h2>
+      <p class="text-muted" style="font-size: 13px; margin-bottom: 20px;">Instant UPI payment gateway checkout. Funds are added to your wallet automatically on success.</p>
+
+      <form onsubmit="initiateYoupiCheckout(event)">
+        <div style="margin-bottom: 15px;">
+          <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Top Up Amount (₹ INR)</label>
+          <input type="number" id="addMoneyAmountInput" class="glass-input" min="10" max="50000" step="10" value="100" required>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Mobile Phone Number</label>
+          <input type="tel" id="addMoneyPhoneInput" class="glass-input" placeholder="e.g. 9876543210" required pattern="[0-9]{10}">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 16px;" id="payNowBtn">
+          <i class="fa-solid fa-bolt"></i> Pay & Add Money Now
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- Coin Reward Burst Modal Animation -->
   <div id="coinRewardModal">
     <div class="glass coin-box">
@@ -1506,6 +1574,118 @@
       } catch (e) {}
     }
 
+    // Wallet UI & YOUPI PG Functions
+    async function refreshWalletBalance() {
+      if (!userToken) return;
+      try {
+        const res = await apiCall('/api/wallet/balance', 'GET', null, userToken);
+        if (res.ok) {
+          const formattedInr = res.balance_inr.toFixed(2);
+          const navElem = document.getElementById('userNavWalletBalance');
+          if (navElem) navElem.textContent = formattedInr;
+
+          const dashInrElem = document.getElementById('dashWalletInr');
+          if (dashInrElem) dashInrElem.textContent = formattedInr;
+
+          const dashPaiseElem = document.getElementById('dashWalletPaise');
+          if (dashPaiseElem) dashPaiseElem.textContent = res.balance_paise;
+        }
+      } catch (e) {
+        console.error('Error refreshing wallet balance:', e);
+      }
+    }
+
+    async function loadWalletTransactions() {
+      if (!userToken) return;
+      try {
+        const res = await apiCall('/api/wallet/transactions', 'GET', null, userToken);
+        const tbody = document.getElementById('userWalletTxnsTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (res.transactions && res.transactions.length > 0) {
+          res.transactions.forEach(t => {
+            const tr = document.createElement('tr');
+            const inr = (t.amount_paise / 100.0).toFixed(2);
+            tr.innerHTML = `
+              <td>${t.created_at ? t.created_at.split('T')[0] : '-'}</td>
+              <td><span style="color:var(--neon-green); font-weight:bold; text-transform:uppercase;">${t.type}</span></td>
+              <td class="text-green"><strong>+₹${inr}</strong></td>
+              <td><code>${t.utr || '-'}</code></td>
+              <td><code>${t.order_id || '-'}</code></td>
+              <td><div style="max-width:180px; font-size:12px;" class="text-muted">${t.description || '-'}</div></td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = `<tr><td colspan="6" class="text-muted" style="text-align: center;">No wallet transactions yet.</td></tr>`;
+        }
+      } catch (e) {
+        console.error('Error loading wallet transactions:', e);
+      }
+    }
+
+    function openAddMoneyModal() {
+      document.getElementById('addMoneyModal')?.classList.remove('hidden');
+    }
+
+    function closeAddMoneyModal() {
+      document.getElementById('addMoneyModal')?.classList.add('hidden');
+    }
+
+    function showWalletUpdated(amountInr) {
+      alert(`🎉 Payment Successful! ₹${amountInr} added to your wallet.`);
+    }
+
+    async function initiateYoupiCheckout(e) {
+      e.preventDefault();
+      const amount = parseFloat(document.getElementById('addMoneyAmountInput').value);
+      const userPhone = document.getElementById('addMoneyPhoneInput').value.trim();
+
+      if (!amount || amount < 10) {
+        alert('Minimum top-up amount is ₹10');
+        return;
+      }
+
+      if (!userPhone || userPhone.length < 10) {
+        alert('Please enter a valid 10-digit mobile phone number');
+        return;
+      }
+
+      const telegram_user_id = currentUser ? (currentUser.telegram_id || currentUser.id) : 1001;
+      const order_id = `WALLET-${telegram_user_id}-${Date.now()}`;
+
+      closeAddMoneyModal();
+
+      if (window.Youpi && typeof window.Youpi.pay === 'function') {
+        window.Youpi.pay({
+          order_id: order_id,
+          amount: amount,
+          currency: 'INR',
+          customer: {
+            name: currentUser ? (currentUser.first_name || currentUser.username) : 'User',
+            phone: userPhone,
+            email: `${telegram_user_id}@telegram.user`
+          },
+          metadata: {
+            telegram_user_id: telegram_user_id,
+            purpose: 'WALLET_TOPUP'
+          },
+          handler: function(response) {
+            if (response && (response.status === 'SUCCESS' || response.event === 'SUCCESS')) {
+              showWalletUpdated(response.amount || amount);
+              refreshWalletBalance();
+              loadWalletTransactions();
+            } else {
+              alert('Payment pending or not completed.');
+            }
+          }
+        });
+      } else {
+        alert(`YOUPI PG SDK not loaded on client. Order ID: ${order_id}. Open checkout at https://pay.blazeculture.in`);
+      }
+    }
+
     async function fetchUserProfile() {
       if (!userToken) return;
       try {
@@ -1513,6 +1693,7 @@
         currentUser = res.user;
         updateHeaderProfileUI(currentUser);
         document.getElementById('userWelcomeText').textContent = `Welcome back, ${currentUser.first_name || currentUser.username}!`;
+        refreshWalletBalance();
       } catch (err) {}
     }
 
@@ -1537,6 +1718,8 @@
       document.getElementById('referralLinkInput').value = refLink;
       document.getElementById('dashTotalReferrals').textContent = currentUser.referralStats ? currentUser.referralStats.total_referrals : 0;
 
+      refreshWalletBalance();
+      loadWalletTransactions();
       loadUserWithdrawals();
     }
 

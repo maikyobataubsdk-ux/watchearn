@@ -294,6 +294,112 @@ class TestBlazeculturePTCPlatform(unittest.TestCase):
         self.assertEqual(analyze_res.status_code, 200)
         self.assertEqual(analyze_res.json()["channel_link"], "https://t.me/mytestchannel")
 
+    def test_14_youpi_webhook_and_wallet(self):
+        import hmac
+        import hashlib
+        import json
+        import time
+
+        tg_res = self.client.post("/api/auth/telegram-mini-app", json={
+            "telegram_id": 555666777,
+            "username": "wallet_test_user",
+            "first_name": "WalletTester"
+        })
+        self.assertEqual(tg_res.status_code, 200)
+        user_token = tg_res.json()["token"]
+
+        # Check initial balance
+        bal_res = self.client.get("/api/wallet/balance", headers={"Authorization": f"Bearer {user_token}"})
+        self.assertEqual(bal_res.status_code, 200)
+        self.assertEqual(bal_res.json()["balance_paise"], 0)
+        self.assertEqual(bal_res.json()["balance_inr"], 0.0)
+
+        # Prepare webhook request
+        now_ts = str(int(time.time()))
+        body_dict = {
+            "event": "SUCCESS",
+            "method": "UPI",
+            "amount": 250.00,
+            "utr": "UTR1122334455",
+            "order_id": "WALLET-555666777-998877",
+            "customer": {"name": "WalletTester", "phone": "9876543210"},
+            "metadata": {"telegram_user_id": 555666777, "purpose": "WALLET_TOPUP"}
+        }
+        raw_body = json.dumps(body_dict).encode("utf-8")
+
+        secret = "69447d0ed8ea359cba870ab6b792e716813dc2006522154b45268577f851c7c0"
+        payload_to_sign = raw_body.decode("utf-8") + "." + now_ts
+        sig = hmac.new(secret.encode("utf-8"), payload_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
+
+        # Send webhook
+        wh_res = self.client.post(
+            "/api/youpi-webhook",
+            content=raw_body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Gateway-Timestamp": now_ts,
+                "X-Gateway-Signature": sig
+            }
+        )
+        self.assertEqual(wh_res.status_code, 200)
+        self.assertEqual(wh_res.json(), {"received": True})
+
+        # Verify updated balance
+        bal_after = self.client.get("/api/wallet/balance", headers={"Authorization": f"Bearer {user_token}"})
+        self.assertEqual(bal_after.status_code, 200)
+        self.assertEqual(bal_after.json()["balance_paise"], 25000)
+        self.assertEqual(bal_after.json()["balance_inr"], 250.0)
+
+        # Verify transaction log
+        txns_res = self.client.get("/api/wallet/transactions", headers={"Authorization": f"Bearer {user_token}"})
+        self.assertEqual(txns_res.status_code, 200)
+        txns = txns_res.json()["transactions"]
+        self.assertEqual(len(txns), 1)
+        self.assertEqual(txns[0]["utr"], "UTR1122334455")
+        self.assertEqual(txns[0]["amount_paise"], 25000)
+
+        # Duplicate webhook order_id check (idempotency)
+        wh_dup_res = self.client.post(
+            "/api/youpi-webhook",
+            content=raw_body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Gateway-Timestamp": now_ts,
+                "X-Gateway-Signature": sig
+            }
+        )
+        self.assertEqual(wh_dup_res.status_code, 200)
+        bal_dup = self.client.get("/api/wallet/balance", headers={"Authorization": f"Bearer {user_token}"})
+        self.assertEqual(bal_dup.json()["balance_paise"], 25000)
+
+        # Test invalid signature
+        wh_bad_sig = self.client.post(
+            "/api/youpi-webhook",
+            content=raw_body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Gateway-Timestamp": now_ts,
+                "X-Gateway-Signature": "invalid_sig"
+            }
+        )
+        self.assertEqual(wh_bad_sig.status_code, 401)
+
+        # Test timestamp drift (> 2 hours)
+        old_ts = str(int(time.time()) - 8000)
+        old_payload_to_sign = raw_body.decode("utf-8") + "." + old_ts
+        old_sig = hmac.new(secret.encode("utf-8"), old_payload_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
+
+        wh_old_ts = self.client.post(
+            "/api/youpi-webhook",
+            content=raw_body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Gateway-Timestamp": old_ts,
+                "X-Gateway-Signature": old_sig
+            }
+        )
+        self.assertEqual(wh_old_ts.status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()
