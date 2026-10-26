@@ -1,0 +1,11 @@
+INFO:     Started server process [50859]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:39576 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49728 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49728 - "GET /static/logo.png HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49728 - "POST /api/auth/telegram-mini-app HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49740 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49740 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49740 - "GET /api/channels/my HTTP/1.1" 200 OK

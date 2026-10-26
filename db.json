@@ -1,29 +1,22 @@
 {
-  "updated_at": "2026-10-26T08:27:03+00:00",
+  "updated_at": "2026-10-26T09:04:09+00:00",
   "users": [
     {
       "id": 1,
-      "email": "tg_293833034@telegram.org",
-      "username": "user_293833034",
+      "email": "tg_760447698@telegram.org",
+      "username": "user_760447698",
       "balance_coins": 0.0,
       "total_earned_coins": 0.0,
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-10-26T08:27:00+00:00"
+      "created_at": "2026-10-26T09:04:07+00:00"
     }
   ],
   "withdrawals": [],
   "promotions": [],
   "connected_channels": [],
-  "wallets": [
-    {
-      "telegram_id": 293833034,
-      "balance_paise": 0,
-      "created_at": "2026-10-26T08:27:01+00:00",
-      "updated_at": "2026-10-26T08:27:01+00:00"
-    }
-  ],
+  "wallets": [],
   "wallet_transactions": [],
   "settings": {
     "coins_per_ad": "2.0",
