@@ -25,11 +25,12 @@ from db import (
     update_withdrawal_status, get_top_earners, get_global_stats,
     get_referral_stats, get_settings, update_settings, get_ad_codes, update_ad_codes,
     hash_password, create_promotion, get_user_promotions, get_all_promotions,
-    update_promotion_status, connect_channel, get_user_connected_channels, get_all_connected_channels,
+    update_promotion_status, connect_channel, update_connected_channel_status,
+    get_user_connected_channels, get_all_connected_channels,
     delete_connected_channel, admin_delete_connected_channel,
     get_campaign, record_rewarded_intent,
     get_or_create_wallet, get_wallet_balance, credit_wallet_deposit, get_wallet_transactions,
-    deduct_wallet_balance_paise, admin_credit_user_wallet,
+    deduct_wallet_balance_paise, admin_credit_user_wallet, admin_deduct_user_wallet,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -169,6 +170,12 @@ class AdminAddFundsRequest(BaseModel):
     description: Optional[str] = "Admin Funds Addition"
 
 
+class AdminRemoveFundsRequest(BaseModel):
+    userId: int
+    amountInr: float = Field(gt=0)
+    description: Optional[str] = "Admin Funds Deduction"
+
+
 class AdminWithdrawalStatusRequest(BaseModel):
     withdrawalId: int
     status: str  # approved, rejected
@@ -178,6 +185,15 @@ class AdminPromotionStatusRequest(BaseModel):
     promotionId: Optional[int] = None
     promotion_id: Optional[int] = None
     status: Optional[str] = "approved"
+    rejection_reason: Optional[str] = ""
+    rejectionReason: Optional[str] = ""
+    reason: Optional[str] = ""
+
+
+class AdminChannelStatusRequest(BaseModel):
+    channel_id: Optional[str] = None
+    channelId: Optional[str] = None
+    status: str  # approved, rejected, banned, pending_approval
 
 
 class AdminPaymentSettingsRequest(BaseModel):
@@ -828,12 +844,12 @@ async def submit_promotion(body: SubmitPromotionRequest, user: dict = Depends(ge
         is_category_specific=is_cat_specific,
         total_price_inr=total_price,
         ad_message=body.ad_message or "",
-        status="active"
+        status="pending_approval"
     )
 
     return {
         "ok": True,
-        "message": f"Promotion active! ₹{total_price:.2f} deducted from wallet balance.",
+        "message": f"Promotion submitted! ₹{total_price:.2f} deducted from wallet. Promotion will start after Admin approval.",
         "promotion": promo,
         "wallet_balance_inr": wallet_res["balance_paise"] / 100.0,
     }
@@ -872,10 +888,11 @@ async def user_connect_channel(body: ConnectChannelRequest, user: dict = Depends
         channel_username=c_username,
         category=category,
         member_count=m_count,
+        status="pending_approval"
     )
     return {
         "ok": True,
-        "message": f"Channel '{c_title}' ({category}) connected successfully! Ad earnings and join analytics enabled.",
+        "message": f"Channel '{c_title}' ({category}) submitted! It will be activated after Admin approval.",
         "channel": ch,
     }
 
@@ -894,6 +911,25 @@ async def user_delete_channel(body: DeleteChannelRequest, user: dict = Depends(g
     res = delete_connected_channel(user["id"], c_id)
     if not res.get("ok"):
         raise HTTPException(status_code=400, detail=res.get("error", "Failed to delete channel."))
+    return res
+
+
+@app.post("/api/admin/channels/status")
+@app.post("/api/admin/channel/status")
+async def admin_update_channel_status(body: AdminChannelStatusRequest, _: bool = Depends(require_admin)) -> dict:
+    c_id = body.channel_id or body.channelId
+    if not c_id:
+        raise HTTPException(status_code=400, detail="channel_id is required.")
+
+    status = body.status
+    if status in ("unban", "approve"):
+        status = "approved"
+    elif status == "ban":
+        status = "banned"
+
+    res = update_connected_channel_status(c_id, status)
+    if not res.get("ok"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Failed to update channel status."))
     return res
 
 
@@ -1137,6 +1173,15 @@ async def admin_add_funds(body: AdminAddFundsRequest, _: bool = Depends(require_
     return res
 
 
+@app.post("/api/admin/user/remove-funds")
+@app.post("/api/admin/user/deduct-funds")
+async def admin_remove_funds(body: AdminRemoveFundsRequest, _: bool = Depends(require_admin)) -> dict:
+    res = admin_deduct_user_wallet(body.userId, body.amountInr, body.description or "Admin Funds Deduction")
+    if not res.get("ok"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Failed to deduct funds."))
+    return res
+
+
 @app.get("/api/admin/withdrawals")
 async def admin_withdrawals(_: bool = Depends(require_admin)) -> dict:
     withdrawals = get_all_withdrawals()
@@ -1168,15 +1213,21 @@ async def admin_update_promotion_status(body: AdminPromotionStatusRequest, reque
 
     status = body.status
     if "approve" in request.url.path:
-        status = "approved"
+        status = "active"
     elif "reject" in request.url.path:
         status = "rejected"
 
-    res = update_promotion_status(p_id, status)
+    rej_reason = body.rejection_reason or body.rejectionReason or body.reason or ""
+
+    res = update_promotion_status(p_id, status, rejection_reason=rej_reason)
     if not res.get("ok"):
         raise HTTPException(status_code=400, detail=res.get("error", "Failed to update promotion status."))
 
-    return {"ok": True, "message": f"Promotion #{p_id} status updated to {status}"}
+    msg = f"Promotion #{p_id} status updated to {status}"
+    if status == "rejected":
+        msg += f". Promotion rejected and funds refunded to user's wallet."
+
+    return {"ok": True, "message": msg}
 
 
 @app.get("/api/admin/ad-codes")

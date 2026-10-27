@@ -1015,6 +1015,7 @@
                 <tr>
                   <th>Channel</th>
                   <th>Category</th>
+                  <th>Status</th>
                   <th>Total Joins</th>
                   <th>Total Left</th>
                   <th>Earned (INR)</th>
@@ -1022,7 +1023,7 @@
                 </tr>
               </thead>
               <tbody id="myChannelsTableBody">
-                <tr><td colspan="6" class="text-muted" style="text-align: center;">No channels connected yet.</td></tr>
+                <tr><td colspan="7" class="text-muted" style="text-align: center;">No channels connected yet.</td></tr>
               </tbody>
             </table>
           </div>
@@ -1210,13 +1211,14 @@
                     <th>Channel Title</th>
                     <th>Username / ID</th>
                     <th>Category</th>
+                    <th>Status</th>
                     <th>Owner User</th>
                     <th>Joins / Left</th>
                     <th>Action</th>
                   </tr>
                 </thead>
                 <tbody id="adminChannelsTableBody">
-                  <tr><td colspan="7" class="text-muted">Loading connected channels...</td></tr>
+                  <tr><td colspan="8" class="text-muted">Loading connected channels...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -1354,6 +1356,32 @@
 
         <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 15px;">
           <i class="fa-solid fa-check"></i> Credit Funds Now
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Admin Remove/Deduct Funds Modal Window -->
+  <div id="adminRemoveFundsModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div class="glass" style="max-width: 450px; width: 100%; padding: 30px; position: relative;">
+      <button onclick="closeAdminRemoveFundsModal()" style="position: absolute; top: 15px; right: 20px; background: transparent; border: none; color: #fff; font-size: 22px; cursor: pointer;">&times;</button>
+      <h2 style="color: var(--error); margin-bottom: 10px; font-size: 20px;"><i class="fa-solid fa-minus-circle"></i> Deduct Wallet Balance from User</h2>
+      <p class="text-muted" style="font-size: 13px; margin-bottom: 18px;">Target User: <strong id="adminRemoveFundsTargetUserText" style="color: var(--neon-cyan);">-</strong></p>
+
+      <form onsubmit="handleAdminSubmitRemoveFunds(event)">
+        <input type="hidden" id="adminRemoveFundsUserIdVal">
+        <div style="margin-bottom: 15px;">
+          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">Amount to Deduct (₹ INR)</label>
+          <input type="number" id="adminRemoveFundsAmountInput" class="glass-input" min="1" step="1" value="50" required>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">Transaction Reason / Note</label>
+          <input type="text" id="adminRemoveFundsNoteInput" class="glass-input" value="Admin Manual Adjustment Deduction" required>
+        </div>
+
+        <button type="submit" class="btn btn-danger" style="width: 100%; font-size: 15px;">
+          <i class="fa-solid fa-minus"></i> Deduct Funds Now
         </button>
       </form>
     </div>
@@ -2190,14 +2218,29 @@
           res.promotions.forEach(p => {
             const tr = document.createElement('tr');
             let color = 'var(--gold)';
-            if (p.status === 'approved') color = 'var(--neon-green)';
-            if (p.status === 'rejected') color = 'var(--error)';
+            let statusText = p.status ? p.status.toUpperCase() : 'PENDING';
+            if (p.status === 'active' || p.status === 'approved') {
+              color = 'var(--neon-green)';
+              statusText = 'APPROVED / ACTIVE';
+            } else if (p.status === 'pending' || p.status === 'pending_approval') {
+              color = 'var(--gold)';
+              statusText = 'PENDING APPROVAL';
+            } else if (p.status === 'rejected') {
+              color = 'var(--error)';
+              statusText = 'REJECTED';
+            }
+
+            let rejMsgHtml = '';
+            if (p.status === 'rejected') {
+              const msg = p.rejection_reason || 'Promotion reject kar diya gaya hai.';
+              rejMsgHtml = `<div style="font-size: 11px; color: var(--error); margin-top: 4px; font-weight: 600;"><i class="fa-solid fa-circle-xmark"></i> ${msg}</div>`;
+            }
 
             tr.innerHTML = `
-              <td><strong>${p.channel_title || p.channel_link}</strong></td>
+              <td><strong>${p.channel_title || p.channel_link}</strong>${rejMsgHtml}</td>
               <td>₹${p.budget_inr} INR</td>
-              <td>${p.joins_count} joins / ${p.views_count} views</td>
-              <td><span style="color:${color}; font-weight:bold; text-transform:uppercase;">${p.status}</span></td>
+              <td>${p.current_joins || p.joins_count || 0} joins / ${p.current_views || p.views_count || 0} views</td>
+              <td><span style="color:${color}; font-weight:bold; text-transform:uppercase;">${statusText}</span></td>
             `;
             tbody.appendChild(tr);
           });
@@ -2243,12 +2286,27 @@
           res.channels.forEach(c => {
             const tr = document.createElement('tr');
             const categoryName = c.category || 'General';
+            const st = c.status || 'pending_approval';
+            let stColor = 'var(--gold)';
+            let stLabel = 'Pending Approval';
+            if (st === 'approved' || st === 'active') {
+              stColor = 'var(--neon-green)';
+              stLabel = 'Approved';
+            } else if (st === 'rejected') {
+              stColor = 'var(--error)';
+              stLabel = 'Rejected';
+            } else if (st === 'banned') {
+              stColor = 'var(--purple)';
+              stLabel = 'Banned';
+            }
+
             tr.innerHTML = `
-              <td><strong>${c.title}</strong> (${c.username})</td>
+              <td><strong>${c.channel_title || c.title}</strong> (${c.channel_username || c.username})</td>
               <td><span class="badge" style="font-size: 11px; padding: 2px 8px;">${categoryName}</span></td>
+              <td><span style="color: ${stColor}; font-weight: bold; font-size: 12px;">${stLabel}</span></td>
               <td class="text-green"><strong>${c.total_joins}</strong></td>
-              <td class="text-gold">${c.total_left}</td>
-              <td class="text-cyan"><strong>₹${c.earnings_inr.toFixed(2)}</strong></td>
+              <td class="text-gold">${c.total_lefts || c.total_left || 0}</td>
+              <td class="text-cyan"><strong>₹${(c.total_earned_inr || c.earnings_inr || 0).toFixed(2)}</strong></td>
               <td>
                 <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="deleteMyChannel('${c.channel_id}')">
                   <i class="fa-solid fa-trash"></i> Delete
@@ -2258,7 +2316,7 @@
             tbody.appendChild(tr);
           });
         } else {
-          tbody.innerHTML = `<tr><td colspan="6" class="text-muted" style="text-align: center;">No channels connected yet.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="7" class="text-muted" style="text-align: center;">No channels connected yet.</td></tr>`;
         }
       } catch (err) {}
     }
@@ -2383,20 +2441,28 @@
 
         if (promoRes.promotions && promoRes.promotions.length > 0) {
           promoRes.promotions.forEach(p => {
-            if (p.status === 'pending') pendingCount++;
+            const st = p.status || 'pending_approval';
+            if (st === 'pending' || st === 'pending_approval') pendingCount++;
             const tr = document.createElement('tr');
+
+            let badgeColor = 'var(--gold)';
+            if (st === 'active' || st === 'approved') badgeColor = 'var(--neon-green)';
+            if (st === 'rejected') badgeColor = 'var(--error)';
+
             tr.innerHTML = `
               <td>#${p.id}</td>
               <td><strong>${p.username}</strong></td>
-              <td><a href="${p.channel_link}" target="_blank" style="color:var(--neon-cyan);">${p.channel_link}</a></td>
+              <td><a href="${p.channel_url || p.channel_link}" target="_blank" style="color:var(--neon-cyan);">${p.channel_title || p.channel_link}</a></td>
               <td>₹${p.budget_inr} INR</td>
-              <td><code>${p.payment_txn_ref}</code></td>
-              <td><div style="max-width:200px; font-size:12px;" class="text-muted">${p.ad_message}</div></td>
+              <td><code>${p.transaction_ref || p.payment_txn_ref}</code></td>
+              <td><div style="max-width:200px; font-size:12px;" class="text-muted">${p.ad_message || '-'}</div></td>
               <td>
-                ${p.status === 'pending' ? `
-                  <button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="approvePromotion(${p.id})">Approve & Broadcast</button>
-                  <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="rejectPromotion(${p.id})">Reject</button>
-                ` : `<span style="font-weight:bold;">${p.status.toUpperCase()}</span>`}
+                ${(st === 'pending' || st === 'pending_approval') ? `
+                  <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                    <button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="approvePromotion(${p.id})"><i class="fa-solid fa-check"></i> Approve</button>
+                    <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="rejectPromotion(${p.id})"><i class="fa-solid fa-xmark"></i> Reject</button>
+                  </div>
+                ` : `<span style="font-weight:bold; color:${badgeColor}">${st.toUpperCase()}</span>${p.rejection_reason ? `<div style="font-size:10px; color:var(--error);">${p.rejection_reason}</div>` : ''}`}
               </td>
             `;
             promoTbody.appendChild(tr);
@@ -2413,23 +2479,33 @@
           if (promoRes.connectedChannels.length > 0) {
             promoRes.connectedChannels.forEach(c => {
               const tr = document.createElement('tr');
+              const st = c.status || 'pending_approval';
+              let stColor = 'var(--gold)';
+              if (st === 'approved' || st === 'active') stColor = 'var(--neon-green)';
+              if (st === 'rejected') stColor = 'var(--error)';
+              if (st === 'banned') stColor = 'var(--purple)';
+
               tr.innerHTML = `
                 <td>#${c.id}</td>
                 <td><strong>${c.channel_title}</strong></td>
                 <td><code>${c.channel_id}</code></td>
                 <td>${c.category || 'General'}</td>
+                <td><span style="color:${stColor}; font-weight:bold; font-size:12px;">${st.toUpperCase()}</span></td>
                 <td>${c.owner_username || 'User #' + c.owner_user_id}</td>
                 <td>${c.total_joins} joins / ${c.total_lefts || 0} left</td>
                 <td>
-                  <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="adminDeleteChannel('${c.channel_id}')">
-                    <i class="fa-solid fa-trash"></i> Delete
-                  </button>
+                  <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                    ${st !== 'approved' ? `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 11px;" onclick="adminChangeChannelStatus('${c.channel_id}', 'approved')"><i class="fa-solid fa-check"></i> Approve</button>` : ''}
+                    ${st === 'pending_approval' ? `<button class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="adminChangeChannelStatus('${c.channel_id}', 'rejected')"><i class="fa-solid fa-ban"></i> Reject</button>` : ''}
+                    ${st === 'banned' ? `<button class="btn btn-cyan" style="padding: 3px 8px; font-size: 11px;" onclick="adminChangeChannelStatus('${c.channel_id}', 'approved')"><i class="fa-solid fa-unlock"></i> Unban</button>` : `<button class="btn btn-purple" style="padding: 3px 8px; font-size: 11px;" onclick="adminChangeChannelStatus('${c.channel_id}', 'banned')"><i class="fa-solid fa-lock"></i> Ban</button>`}
+                    <button class="btn btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="adminDeleteChannel('${c.channel_id}')"><i class="fa-solid fa-trash"></i></button>
+                  </div>
                 </td>
               `;
               chanTbody.appendChild(tr);
             });
           } else {
-            chanTbody.innerHTML = '<tr><td colspan="7" class="text-muted">No connected channels found.</td></tr>';
+            chanTbody.innerHTML = '<tr><td colspan="8" class="text-muted">No connected channels found.</td></tr>';
           }
         }
 
@@ -2464,10 +2540,13 @@
             <td>${u.is_banned ? '<span style="color:var(--error);">BANNED</span>' : '<span style="color:var(--neon-green);">ACTIVE</span>'}</td>
             <td>
               <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                <button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="openAdminAddFundsModal(${u.id}, '${u.username}')">
-                  <i class="fa-solid fa-wallet"></i> +₹ Funds
+                <button class="btn btn-primary" style="padding: 4px 8px; font-size: 11px;" onclick="openAdminAddFundsModal(${u.id}, '${u.username}')">
+                  <i class="fa-solid fa-wallet"></i> +₹
                 </button>
-                <button class="btn btn-${u.is_banned ? 'cyan' : 'danger'}" style="padding: 4px 10px; font-size: 12px;" onclick="toggleUserBan(${u.id}, ${!u.is_banned})">
+                <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openAdminRemoveFundsModal(${u.id}, '${u.username}')">
+                  <i class="fa-solid fa-minus"></i> -₹
+                </button>
+                <button class="btn btn-${u.is_banned ? 'cyan' : 'danger'}" style="padding: 4px 8px; font-size: 11px;" onclick="toggleUserBan(${u.id}, ${!u.is_banned})">
                   ${u.is_banned ? 'Unban' : 'Ban'}
                 </button>
               </div>
@@ -2601,12 +2680,55 @@
     }
 
     async function rejectPromotion(promoId) {
+      const reason = prompt("Enter Rejection Message / Reason for User:", "Channel content guidelines violation");
+      if (reason === null) return;
+
       try {
-        const res = await apiCall('/api/admin/promotions/reject', 'POST', { promotionId: promoId });
-        alert(res.message || 'Promotion rejected!');
+        const res = await apiCall('/api/admin/promotions/reject', 'POST', { promotionId: promoId, rejection_reason: reason });
+        alert(res.message || 'Promotion rejected and funds refunded to user!');
         loadAdminDashboardData();
       } catch (err) {
         alert(err.message);
+      }
+    }
+
+    async function adminChangeChannelStatus(channelId, status) {
+      try {
+        const res = await apiCall('/api/admin/channels/status', 'POST', { channel_id: channelId, status: status });
+        alert(res.message || `Channel status set to ${status}!`);
+        loadAdminDashboardData();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function openAdminRemoveFundsModal(userId, username) {
+      document.getElementById('adminRemoveFundsUserIdVal').value = userId;
+      document.getElementById('adminRemoveFundsTargetUserText').textContent = `${username} (#${userId})`;
+      document.getElementById('adminRemoveFundsModal')?.classList.remove('hidden');
+    }
+
+    function closeAdminRemoveFundsModal() {
+      document.getElementById('adminRemoveFundsModal')?.classList.add('hidden');
+    }
+
+    async function handleAdminSubmitRemoveFunds(e) {
+      e.preventDefault();
+      const userId = parseInt(document.getElementById('adminRemoveFundsUserIdVal').value);
+      const amount = parseFloat(document.getElementById('adminRemoveFundsAmountInput').value);
+      const desc = document.getElementById('adminRemoveFundsNoteInput').value;
+
+      try {
+        const res = await apiCall('/api/admin/user/remove-funds', 'POST', {
+          userId: userId,
+          amountInr: amount,
+          description: desc
+        });
+        alert(res.message || `₹${amount} deducted successfully!`);
+        closeAdminRemoveFundsModal();
+        loadAdminDashboardData();
+      } catch (err) {
+        alert(err.message || 'Failed to deduct funds.');
       }
     }
 

@@ -158,6 +158,7 @@ def init_db() -> None:
                 current_joins INTEGER DEFAULT 0,
                 current_views INTEGER DEFAULT 0,
                 status TEXT DEFAULT 'pending_approval',
+                rejection_reason TEXT DEFAULT '',
                 transaction_ref TEXT NOT NULL,
                 category TEXT DEFAULT 'General',
                 is_category_specific INTEGER DEFAULT 0,
@@ -174,6 +175,7 @@ def init_db() -> None:
                 channel_title TEXT NOT NULL,
                 channel_username TEXT,
                 category TEXT DEFAULT 'General',
+                status TEXT DEFAULT 'pending_approval',
                 total_joins INTEGER DEFAULT 0,
                 total_lefts INTEGER DEFAULT 0,
                 total_views INTEGER DEFAULT 0,
@@ -279,6 +281,14 @@ def init_db() -> None:
             pass
         try:
             conn.execute("ALTER TABLE connected_channels ADD COLUMN member_count INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("ALTER TABLE connected_channels ADD COLUMN status TEXT DEFAULT 'pending_approval'")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("ALTER TABLE promotions ADD COLUMN rejection_reason TEXT DEFAULT ''")
         except sqlite3.OperationalError:
             pass
 
@@ -555,7 +565,7 @@ def create_promotion(
     is_category_specific: bool = False,
     total_price_inr: float = 0.0,
     ad_message: str = "",
-    status: str = "active"
+    status: str = "pending_approval"
 ) -> dict:
     tot_price = total_price_inr if total_price_inr > 0 else price_inr
     with db() as conn:
@@ -595,32 +605,87 @@ def get_all_promotions() -> list[dict]:
         return [dict(r) for r in rows]
 
 
-def update_promotion_status(promo_id: int, status: str) -> dict:
+def update_promotion_status(promo_id: int, status: str, rejection_reason: str = "") -> dict:
     with db() as conn:
         p = conn.execute("SELECT * FROM promotions WHERE id=?", (promo_id,)).fetchone()
         if not p:
             return {"ok": False, "error": "Promotion campaign not found"}
-        conn.execute("UPDATE promotions SET status=? WHERE id=?", (status, promo_id))
+
+        old_status = p["status"]
+        conn.execute("UPDATE promotions SET status=?, rejection_reason=? WHERE id=?", (status, rejection_reason, promo_id))
+
+        # If rejected and previously not rejected, refund user's wallet
+        if status == "rejected" and old_status != "rejected":
+            user_id = p["user_id"]
+            user = conn.execute("SELECT telegram_id, id FROM users WHERE id=?", (user_id,)).fetchone()
+            if user:
+                tg_id = user["telegram_id"] or user["id"]
+                tot_price = p["total_price_inr"] if p["total_price_inr"] > 0 else p["price_inr"]
+                refund_paise = int(round(tot_price * 100))
+                if refund_paise > 0:
+                    now = utcnow()
+                    order_id = f"REFUND-PROMO-{promo_id}-{uuid.uuid4().hex[:6].upper()}"
+                    desc = f"Refund for Rejected Promotion #{promo_id}"
+                    if rejection_reason:
+                        desc += f": {rejection_reason}"
+
+                    conn.execute(
+                        """
+                        INSERT INTO wallet_transactions (telegram_id, type, amount_paise, utr, order_id, description, created_at)
+                        VALUES (?, 'refund', ?, 'PROMO_REFUND', ?, ?, ?)
+                        """,
+                        (tg_id, refund_paise, order_id, desc, now),
+                    )
+                    conn.execute(
+                        """
+                        INSERT INTO wallets (telegram_id, balance_paise, created_at, updated_at)
+                        VALUES (?, ?, ?, ?)
+                        ON CONFLICT(telegram_id) DO UPDATE SET balance_paise = balance_paise + excluded.balance_paise, updated_at = excluded.updated_at
+                        """,
+                        (tg_id, refund_paise, now, now),
+                    )
+
         return {"ok": True}
 
 
-def connect_channel(owner_user_id: int, channel_id: str, channel_title: str, channel_username: str = "", category: str = "General", member_count: int = 0) -> dict:
+def connect_channel(owner_user_id: int, channel_id: str, channel_title: str, channel_username: str = "", category: str = "General", member_count: int = 0, status: str = "pending_approval") -> dict:
     with db() as conn:
         conn.execute(
             """
-            INSERT INTO connected_channels (owner_user_id, channel_id, channel_title, channel_username, category, member_count, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO connected_channels (owner_user_id, channel_id, channel_title, channel_username, category, member_count, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(channel_id) DO UPDATE SET
                 owner_user_id=excluded.owner_user_id,
                 channel_title=excluded.channel_title,
                 channel_username=excluded.channel_username,
                 category=excluded.category,
-                member_count=excluded.member_count
+                member_count=excluded.member_count,
+                status=excluded.status
             """,
-            (owner_user_id, str(channel_id), channel_title, channel_username, category or "General", member_count, utcnow()),
+            (owner_user_id, str(channel_id), channel_title, channel_username, category or "General", member_count, status, utcnow()),
         )
         row = conn.execute("SELECT * FROM connected_channels WHERE channel_id=?", (str(channel_id),)).fetchone()
         return dict(row)
+
+
+def update_connected_channel_status(channel_id: str, status: str) -> dict:
+    clean_id = str(channel_id).strip()
+    username_part = clean_id.split("t.me/")[-1].lstrip("@").strip("/")
+    at_username = f"@{username_part}" if username_part else clean_id
+
+    with db() as conn:
+        row = conn.execute(
+            """
+            SELECT * FROM connected_channels
+            WHERE channel_id=? OR channel_id=? OR channel_username=? OR id=?
+            """,
+            (clean_id, at_username, username_part, clean_id),
+        ).fetchone()
+        if not row:
+            return {"ok": False, "error": "Channel not found."}
+        conn.execute("UPDATE connected_channels SET status=? WHERE id=?", (status, row["id"]))
+        updated = conn.execute("SELECT * FROM connected_channels WHERE id=?", (row["id"],)).fetchone()
+        return {"ok": True, "message": f"Channel '{row['channel_title']}' status set to {status}.", "channel": dict(updated)}
 
 
 def get_user_connected_channels(owner_user_id: int) -> list[dict]:
@@ -1106,6 +1171,52 @@ def admin_credit_user_wallet(user_id: int, amount_inr: float, description: str =
         }
 
 
+def admin_deduct_user_wallet(user_id: int, amount_inr: float, description: str = "Admin Funds Deduction") -> dict:
+    user = get_user_by_id(user_id)
+    if not user:
+        return {"ok": False, "error": f"User ID {user_id} not found."}
+
+    tg_id = user.get("telegram_id") or user["id"]
+    amount_paise = int(round(amount_inr * 100))
+    if amount_paise <= 0:
+        return {"ok": False, "error": "Amount must be greater than zero."}
+
+    w = get_or_create_wallet(tg_id)
+    if w["balance_paise"] < amount_paise:
+        return {
+            "ok": False,
+            "error": f"Insufficient wallet balance. Available: ₹{w['balance_paise']/100:.2f}, Requested Deduction: ₹{amount_inr:.2f}."
+        }
+
+    now = utcnow()
+    order_id = f"ADMIN-DEBIT-{tg_id}-{uuid.uuid4().hex[:8].upper()}"
+
+    with db() as conn:
+        conn.execute(
+            """
+            INSERT INTO wallet_transactions (telegram_id, type, amount_paise, utr, order_id, description, created_at)
+            VALUES (?, 'admin_debit', ?, 'ADMIN_DEDUCTION', ?, ?, ?)
+            """,
+            (tg_id, amount_paise, order_id, description or "Admin Grant Deduction", now),
+        )
+        conn.execute(
+            """
+            UPDATE wallets
+            SET balance_paise = balance_paise - ?,
+                updated_at = ?
+            WHERE telegram_id = ?
+            """,
+            (amount_paise, now, tg_id),
+        )
+        row_w = conn.execute("SELECT * FROM wallets WHERE telegram_id=?", (tg_id,)).fetchone()
+        return {
+            "ok": True,
+            "message": f"Successfully deducted ₹{amount_inr:.2f} from user '{user['username']}' account.",
+            "new_balance_paise": row_w["balance_paise"],
+            "new_balance_inr": row_w["balance_paise"] / 100.0,
+        }
+
+
 def deduct_wallet_balance_paise(telegram_id: int, amount_paise: int, description: str = "Channel Promotion Payment") -> dict:
     """
     Deducts user wallet balance in paise if sufficient balance is available.
@@ -1149,13 +1260,13 @@ def get_connected_channels_by_category(category: str | None = None, limit: int =
     with db() as conn:
         if category and category.strip().lower() != "general":
             rows = conn.execute(
-                "SELECT * FROM connected_channels WHERE LOWER(category)=LOWER(?) ORDER BY id ASC LIMIT ?",
+                "SELECT * FROM connected_channels WHERE status IN ('approved', 'active') AND LOWER(category)=LOWER(?) ORDER BY id ASC LIMIT ?",
                 (category.strip(), limit),
             ).fetchall()
             if rows:
                 return [dict(r) for r in rows]
 
-        rows = conn.execute("SELECT * FROM connected_channels ORDER BY id ASC LIMIT ?", (limit,)).fetchall()
+        rows = conn.execute("SELECT * FROM connected_channels WHERE status IN ('approved', 'active') ORDER BY id ASC LIMIT ?", (limit,)).fetchall()
         return [dict(r) for r in rows]
 
 
