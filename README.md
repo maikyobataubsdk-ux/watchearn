@@ -1,6 +1,6 @@
-# Blazeculture - High-Paying PTC Platform & Telegram Channel Promotion Ecosystem
+# Earn Program - High-Paying PTC Platform & Telegram Channel Promotion Ecosystem
 
-**Blazeculture** is a complete, modern, production-ready "Watch Ads & Earn" PTC (Pay-To-Click) platform combined with an advanced **Telegram Mini App & Channel Promotion Ecosystem**. Integrated with high-paying ad networks (**Adsterra**, **HilltopAds**, **Monetag**), automated multi-channel bot broadcasts, QR payment verification, VIP Premium ad-bypass, and channel owner revenue sharing.
+**Earn Program** is a complete, modern, production-ready "Watch Ads & Earn" PTC (Pay-To-Click) platform combined with an advanced **Telegram Mini App & Channel Promotion Ecosystem**. Integrated with high-paying ad networks (**Adsterra**, **HilltopAds**, **Monetag**), automated multi-channel bot broadcasts, QR payment verification, VIP Premium ad-bypass, and channel owner revenue sharing.
 
 Features a dark glassmorphism UI, dual Hindi + English language toggle, 20-second non-skippable anti-cheat timer, automated 15% referral commission system, $5 / ₹400 minimum withdrawal support (UPI, Paytm, USDT, PayPal), dual SQLite + JSON persistent database, Telegram bot integration (`bot.py`), and a master admin panel at `/raj`.
 

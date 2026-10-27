@@ -16,7 +16,7 @@ import web
 import db
 
 
-class TestBlazeculturePTCPlatform(unittest.TestCase):
+class TestEarnProgramPTCPlatform(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         db.init_db()
@@ -40,6 +40,14 @@ class TestBlazeculturePTCPlatform(unittest.TestCase):
         data = res_config.json()
         self.assertEqual(data["coinsPerAd"], 2.0)
         self.assertEqual(data["minWithdrawalUsd"], 5.0)
+
+        res_stats = self.client.get("/api/stats")
+        self.assertEqual(res_stats.status_code, 200)
+        stats = res_stats.json()["stats"]
+        self.assertIn("total_community_members", stats)
+        self.assertIn("total_channels", stats)
+        self.assertIn("total_users", stats)
+        self.assertIn("total_user_earnings_inr", stats)
 
     def test_02_user_registration_and_referral(self):
         # Register User A (Referrer)
@@ -288,7 +296,7 @@ class TestBlazeculturePTCPlatform(unittest.TestCase):
         # Test /admin route endpoint
         admin_res = self.client.get("/admin")
         self.assertEqual(admin_res.status_code, 200)
-        self.assertIn("Blazeculture", admin_res.text)
+        self.assertTrue("Earn Program" in admin_res.text or "Blazeculture" in admin_res.text)
 
         # Test analyze_channel with different link formats
         login_a = self.client.post("/api/auth/login", json={"login": "userA", "password": "password123"}).json()
