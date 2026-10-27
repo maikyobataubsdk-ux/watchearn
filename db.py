@@ -304,6 +304,10 @@ def init_db() -> None:
             "payment_qr_url": "/static/logo.png",
             "cost_per_2_joins_inr": "1.0",
             "payout_per_2_joins_inr": "0.50",
+            "bot_start_quote": "welcome to earn program! watch simple ads, earn coins, promote telegram channels & generate daily income easily.",
+            "bot_tutorial_url": "https://t.me/Tgfuckerx",
+            "bot_help_url": "https://t.me/Tgfuckerx",
+            "force_sub_enabled": "0",
         }
         for k, v in default_settings.items():
             conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))

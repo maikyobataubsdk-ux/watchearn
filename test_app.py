@@ -334,6 +334,42 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         self.assertEqual(admin_res.status_code, 200)
         self.assertTrue("Earn Program" in admin_res.text or "Blazeculture" in admin_res.text)
 
+    def test_19_bot_settings_and_small_caps_keyboard_config(self):
+        admin_login = self.client.post("/api/admin/login", json={"username": "rajpapa", "password": "28@RajPapa"}).json()
+        admin_token = admin_login["adminToken"]
+
+        # 1. Update bot settings via admin endpoint
+        save_res = self.client.post("/api/admin/bot-config", json={
+            "bot_start_quote": "earn money daily watching ads and promoting channels",
+            "bot_tutorial_url": "https://t.me/Tgfuckerx",
+            "bot_help_url": "https://t.me/Tgfuckerx",
+            "force_sub_enabled": "1"
+        }, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(save_res.status_code, 200)
+        self.assertTrue(save_res.json()["ok"])
+
+        # 2. Verify GET /api/admin/bot-config returns updated values
+        get_res = self.client.get("/api/admin/bot-config", headers={"X-Admin-Token": admin_token})
+        self.assertEqual(get_res.status_code, 200)
+        data = get_res.json()
+        self.assertEqual(data["bot_start_quote"], "earn money daily watching ads and promoting channels")
+        self.assertEqual(data["bot_tutorial_url"], "https://t.me/Tgfuckerx")
+        self.assertEqual(data["bot_help_url"], "https://t.me/Tgfuckerx")
+        self.assertEqual(data["force_sub_enabled"], "1")
+
+        # 3. Test bot small caps converter and welcome keyboard structure
+        from bot import to_small_caps, main_welcome_keyboard
+        small = to_small_caps("earn money daily")
+        self.assertEqual(small, "ᴇᴀʀɴ ᴍᴏɴᴇʏ ᴅᴀɪʟʏ")
+
+        kb = main_welcome_keyboard()
+        # Verify exactly 3 buttons arranged in 2 rows (row 1: Earn App, row 2: Tutorial & Help)
+        total_btns = sum(len(row) for row in kb.inline_keyboard)
+        self.assertEqual(total_btns, 3)
+        self.assertEqual(kb.inline_keyboard[0][0].text, "🚀 ᴇᴀʀɴ ᴘʀᴏɢʀᴀᴍ")
+        self.assertEqual(kb.inline_keyboard[1][0].text, "📚 ᴛᴜᴛᴏʀɪᴀʟ")
+        self.assertEqual(kb.inline_keyboard[1][1].text, "💬 ʜᴇʟᴘ")
+
         # Test analyze_channel with different link formats
         login_a = self.client.post("/api/auth/login", json={"login": "userA", "password": "password123"}).json()
         token_a = login_a["token"]

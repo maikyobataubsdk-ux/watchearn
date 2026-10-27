@@ -153,7 +153,8 @@
     .logo-brand img {
       width: 38px;
       height: 38px;
-      border-radius: 10px;
+      border-radius: 50%;
+      overflow: hidden;
       box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
       object-fit: cover;
     }
@@ -1279,8 +1280,15 @@
         <!-- SUBTAB 7: Bot Configuration -->
         <div id="adminSubtab_bot" class="admin-subtab hidden">
           <div class="glass" style="padding: 25px;">
-            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-robot text-purple"></i> Telegram Bot Force-Sub & Campaign Configuration</h3>
+            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-robot text-purple"></i> Telegram Bot Settings & Master Control Panel</h3>
             <form onsubmit="handleSaveBotConfig(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Enable Force Sub Requirement</label>
+                <select id="admForceSubEnabledInput" class="glass-input" style="background: rgba(18,24,38,0.9);">
+                  <option value="0">Disabled (Off)</option>
+                  <option value="1">Enabled (Required)</option>
+                </select>
+              </div>
               <div>
                 <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Force Sub Channel Title / ID</label>
                 <input type="text" id="admForceChatTitleInput" class="glass-input" placeholder="@yourforcechannel or Title">
@@ -1288,6 +1296,14 @@
               <div>
                 <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Force Sub Join Link</label>
                 <input type="text" id="admForceJoinUrlInput" class="glass-input" placeholder="https://t.me/yourforcechannel">
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Bot Tutorial Button Link</label>
+                <input type="text" id="admBotTutorialUrlInput" class="glass-input" placeholder="https://t.me/Tgfuckerx">
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Bot Help / Support Button Link</label>
+                <input type="text" id="admBotHelpUrlInput" class="glass-input" placeholder="https://t.me/Tgfuckerx">
               </div>
               <div>
                 <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Target Campaign Channel Title</label>
@@ -1301,7 +1317,11 @@
                 </select>
               </div>
               <div style="grid-column: 1 / -1;">
-                <button type="submit" class="btn btn-purple"><i class="fa-solid fa-floppy-disk"></i> Save Bot Config</button>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Bot Start Message Quote / Detail Text (Small Caps)</label>
+                <textarea id="admBotStartQuoteInput" class="glass-input" rows="3" placeholder="welcome to earn program! watch simple ads, earn coins, promote telegram channels & generate daily income easily."></textarea>
+              </div>
+              <div style="grid-column: 1 / -1;">
+                <button type="submit" class="btn btn-purple"><i class="fa-solid fa-floppy-disk"></i> Save Bot All Settings & Links</button>
               </div>
             </form>
           </div>
@@ -2430,6 +2450,10 @@
             document.getElementById('admForceJoinUrlInput').value = botRes.force_join_url || '';
             document.getElementById('admTargetChatTitleInput').value = botRes.target_chat_title || '';
             document.getElementById('admTargetInviteModeInput').value = botRes.target_invite_mode || 'direct';
+            document.getElementById('admBotStartQuoteInput').value = botRes.bot_start_quote || '';
+            document.getElementById('admBotTutorialUrlInput').value = botRes.bot_tutorial_url || '';
+            document.getElementById('admBotHelpUrlInput').value = botRes.bot_help_url || '';
+            document.getElementById('admForceSubEnabledInput').value = botRes.force_sub_enabled || '0';
           }
         } catch (e) {}
 
@@ -2656,14 +2680,22 @@
         const forceUrl = document.getElementById('admForceJoinUrlInput').value;
         const targetTitle = document.getElementById('admTargetChatTitleInput').value;
         const targetMode = document.getElementById('admTargetInviteModeInput').value;
+        const startQuote = document.getElementById('admBotStartQuoteInput').value;
+        const tutorialUrl = document.getElementById('admBotTutorialUrlInput').value;
+        const helpUrl = document.getElementById('admBotHelpUrlInput').value;
+        const forceEnabled = document.getElementById('admForceSubEnabledInput').value;
 
         await apiCall('/api/admin/bot-config', 'POST', {
           force_chat_title: forceTitle,
           force_join_url: forceUrl,
           target_chat_title: targetTitle,
-          target_invite_mode: targetMode
+          target_invite_mode: targetMode,
+          bot_start_quote: startQuote,
+          bot_tutorial_url: tutorialUrl,
+          bot_help_url: helpUrl,
+          force_sub_enabled: forceEnabled
         });
-        alert('Bot configuration saved!');
+        alert('Bot all settings & button links saved!');
       } catch (err) {
         alert(err.message);
       }

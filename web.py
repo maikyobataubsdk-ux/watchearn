@@ -12,6 +12,7 @@ import httpx
 from fastapi import FastAPI, HTTPException, Request, Depends, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import db
@@ -35,6 +36,8 @@ from db import (
 
 BASE_DIR = Path(__file__).resolve().parent
 app = FastAPI(title="Earn Program PTC & Telegram Platform", docs_url=None, redoc_url=None)
+
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 app.add_middleware(
     CORSMiddleware,
@@ -210,6 +213,10 @@ class AdminBotConfigRequest(BaseModel):
     target_chat_id: Optional[str] = None
     target_chat_title: Optional[str] = None
     target_invite_mode: Optional[str] = None
+    bot_start_quote: Optional[str] = None
+    bot_tutorial_url: Optional[str] = None
+    bot_help_url: Optional[str] = None
+    force_sub_enabled: Optional[str] = None
 
 
 class AdminAdCodesRequest(BaseModel):
@@ -1106,6 +1113,10 @@ async def admin_get_bot_config(_: bool = Depends(require_admin)) -> dict:
         "target_chat_id": settings.get("target_chat_id", ""),
         "target_chat_title": settings.get("target_chat_title", ""),
         "target_invite_mode": settings.get("target_invite_mode", "direct"),
+        "bot_start_quote": settings.get("bot_start_quote", "welcome to earn program! watch simple ads, earn coins, promote telegram channels & generate daily income easily."),
+        "bot_tutorial_url": settings.get("bot_tutorial_url", "https://t.me/Tgfuckerx"),
+        "bot_help_url": settings.get("bot_help_url", "https://t.me/Tgfuckerx"),
+        "force_sub_enabled": settings.get("force_sub_enabled", "0"),
     }
 
 
@@ -1118,6 +1129,10 @@ async def admin_save_bot_config(body: AdminBotConfigRequest, _: bool = Depends(r
     if body.target_chat_id is not None: new_settings["target_chat_id"] = body.target_chat_id
     if body.target_chat_title is not None: new_settings["target_chat_title"] = body.target_chat_title
     if body.target_invite_mode is not None: new_settings["target_invite_mode"] = body.target_invite_mode
+    if body.bot_start_quote is not None: new_settings["bot_start_quote"] = body.bot_start_quote
+    if body.bot_tutorial_url is not None: new_settings["bot_tutorial_url"] = body.bot_tutorial_url
+    if body.bot_help_url is not None: new_settings["bot_help_url"] = body.bot_help_url
+    if body.force_sub_enabled is not None: new_settings["force_sub_enabled"] = body.force_sub_enabled
     update_settings(new_settings)
     return {"ok": True, "message": "Bot configuration updated successfully!"}
 
