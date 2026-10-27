@@ -14,7 +14,7 @@ from aiogram.types import (
 )
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 
-from config import BOT_TOKEN, ADMIN_USER_ID, WEBAPP_URL, validate_common
+from config import BOT_TOKEN, ADMIN_USER_ID, WEBAPP_URL, BASE_DIR, validate_common
 from datetime import datetime, timezone, timedelta
 from db import (
     init_db, get_setting, set_setting, create_campaign, get_campaign,
@@ -155,13 +155,17 @@ async def start_handler(message: Message) -> None:
         f"<blockquote>{escape(quote_small_caps)}</blockquote>"
     )
 
-    logo_path = BASE_DIR / "static" / "logo.png"
-    if logo_path.exists():
-        from aiogram.types import FSInputFile
-        photo = FSInputFile(str(logo_path))
-        await message.answer_photo(photo=photo, caption=greeting, reply_markup=main_welcome_keyboard(token))
-    else:
-        await message.answer(greeting, reply_markup=main_welcome_keyboard(token))
+    logo_url = "https://i.ibb.co/4nLM2yrb/uploaded-image.jpg"
+    try:
+        await message.answer_photo(photo=logo_url, caption=greeting, reply_markup=main_welcome_keyboard(token))
+    except Exception:
+        logo_path = BASE_DIR / "static" / "logo.png"
+        if logo_path.exists():
+            from aiogram.types import FSInputFile
+            photo = FSInputFile(str(logo_path))
+            await message.answer_photo(photo=photo, caption=greeting, reply_markup=main_welcome_keyboard(token))
+        else:
+            await message.answer(greeting, reply_markup=main_welcome_keyboard(token))
 
 
 @router.message(Command("admin"))

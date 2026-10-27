@@ -1,27 +1,16 @@
 {
-  "updated_at": "2026-10-27T17:18:08+00:00",
+  "updated_at": "2026-10-27T17:53:41+00:00",
   "users": [
     {
       "id": 1,
-      "email": "tg_620504919@telegram.org",
-      "username": "user_620504919",
+      "email": "tg_842798910@telegram.org",
+      "username": "user_842798910",
       "balance_coins": 0.0,
       "total_earned_coins": 0.0,
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-10-27T17:06:05+00:00"
-    },
-    {
-      "id": 2,
-      "email": "tg_651856180@telegram.org",
-      "username": "user_651856180",
-      "balance_coins": 0.0,
-      "total_earned_coins": 0.0,
-      "total_ads_watched": 0,
-      "is_premium": 0,
-      "is_banned": 0,
-      "created_at": "2026-10-27T17:18:08+00:00"
+      "created_at": "2026-10-27T17:53:41+00:00"
     }
   ],
   "withdrawals": [],

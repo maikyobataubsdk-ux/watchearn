@@ -457,7 +457,7 @@ async def public_config() -> dict:
     ad_codes = get_ad_codes()
     return {
         "appName": "Earn Program",
-        "logoUrl": "/static/logo.png",
+        "logoUrl": "https://i.ibb.co/4nLM2yrb/uploaded-image.jpg",
         "coinsPerAd": float(settings.get("coins_per_ad", 2.0)),
         "dailyAdLimit": int(settings.get("daily_ad_limit", 50)),
         "minWithdrawalUsd": float(settings.get("min_withdrawal_usd", 5.0)),
