@@ -43,6 +43,9 @@ def get_webapp_url(token: str = "") -> str:
 
 
 async def member_of_force_channel(user_id: int) -> bool:
+    force_enabled = get_setting("force_sub_enabled")
+    if force_enabled == "0":
+        return True
     force_chat_id = get_setting("force_chat_id")
     if not force_chat_id:
         return True
@@ -58,37 +61,29 @@ async def member_of_force_channel(user_id: int) -> bool:
         return False
 
 
+def to_small_caps(text: str) -> str:
+    """Converts standard ASCII characters to Unicode small caps font format."""
+    normal = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    small_caps = "ᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢAʙCᴅEғGʜIᴊKʟMɴOᴘQʀSᴛUᴠWXYᴢ0123456789"
+    trans = str.maketrans(normal, small_caps)
+    return text.translate(trans)
+
+
 def main_welcome_keyboard(token: str = "") -> InlineKeyboardMarkup:
     web_url = get_webapp_url(token)
-    force_join_url = get_setting("force_join_url")
+    tut_url = get_setting("bot_tutorial_url") or "https://t.me/Tgfuckerx"
+    hlp_url = get_setting("bot_help_url") or "https://t.me/Tgfuckerx"
 
+    # Exactly 3 buttons: Earn Program (Mini App), Tutorial, Help
     buttons = [
         [
-            InlineKeyboardButton(text="🚀 Open Earn Program App", web_app=WebAppInfo(url=web_url))
+            InlineKeyboardButton(text="🚀 ᴇᴀʀɴ ᴘʀᴏɢʀᴀᴍ", web_app=WebAppInfo(url=web_url))
         ],
         [
-            InlineKeyboardButton(text="⭐ VIP Premium Pass", callback_data="btn_premium"),
-            InlineKeyboardButton(text="💼 Promote Channel", callback_data="btn_promote")
-        ],
-        [
-            InlineKeyboardButton(text="📊 Platform Stats", callback_data="btn_stats"),
-            InlineKeyboardButton(text="👥 My Referrals", callback_data="btn_referral")
-        ],
-        [
-            InlineKeyboardButton(text="📚 How To Earn", callback_data="btn_tutorial"),
-            InlineKeyboardButton(text="💬 Official Support", callback_data="btn_support")
+            InlineKeyboardButton(text="📚 ᴛᴜᴛᴏʀɪᴀʟ", url=tut_url) if tut_url.startswith("http") else InlineKeyboardButton(text="📚 ᴛᴜᴛᴏʀɪᴀʟ", callback_data="btn_tutorial"),
+            InlineKeyboardButton(text="💬 ʜᴇʟᴘ", url=hlp_url) if hlp_url.startswith("http") else InlineKeyboardButton(text="💬 ʜᴇʟᴘ", callback_data="btn_support")
         ]
     ]
-
-    if token:
-        buttons.insert(1, [
-            InlineKeyboardButton(text="🔓 Get Channel Link", callback_data=f"getlink:{token}")
-        ])
-
-    if force_join_url:
-        buttons.append([
-            InlineKeyboardButton(text="📢 Official Channel", url=force_join_url)
-        ])
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
@@ -152,17 +147,21 @@ async def start_handler(message: Message) -> None:
         await show_campaign_flow(message, token, user_id)
         return
 
+    raw_quote = get_setting("bot_start_quote") or "welcome to earn program! watch simple ads, earn coins, promote telegram channels & generate daily income easily."
+    quote_small_caps = to_small_caps(raw_quote)
+
     greeting = (
-        f"👋 <b>Welcome, {first_name}!</b> ─ ✦ <b>M R  R A J</b> ✦ 💥\n\n"
-        "<b>I AM EARN PROGRAM ADVANCED BOT!</b> 🚀\n\n"
-        "✨ <b>What you can do here:</b>\n"
-        "• 🎬 <b>Watch Ads & Earn Coins:</b> High-paying PTC rewards.\n"
-        "• 💼 <b>Promote Telegram Channels:</b> Instant paid broadcasts across target audience.\n"
-        "• 💸 <b>Channel Revenue Sharing:</b> Connect your channel & earn money per join.\n"
-        "• ⭐ <b>VIP Premium Pass:</b> Bypass ads completely & access links instantly.\n\n"
-        "⚡ <i>Tap below to launch the Mini App or explore features!</i>"
+        f"👋 <b>Welcome, {first_name}!</b>\n\n"
+        f"<blockquote>{escape(quote_small_caps)}</blockquote>"
     )
-    await message.answer(greeting, reply_markup=main_welcome_keyboard())
+
+    logo_path = BASE_DIR / "static" / "logo.png"
+    if logo_path.exists():
+        from aiogram.types import FSInputFile
+        photo = FSInputFile(str(logo_path))
+        await message.answer_photo(photo=photo, caption=greeting, reply_markup=main_welcome_keyboard(token))
+    else:
+        await message.answer(greeting, reply_markup=main_welcome_keyboard(token))
 
 
 @router.message(Command("admin"))
