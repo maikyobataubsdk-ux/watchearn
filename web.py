@@ -33,7 +33,7 @@ from db import (
 )
 
 BASE_DIR = Path(__file__).resolve().parent
-app = FastAPI(title="Blazeculture PTC & Telegram Platform", docs_url=None, redoc_url=None)
+app = FastAPI(title="Earn Program PTC & Telegram Platform", docs_url=None, redoc_url=None)
 
 app.add_middleware(
     CORSMiddleware,
@@ -433,7 +433,7 @@ async def public_config() -> dict:
     settings = get_settings()
     ad_codes = get_ad_codes()
     return {
-        "appName": "Blazeculture",
+        "appName": "Earn Program",
         "logoUrl": "/static/logo.png",
         "coinsPerAd": float(settings.get("coins_per_ad", 2.0)),
         "dailyAdLimit": int(settings.get("daily_ad_limit", 50)),
@@ -863,6 +863,7 @@ async def user_connect_channel(body: ConnectChannelRequest, user: dict = Depends
     c_id = verified.get("id") or c_id
     c_title = verified.get("title") or body.channel_title or body.channelTitle or f"Channel ({c_id})"
     c_username = verified.get("username") or c_username
+    m_count = int(verified.get("members_count") or 0)
 
     ch = connect_channel(
         owner_user_id=user["id"],
@@ -870,6 +871,7 @@ async def user_connect_channel(body: ConnectChannelRequest, user: dict = Depends
         channel_title=c_title,
         channel_username=c_username,
         category=category,
+        member_count=m_count,
     )
     return {
         "ok": True,
@@ -1206,7 +1208,7 @@ async def admin_save_settings(body: AdminSettingsRequest, _: bool = Depends(requ
         "payment_upi_id": body.payment_upi_id or "blazeculture@upi",
         "payment_qr_url": body.payment_qr_url or "/static/payment_qr.jpg",
     })
-    return {"ok": True, "message": "Blazeculture system settings updated successfully!"}
+    return {"ok": True, "message": "Earn Program system settings updated successfully!"}
 
 
 @app.get("/health")

@@ -64,7 +64,7 @@ def main_welcome_keyboard(token: str = "") -> InlineKeyboardMarkup:
 
     buttons = [
         [
-            InlineKeyboardButton(text="🚀 Open Blazeculture App", web_app=WebAppInfo(url=web_url))
+            InlineKeyboardButton(text="🚀 Open Earn Program App", web_app=WebAppInfo(url=web_url))
         ],
         [
             InlineKeyboardButton(text="⭐ VIP Premium Pass", callback_data="btn_premium"),
@@ -125,7 +125,7 @@ async def show_campaign_flow(message: Message, token: str, user_id: int) -> None
     db_user = get_user_by_id(user_id)
     if db_user and db_user.get("is_premium"):
         await message.answer(
-            "⭐ <b>Blazeculture Premium Member</b>\n\n"
+            "⭐ <b>Earn Program Premium Member</b>\n\n"
             f"🎯 Target Channel: <b>{escape(campaign['target_title'])}</b>\n\n"
             "✨ As a Premium user, you can bypass watching ads! Tap below to claim your link.",
             reply_markup=campaign_keyboard(token),
@@ -133,7 +133,7 @@ async def show_campaign_flow(message: Message, token: str, user_id: int) -> None
         return
 
     await message.answer(
-        "✨ <b>Blazeculture Channel Access Gateway</b>\n\n"
+        "✨ <b>Earn Program Channel Access Gateway</b>\n\n"
         f"🎯 Target Channel: <b>{escape(campaign['target_title'])}</b>\n\n"
         "Tap <b>Watch Ad to Unlock</b> to complete the ad view. "
         "Once verified, return here and tap <b>Get Channel Link</b> to claim your access invite!",
@@ -154,7 +154,7 @@ async def start_handler(message: Message) -> None:
 
     greeting = (
         f"👋 <b>Welcome, {first_name}!</b> ─ ✦ <b>M R  R A J</b> ✦ 💥\n\n"
-        "<b>I AM BLAZECULTURE ADVANCED BOT!</b> 🚀\n\n"
+        "<b>I AM EARN PROGRAM ADVANCED BOT!</b> 🚀\n\n"
         "✨ <b>What you can do here:</b>\n"
         "• 🎬 <b>Watch Ads & Earn Coins:</b> High-paying PTC rewards.\n"
         "• 💼 <b>Promote Telegram Channels:</b> Instant paid broadcasts across target audience.\n"
@@ -191,7 +191,7 @@ async def promote_cmd_handler(message: Message) -> None:
         [InlineKeyboardButton(text="🚀 Launch Promotion Portal", web_app=WebAppInfo(url=WEBAPP_URL))]
     ])
     await message.answer(
-        "💼 <b>Blazeculture Channel Promotion Hub</b>\n\n"
+        "💼 <b>Earn Program Channel Promotion Hub</b>\n\n"
         "Promote your Telegram channel or group to thousands of real active users!\n\n"
         "1️⃣ Tap button below to open Promotion Portal\n"
         "2️⃣ Enter your channel link to analyze audience\n"
@@ -208,7 +208,7 @@ async def mychannels_cmd_handler(message: Message) -> None:
     ])
     await message.answer(
         "📺 <b>My Connected Channels & Earnings</b>\n\n"
-        "Connect your Telegram channels to Blazeculture network and earn ₹0.50 INR for every 2 user joins automatically tracked!\n\n"
+        "Connect your Telegram channels to Earn Program network and earn ₹0.50 INR for every 2 user joins automatically tracked!\n\n"
         "Tap below to view your connected channels and analytics.",
         reply_markup=kb
     )
@@ -218,7 +218,7 @@ async def mychannels_cmd_handler(message: Message) -> None:
 async def help_handler(message: Message) -> None:
     user_id = message.from_user.id if message.from_user else 0
     text = (
-        "ℹ️ <b>Blazeculture Bot Guide</b>\n\n"
+        "ℹ️ <b>Earn Program Bot Guide</b>\n\n"
         "• /start — Open main menu & Mini App\n"
         "• /promote — Promote your channel paid\n"
         "• /mychannels — View your connected channels & stats\n"
@@ -367,7 +367,7 @@ async def status_handler(message: Message) -> None:
     target = get_setting("target_chat_title") or "Not configured"
     mode = get_setting("target_invite_mode") or "Not configured"
     await message.answer(
-        "📊 <b>Blazeculture System Status</b>\n\n"
+        "📊 <b>Earn Program System Status</b>\n\n"
         f"📢 Force-sub Channel: <b>{escape(force)}</b>\n"
         f"🎯 Target Channel: <b>{escape(target)}</b>\n"
         f"⚙️ Invite Mode: <b>{escape(mode)}</b>\n"
@@ -382,9 +382,9 @@ async def premium_info_callback(callback: CallbackQuery) -> None:
     db_user = get_user_by_id(user_id)
     is_prem = db_user and db_user.get("is_premium")
     if is_prem:
-        await callback.answer("⭐ You are a Blazeculture Premium Member! Ads are completely bypassed for you.", show_alert=True)
+        await callback.answer("⭐ You are an Earn Program Premium Member! Ads are completely bypassed for you.", show_alert=True)
     else:
-        await callback.answer("⭐ Blazeculture Premium Pass allows instant access to all channel links without watching ads! Contact @Tgfuckerx or upgrade in Mini App.", show_alert=True)
+        await callback.answer("⭐ Earn Program Premium Pass allows instant access to all channel links without watching ads! Contact @Tgfuckerx or upgrade in Mini App.", show_alert=True)
 
 
 @router.callback_query(F.data == "btn_stats")
@@ -392,7 +392,7 @@ async def stats_callback(callback: CallbackQuery) -> None:
     from db import get_global_stats
     stats = get_global_stats()
     text = (
-        "📊 <b>Blazeculture Live Platform Stats</b>\n\n"
+        "📊 <b>Earn Program Live Platform Stats</b>\n\n"
         f"👥 Total Users: <b>{stats.get('total_users', 0):,}</b>\n"
         f"🎬 Ads Watched: <b>{stats.get('total_ads_watched', 0):,}</b>\n"
         f"💰 Total Cash Paid: <b>${stats.get('total_paid_usd', 0.0):.2f} / ₹{stats.get('total_paid_inr', 0.0):.2f}</b>\n"
@@ -411,7 +411,7 @@ async def referral_callback(callback: CallbackQuery) -> None:
     user_id = callback.from_user.id if callback.from_user else 0
     ref_link = f"https://t.me/{bot_username}?start=ref_{user_id}"
     text = (
-        "👥 <b>Blazeculture Referral Program</b>\n\n"
+        "👥 <b>Earn Program Referral Program</b>\n\n"
         "Earn <b>15% Lifetime Commission</b> on all ad coins earned by users you invite!\n\n"
         f"🔗 <b>Your Unique Referral Link:</b>\n<code>{escape(ref_link)}</code>\n\n"
         "Share this link in Telegram groups, channels, or social media!"
@@ -424,7 +424,7 @@ async def referral_callback(callback: CallbackQuery) -> None:
 @router.callback_query(F.data == "btn_support")
 async def support_callback(callback: CallbackQuery) -> None:
     text = (
-        "💬 <b>Official Blazeculture Support</b>\n\n"
+        "💬 <b>Official Earn Program Support</b>\n\n"
         "Need help with payments, promotion campaigns, or VIP Premium Pass?\n"
         "Contact our official support handle: <b>@Tgfuckerx</b>"
     )
@@ -458,7 +458,7 @@ async def admin_status_callback(callback: CallbackQuery) -> None:
 @router.callback_query(F.data == "btn_tutorial")
 async def tutorial_callback(callback: CallbackQuery) -> None:
     text = (
-        "📚 <b>How To Earn & Use Blazeculture</b>\n\n"
+        "📚 <b>How To Earn & Use Earn Program</b>\n\n"
         "1️⃣ <b>Watch Ads to Earn Coins:</b> Open Mini App and watch 20s ads to earn coins daily.\n"
         "2️⃣ <b>Unlock Telegram Channel Links:</b> Open campaign deep links, complete required ad view, and claim invite link.\n"
         "3️⃣ <b>Channel Promotion:</b> Submit your channel link and budget to broadcast across our network.\n"
@@ -477,8 +477,8 @@ async def promote_callback(callback: CallbackQuery) -> None:
     await callback.answer("💼 Launching Promotion Portal...", show_alert=False)
     if callback.message:
         await callback.message.answer(
-            "💼 <b>Blazeculture Paid Channel Promotions</b>\n\n"
-            "1. Open Blazeculture Mini App and go to <b>Channel Promotion</b>.\n"
+            "💼 <b>Earn Program Paid Channel Promotions</b>\n\n"
+            "1. Open Earn Program Mini App and go to <b>Channel Promotion</b>.\n"
             "2. Enter your channel link to analyze audience.\n"
             "3. Pay via Admin UPI QR Code.\n"
             "4. Add this bot as Administrator in your channel.\n"

@@ -277,6 +277,10 @@ def init_db() -> None:
             conn.execute("ALTER TABLE promotions ADD COLUMN ad_message TEXT DEFAULT ''")
         except sqlite3.OperationalError:
             pass
+        try:
+            conn.execute("ALTER TABLE connected_channels ADD COLUMN member_count INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
 
         # Default settings if not set
         default_settings = {
@@ -298,7 +302,7 @@ def init_db() -> None:
         default_ad_codes = {
             "interstitial": "<!-- Adsterra / HilltopAds / Monetag Interstitial Script Placeholder -->\n<script type=\"text/javascript\">\n  // Paste your High-Paying Interstitial Script here\n  console.log('Adsterra / HilltopAds Interstitial Loaded');\n</script>",
             "popunder": "<!-- Adsterra / HilltopAds / Monetag Popunder Script Placeholder -->\n<script type=\"text/javascript\">\n  // Paste your High-Paying Popunder Script here\n  console.log('Adsterra / HilltopAds Popunder Loaded');\n</script>",
-            "banner": "<div style=\"background: rgba(0,255,136,0.1); border: 1px dashed #00ff88; color: #00ff88; padding: 15px; text-align: center; border-radius: 10px;\"><strong>Blazeculture High-Paying Banner Ad Slot</strong><br/>Paste your Adsterra / HilltopAds Banner Code here</div>",
+            "banner": "<div style=\"background: rgba(0,255,136,0.1); border: 1px dashed #00ff88; color: #00ff88; padding: 15px; text-align: center; border-radius: 10px;\"><strong>Earn Program High-Paying Banner Ad Slot</strong><br/>Paste your Adsterra / HilltopAds Banner Code here</div>",
             "direct_link": "https://www.google.com"
         }
         for k, v in default_ad_codes.items():
@@ -600,19 +604,20 @@ def update_promotion_status(promo_id: int, status: str) -> dict:
         return {"ok": True}
 
 
-def connect_channel(owner_user_id: int, channel_id: str, channel_title: str, channel_username: str = "", category: str = "General") -> dict:
+def connect_channel(owner_user_id: int, channel_id: str, channel_title: str, channel_username: str = "", category: str = "General", member_count: int = 0) -> dict:
     with db() as conn:
         conn.execute(
             """
-            INSERT INTO connected_channels (owner_user_id, channel_id, channel_title, channel_username, category, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO connected_channels (owner_user_id, channel_id, channel_title, channel_username, category, member_count, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(channel_id) DO UPDATE SET
                 owner_user_id=excluded.owner_user_id,
                 channel_title=excluded.channel_title,
                 channel_username=excluded.channel_username,
-                category=excluded.category
+                category=excluded.category,
+                member_count=excluded.member_count
             """,
-            (owner_user_id, str(channel_id), channel_title, channel_username, category or "General", utcnow()),
+            (owner_user_id, str(channel_id), channel_title, channel_username, category or "General", member_count, utcnow()),
         )
         row = conn.execute("SELECT * FROM connected_channels WHERE channel_id=?", (str(channel_id),)).fetchone()
         return dict(row)
@@ -959,6 +964,16 @@ def get_global_stats() -> dict:
         active_promos_row = conn.execute("SELECT COUNT(*) as cnt FROM promotions WHERE status='active'").fetchone()
         active_promos = active_promos_row["cnt"] if active_promos_row else 0
 
+        total_channels_row = conn.execute("SELECT COUNT(*) as cnt FROM connected_channels").fetchone()
+        total_channels = total_channels_row["cnt"] if total_channels_row else 0
+
+        community_row = conn.execute("SELECT SUM(member_count) as total FROM connected_channels").fetchone()
+        total_community = community_row["total"] if community_row and community_row["total"] else 0
+
+        earnings_row = conn.execute("SELECT SUM(total_earned_coins) as total FROM users").fetchone()
+        total_earned_coins = earnings_row["total"] if earnings_row and earnings_row["total"] else 0.0
+        total_user_earnings_inr = round(float(total_earned_coins) * 0.80, 2)
+
         return {
             "total_users": total_users,
             "total_ads_watched": total_ads,
@@ -967,6 +982,9 @@ def get_global_stats() -> dict:
             "total_joins": total_joins,
             "total_lefts": total_lefts,
             "active_promotions": active_promos,
+            "total_channels": total_channels,
+            "total_community_members": total_community,
+            "total_user_earnings_inr": total_user_earnings_inr,
         }
 
 
