@@ -12,6 +12,7 @@ import httpx
 from fastapi import FastAPI, HTTPException, Request, Depends, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import db
@@ -35,6 +36,8 @@ from db import (
 
 BASE_DIR = Path(__file__).resolve().parent
 app = FastAPI(title="Earn Program PTC & Telegram Platform", docs_url=None, redoc_url=None)
+
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 app.add_middleware(
     CORSMiddleware,

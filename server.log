@@ -1,17 +1,20 @@
-/app/web.py:431: DeprecationWarning:
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [71453]
+/app/web.py:434: DeprecationWarning:
         on_event is deprecated, use lifespan event handlers instead.
 
         Read more about it in the
         [FastAPI docs for Lifespan Events](https://fastapi.tiangolo.com/advanced/events/).
 
   @app.on_event("startup")
-INFO:     Started server process [71453]
+INFO:     Started server process [214991]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     127.0.0.1:47624 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39140 - "GET / HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39140 - "GET /static/logo.png HTTP/1.1" 404 Not Found
-INFO:     127.0.0.1:39140 - "POST /api/auth/telegram-mini-app HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39148 - "GET /api/config HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39148 - "GET /api/stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55996 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55996 - "GET /static/logo.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56010 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55996 - "POST /api/auth/telegram-mini-app HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55996 - "GET /api/stats HTTP/1.1" 200 OK
