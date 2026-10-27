@@ -612,8 +612,8 @@ async def process_promotion_rotations() -> None:
         # Filter channels not yet posted for this promotion
         fresh_channels = [c for c in candidate_channels if c["channel_id"] not in already_rotated]
         if not fresh_channels:
-            # If all candidate channels posted, fall back to any available connected channel
-            all_channels = get_all_connected_channels()
+            # If all candidate channels posted, fall back to any available approved connected channel
+            all_channels = [c for c in get_all_connected_channels() if c.get("status") in ("approved", "active")]
             fresh_channels = [c for c in all_channels if c["channel_id"] not in already_rotated]
 
         if not fresh_channels:

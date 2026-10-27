@@ -136,7 +136,7 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         login_a = self.client.post("/api/auth/login", json={"login": "userA", "password": "password123"}).json()
         token_a = login_a["token"]
 
-        # Submit Promotion
+        # Submit Promotion -> Starts in pending_approval status
         sub_res = self.client.post("/api/promotions/submit", json={
             "channel_link": "https://t.me/testchannel",
             "ad_message": "Join testchannel now!",
@@ -144,7 +144,9 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
             "payment_txn_ref": "TXN123456"
         }, headers={"Authorization": f"Bearer {token_a}"})
         self.assertEqual(sub_res.status_code, 200)
-        promo_id = sub_res.json()["promotion"]["id"]
+        sub_json = sub_res.json()
+        self.assertEqual(sub_json["promotion"]["status"], "pending_approval")
+        promo_id = sub_json["promotion"]["id"]
 
         # Admin login & approve
         admin_login = self.client.post("/api/admin/login", json={"username": "rajpapa", "password": "28@RajPapa"}).json()
@@ -153,6 +155,36 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         appr_res = self.client.post("/api/admin/promotions/approve", json={"promotionId": promo_id}, headers={"X-Admin-Token": admin_token})
         self.assertEqual(appr_res.status_code, 200)
         self.assertTrue(appr_res.json()["ok"])
+
+        # Test Rejection flow & Auto Refund: Submit another promotion
+        sub_res2 = self.client.post("/api/promotions/submit", json={
+            "channel_link": "https://t.me/rejectchannel",
+            "ad_message": "Join rejectchannel now!",
+            "budget_inr": 50.0,
+            "payment_txn_ref": "TXN7890"
+        }, headers={"Authorization": f"Bearer {token_a}"})
+        self.assertEqual(sub_res2.status_code, 200)
+        promo_id2 = sub_res2.json()["promotion"]["id"]
+
+        bal_before_rej = self.client.get("/api/wallet/balance", headers={"Authorization": f"Bearer {token_a}"}).json()["balance_paise"]
+
+        # Admin rejects promotion with reason
+        rej_res = self.client.post("/api/admin/promotions/reject", json={
+            "promotionId": promo_id2,
+            "rejection_reason": "Invalid or spam channel content"
+        }, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(rej_res.status_code, 200)
+        self.assertIn("refunded", rej_res.json()["message"])
+
+        # Verify wallet balance refunded (+5000 paise)
+        bal_after_rej = self.client.get("/api/wallet/balance", headers={"Authorization": f"Bearer {token_a}"}).json()["balance_paise"]
+        self.assertEqual(bal_after_rej - bal_before_rej, 5000)
+
+        # Verify user sees rejection reason in my promotions
+        my_promos = self.client.get("/api/promotions/my", headers={"Authorization": f"Bearer {token_a}"}).json()["promotions"]
+        rej_promo = next(p for p in my_promos if p["id"] == promo_id2)
+        self.assertEqual(rej_promo["status"], "rejected")
+        self.assertEqual(rej_promo["rejection_reason"], "Invalid or spam channel content")
 
     def test_07_connected_channels_and_revenue(self):
         login_b = self.client.post("/api/auth/login", json={"login": "userB", "password": "password123"}).json()
@@ -164,6 +196,10 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         my_ch = self.client.get("/api/channels/my", headers={"Authorization": f"Bearer {token_b}"})
         self.assertEqual(my_ch.status_code, 200)
         self.assertEqual(len(my_ch.json()["channels"]), 1)
+        self.assertEqual(my_ch.json()["channels"][0]["status"], "pending_approval")
+
+        # Approve channel for revenue testing
+        db.update_connected_channel_status("https://t.me/myownerchannel", "approved")
 
         # Simulate 2 joins on channel - should credit 0.50 INR (0.625 coins @ 80 INR/$ = 100 coins)
         user_b_before = db.get_user_by_username("userB")["balance_coins"]
@@ -467,6 +503,9 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         self.assertEqual(conn_res.status_code, 200)
         self.assertEqual(conn_res.json()["channel"]["category"], "Tech & Coding")
 
+        # Approve channel so it can be fetched by rotation helper
+        db.update_connected_channel_status("https://t.me/mytechchannel", "approved")
+
         # Test db helper get_connected_channels_by_category
         cat_chans = db.get_connected_channels_by_category("Tech & Coding")
         self.assertTrue(len(cat_chans) >= 1)
@@ -595,26 +634,65 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         self.assertEqual(bal_res.json()["balance_paise"], 53000)
         self.assertEqual(bal_res.json()["balance_inr"], 530.0)
 
-        # 3. Connect a new channel for User C
+        # 3. Admin Deducts ₹100 Funds from User C Wallet
+        deduct_res = self.client.post("/api/admin/user/remove-funds", json={
+            "userId": user_c["id"],
+            "amountInr": 100.0,
+            "description": "Correction Deduction by Admin"
+        }, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(deduct_res.status_code, 200)
+        self.assertTrue(deduct_res.json()["ok"])
+
+        # Check balance after deduction (₹530 - ₹100 = ₹430)
+        bal_res2 = self.client.get("/api/wallet/balance", headers={"Authorization": f"Bearer {token_c}"})
+        self.assertEqual(bal_res2.json()["balance_inr"], 430.0)
+
+        # 4. Connect a new channel for User C -> starts as pending_approval
         conn_res = self.client.post("/api/channels/connect", json={
-            "channel_link": "https://t.me/channel_to_delete",
+            "channel_link": "https://t.me/channel_to_approve",
             "category": "General"
         }, headers={"Authorization": f"Bearer {token_c}"})
         self.assertEqual(conn_res.status_code, 200)
+        self.assertEqual(conn_res.json()["channel"]["status"], "pending_approval")
 
-        # 4. User Deletes Connected Channel
+        # 5. Admin approves connected channel
+        appr_chan = self.client.post("/api/admin/channels/status", json={
+            "channel_id": "https://t.me/channel_to_approve",
+            "status": "approved"
+        }, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(appr_chan.status_code, 200)
+
+        my_chans = self.client.get("/api/channels/my", headers={"Authorization": f"Bearer {token_c}"}).json()["channels"]
+        chan_item = next(c for c in my_chans if c["channel_id"] in ("@channel_to_approve", "https://t.me/channel_to_approve") or c["channel_username"] == "channel_to_approve")
+        self.assertEqual(chan_item["status"], "approved")
+
+        # Admin bans channel
+        ban_chan = self.client.post("/api/admin/channels/status", json={
+            "channel_id": "@channel_to_approve",
+            "status": "banned"
+        }, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(ban_chan.status_code, 200)
+
+        # Admin unbans channel
+        unban_chan = self.client.post("/api/admin/channels/status", json={
+            "channel_id": "@channel_to_approve",
+            "status": "unban"
+        }, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(unban_chan.status_code, 200)
+
+        # 6. User Deletes Connected Channel
         del_user_res = self.client.post("/api/channels/delete", json={
-            "channel_id": "https://t.me/channel_to_delete"
+            "channel_id": "@channel_to_approve"
         }, headers={"Authorization": f"Bearer {token_c}"})
         self.assertEqual(del_user_res.status_code, 200)
         self.assertTrue(del_user_res.json()["ok"])
 
         # Verify channel no longer in user's list
         chans_after = self.client.get("/api/channels/my", headers={"Authorization": f"Bearer {token_c}"}).json()["channels"]
-        has_deleted = any(c["channel_id"] == "https://t.me/channel_to_delete" for c in chans_after)
+        has_deleted = any(c["channel_id"] in ("@channel_to_approve", "https://t.me/channel_to_approve") for c in chans_after)
         self.assertFalse(has_deleted)
 
-        # 5. Connect channel for Admin deletion test
+        # 7. Connect channel for Admin deletion test
         conn_adm = self.client.post("/api/channels/connect", json={
             "channel_link": "https://t.me/channel_adm_delete",
             "category": "Gaming & eSports"
