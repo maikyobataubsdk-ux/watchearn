@@ -244,6 +244,12 @@ class AdminChannelStatusRequest(BaseModel):
     status: str  # approved, rejected, banned, pending_approval
 
 
+class ConfirmPaymentRequest(BaseModel):
+    order_id: str = Field(min_length=3, max_length=100)
+    amount_inr: float = Field(gt=0)
+    utr: Optional[str] = None
+
+
 class AdminPaymentSettingsRequest(BaseModel):
     upi_id: Optional[str] = None
     paymentUpiId: Optional[str] = None
@@ -1061,6 +1067,27 @@ async def wallet_transactions(user: dict = Depends(get_current_user)) -> dict:
     }
 
 
+@app.post("/api/wallet/confirm-payment")
+async def confirm_wallet_payment(body: ConfirmPaymentRequest, user: dict = Depends(get_current_user)) -> dict:
+    tg_id = user.get("telegram_id") or user["id"]
+    amount_paise = int(round(body.amount_inr * 100))
+    desc = f"YOUPI PG Wallet Topup (UTR: {body.utr or 'PAYMENT_GATEWAY'})"
+
+    res = credit_wallet_deposit(
+        telegram_id=int(tg_id),
+        amount_paise=amount_paise,
+        utr=body.utr,
+        order_id=body.order_id,
+        description=desc
+    )
+    return {
+        "ok": True,
+        "already_processed": res.get("already_processed", False),
+        "balance_paise": res["balance_paise"],
+        "balance_inr": res["balance_paise"] / 100.0,
+    }
+
+
 @app.get("/api/wallet/invoice/{txn_id}")
 async def wallet_invoice(txn_id: str, user: dict = Depends(get_current_user)) -> dict:
     tg_id = user.get("telegram_id") or user["id"]
@@ -1194,7 +1221,8 @@ async def youpi_webhook(request: Request) -> dict:
     event = data.get("event") or payload.get("event") or payload.get("status")
     method = payload.get("method") or payload.get("payment_method") or data.get("method") or "UPI"
 
-    if event == "SUCCESS" and str(method).upper() == "UPI":
+    status_str = str(event or "").upper()
+    if status_str in ("SUCCESS", "PAID", "COMPLETED"):
         amount_raw = payload.get("amount") or data.get("amount") or 0
         try:
             amount_float = float(amount_raw)

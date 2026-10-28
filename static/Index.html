@@ -828,6 +828,16 @@
           </button>
         </div>
       </div>
+
+      <!-- Tasks Section Inside Watch Area -->
+      <div class="glass" style="max-width: 750px; margin: 25px auto 0; padding: 30px;">
+        <h3 style="font-size: 20px; margin-bottom: 8px; text-align: left;"><i class="fa-solid fa-list-check text-green"></i> Available Sponsor Tasks</h3>
+        <p class="text-muted" style="margin-bottom: 20px; font-size: 13px; text-align: left;">Complete simple sponsor tasks & join channels to earn instant rewards credited to your balance!</p>
+
+        <div id="watchTasksListContainer" style="display: flex; flex-direction: column; gap: 15px;">
+          <div class="text-muted" style="text-align: center;">Loading available tasks...</div>
+        </div>
+      </div>
     </section>
 
     <!-- PAGE: TASKS PAGE -->
@@ -1843,6 +1853,7 @@
       } else if (page === 'watch') {
         document.getElementById('pageWatch').classList.remove('hidden');
         resetAdWatchArea();
+        loadWatchSectionTasks();
       } else if (page === 'promote') {
         document.getElementById('pagePromote').classList.remove('hidden');
         loadPaymentQr();
@@ -2164,11 +2175,11 @@
       }
     }
 
-    async function loadUserTasks() {
+    async function renderTasksIntoContainer(containerId) {
       if (!userToken) return;
       try {
         const res = await apiCall('/api/tasks', 'GET', null, userToken);
-        const container = document.getElementById('tasksListContainer');
+        const container = document.getElementById(containerId);
         if (!container) return;
         container.innerHTML = '';
 
@@ -2187,7 +2198,7 @@
             const btnClass = task.is_completed ? 'btn btn-secondary' : 'btn btn-primary';
 
             card.innerHTML = `
-              <div>
+              <div style="text-align: left;">
                 <h4 style="color:#fff; font-size:16px; margin-bottom:4px;">${task.title}</h4>
                 <p style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">${task.description || 'Complete task link to earn cash.'}</p>
                 <div style="font-size:14px; font-weight:bold; color:var(--neon-green);">Reward: ₹${task.reward_inr.toFixed(2)} INR</div>
@@ -2204,6 +2215,14 @@
       } catch (e) {}
     }
 
+    async function loadUserTasks() {
+      await renderTasksIntoContainer('tasksListContainer');
+    }
+
+    async function loadWatchSectionTasks() {
+      await renderTasksIntoContainer('watchTasksListContainer');
+    }
+
     async function handleDoTask(taskId, linkUrl) {
       window.open(linkUrl, '_blank');
       setTimeout(async () => {
@@ -2212,6 +2231,7 @@
           alert(`🎉 Task Completed! ₹${res.reward_inr.toFixed(2)} added to your balance.`);
           fetchUserProfile();
           loadUserTasks();
+          loadWatchSectionTasks();
         } catch (err) {
           alert(err.message || 'Failed to claim task reward.');
         }
@@ -2286,10 +2306,21 @@
             telegram_user_id: telegram_user_id,
             purpose: 'WALLET_TOPUP'
           },
-          handler: function(response) {
-            if (response && (response.status === 'SUCCESS' || response.event === 'SUCCESS')) {
-              showWalletUpdated(response.amount || amount);
-              refreshWalletBalance();
+          handler: async function(response) {
+            if (response && (response.status === 'SUCCESS' || response.event === 'SUCCESS' || response.status === 'PAID')) {
+              const paidAmount = response.amount || amount;
+              const utrVal = response.utr || response.rrn || response.transaction_id || '';
+              try {
+                await apiCall('/api/wallet/confirm-payment', 'POST', {
+                  order_id: response.order_id || order_id,
+                  amount_inr: paidAmount,
+                  utr: utrVal
+                }, userToken);
+              } catch (err) {
+                console.error('Error confirming wallet payment:', err);
+              }
+              showWalletUpdated(paidAmount);
+              await refreshWalletBalance();
               loadWalletTransactions();
             } else {
               alert('Payment pending or not completed.');
@@ -2656,7 +2687,18 @@
               purpose: 'PROMOTION_PAYMENT_SHORTFALL'
             },
             handler: async function(response) {
-              if (response && (response.status === 'SUCCESS' || response.event === 'SUCCESS')) {
+              if (response && (response.status === 'SUCCESS' || response.event === 'SUCCESS' || response.status === 'PAID')) {
+                const paidAmount = response.amount || shortfall;
+                const utrVal = response.utr || response.rrn || response.transaction_id || '';
+                try {
+                  await apiCall('/api/wallet/confirm-payment', 'POST', {
+                    order_id: response.order_id || order_id,
+                    amount_inr: paidAmount,
+                    utr: utrVal
+                  }, userToken);
+                } catch (err) {
+                  console.error('Error confirming promotion payment:', err);
+                }
                 alert(`🎉 Payment of ₹${shortfall.toFixed(2)} Successful! Top-up received.`);
                 await refreshWalletBalance();
                 await executePromotionSubmit(response.order_id || order_id);
