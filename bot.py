@@ -71,21 +71,41 @@ def to_small_caps(text: str) -> str:
 
 def main_welcome_keyboard(token: str = "") -> InlineKeyboardMarkup:
     web_url = get_webapp_url(token)
-    tut_url = get_setting("bot_tutorial_url") or "https://t.me/Tgfuckerx"
-    hlp_url = get_setting("bot_help_url") or "https://t.me/Tgfuckerx"
+    sup_url = get_setting("bot_support_url") or "https://t.me/earnprogramsupport"
+    upd_url = get_setting("bot_update_url") or "https://t.me/earnprogramsupport"
 
-    # Exactly 3 buttons: Earn Program (Mini App), Tutorial, Help
     buttons = [
         [
             InlineKeyboardButton(text="🚀 ᴇᴀʀɴ ᴘʀᴏɢʀᴀᴍ", web_app=WebAppInfo(url=web_url))
         ],
         [
-            InlineKeyboardButton(text="📚 ᴛᴜᴛᴏʀɪᴀʟ", url=tut_url) if tut_url.startswith("http") else InlineKeyboardButton(text="📚 ᴛᴜᴛᴏʀɪᴀʟ", callback_data="btn_tutorial"),
-            InlineKeyboardButton(text="💬 ʜᴇʟᴘ", url=hlp_url) if hlp_url.startswith("http") else InlineKeyboardButton(text="💬 ʜᴇʟᴘ", callback_data="btn_support")
+            InlineKeyboardButton(text="💬 sᴜᴘᴘᴏʀᴛ", url=sup_url if sup_url.startswith("http") else "https://t.me/earnprogramsupport"),
+            InlineKeyboardButton(text="📢 ᴜᴘᴅᴀᴛᴇ", url=upd_url if upd_url.startswith("http") else "https://t.me/earnprogramsupport")
+        ],
+        [
+            InlineKeyboardButton(text="ℹ️ ʜᴇʟᴘ", callback_data="btn_help_main")
         ]
     ]
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def help_menu_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📺 Watch Ads & Earn", callback_data="help_sub_watch")],
+        [InlineKeyboardButton(text="🚀 Channel Promotion", callback_data="help_sub_promote")],
+        [InlineKeyboardButton(text="💰 Channel Earnings", callback_data="help_sub_earnings")],
+        [InlineKeyboardButton(text="💳 Wallet & Withdraw", callback_data="help_sub_wallet")],
+        [InlineKeyboardButton(text="👥 Referral Program", callback_data="help_sub_referral")],
+        [InlineKeyboardButton(text="🔙 Back to Main Menu", callback_data="btn_back_main")]
+    ])
+
+
+def help_sub_back_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔙 Back to Help Menu", callback_data="btn_help_main")],
+        [InlineKeyboardButton(text="🚀 Launch Earn Program", web_app=WebAppInfo(url=get_webapp_url()))]
+    ])
 
 
 def force_join_keyboard(token: str | None = None) -> InlineKeyboardMarkup:
@@ -219,25 +239,11 @@ async def mychannels_cmd_handler(message: Message) -> None:
 
 @router.message(Command("help"))
 async def help_handler(message: Message) -> None:
-    user_id = message.from_user.id if message.from_user else 0
     text = (
-        "ℹ️ <b>Earn Program Bot Guide</b>\n\n"
-        "• /start — Open main menu & Mini App\n"
-        "• /promote — Promote your channel paid\n"
-        "• /mychannels — View your connected channels & stats\n"
-        "• /help — View help guide\n\n"
+        "ℹ️ <b>Earn Program Feature Help Guide</b>\n\n"
+        "Select any feature below to view detailed step-by-step guide:"
     )
-    if is_admin(user_id):
-        text += (
-            "👑 <b>Master Admin Commands</b>\n"
-            "• <code>/setforce @channel</code> — Require channel subscription\n"
-            "• <code>/offforce</code> — Disable force sub\n"
-            "• <code>/settarget @channel direct/request</code> — Set target campaign\n"
-            "• <code>/genlink</code> — Generate deep campaign link\n"
-            "• <code>/broadcast &lt;message&gt;</code> — Broadcast across connected channels\n"
-            "• <code>/status</code> — Display system configuration\n\n"
-        )
-    await message.answer(text)
+    await message.answer(text, reply_markup=help_menu_keyboard())
 
 
 async def resolve_channel(chat_ref: str):
@@ -428,14 +434,133 @@ async def referral_callback(callback: CallbackQuery) -> None:
 async def support_callback(callback: CallbackQuery) -> None:
     text = (
         "💬 <b>Official Earn Program Support</b>\n\n"
-        "Need help with payments, promotion campaigns, or VIP Premium Pass?\n"
-        "Contact our official support handle: <b>@Tgfuckerx</b>"
+        "Need help with payments, promotion campaigns, or channel connection?\n"
+        "Contact our official support handle: <b>@earnprogramsupport</b>"
     )
     await callback.answer()
     if callback.message:
         await callback.message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="💬 Contact Support (@Tgfuckerx)", url="https://t.me/Tgfuckerx")]
+            [InlineKeyboardButton(text="💬 Contact Support (@earnprogramsupport)", url="https://t.me/earnprogramsupport")]
         ]))
+
+
+@router.callback_query(F.data == "btn_help_main")
+async def help_main_callback(callback: CallbackQuery) -> None:
+    text = (
+        "ℹ️ <b>Earn Program Complete Feature Help Guide</b>\n\n"
+        "Welcome! Tap on any feature button below to see the complete guide on how to use that specific feature:"
+    )
+    await callback.answer()
+    if callback.message:
+        try:
+            await callback.message.edit_text(text, reply_markup=help_menu_keyboard())
+        except Exception:
+            await callback.message.answer(text, reply_markup=help_menu_keyboard())
+
+
+@router.callback_query(F.data == "btn_back_main")
+async def back_main_callback(callback: CallbackQuery) -> None:
+    raw_quote = get_setting("bot_start_quote") or "welcome to earn program! watch simple ads, earn coins, promote telegram channels & generate daily income easily."
+    quote_small_caps = to_small_caps(raw_quote)
+    first_name = escape(callback.from_user.first_name) if callback.from_user and callback.from_user.first_name else "User"
+
+    text = (
+        f"👋 <b>Welcome, {first_name}!</b>\n\n"
+        f"<blockquote>{escape(quote_small_caps)}</blockquote>"
+    )
+    await callback.answer()
+    if callback.message:
+        try:
+            await callback.message.edit_text(text, reply_markup=main_welcome_keyboard())
+        except Exception:
+            await callback.message.answer(text, reply_markup=main_welcome_keyboard())
+
+
+@router.callback_query(F.data == "help_sub_watch")
+async def help_sub_watch_callback(callback: CallbackQuery) -> None:
+    text = (
+        "📺 <b>How to Watch Ads & Earn Cash</b>\n\n"
+        "1️⃣ Tap <b>Earn Program</b> button to open the Mini App.\n"
+        "2️⃣ Go to the <b>Watch</b> tab from bottom menu.\n"
+        "3️⃣ Tap <b>Start Viewing Ad</b> and wait for the 20-second timer.\n"
+        "4️⃣ Once the timer finishes, tap <b>Claim Reward</b> to get ₹0.80 paise instantly!\n"
+        "5️⃣ Complete daily ad views to maximize your daily earnings!"
+    )
+    await callback.answer()
+    if callback.message:
+        try:
+            await callback.message.edit_text(text, reply_markup=help_sub_back_keyboard())
+        except Exception:
+            await callback.message.answer(text, reply_markup=help_sub_back_keyboard())
+
+
+@router.callback_query(F.data == "help_sub_promote")
+async def help_sub_promote_callback(callback: CallbackQuery) -> None:
+    text = (
+        "🚀 <b>How to Promote Telegram Channels & Groups</b>\n\n"
+        "1️⃣ Open Mini App and go to <b>Promote</b> tab.\n"
+        "2️⃣ Paste your Telegram channel/group link or @username and tap <b>Analyze</b>.\n"
+        "3️⃣ Select link type: <b>Requested Member</b> (join request link) or <b>Direct Join</b> (invite link).\n"
+        "4️⃣ Choose category, budget, and upload promotional image directly if desired.\n"
+        "5️⃣ Pay via wallet balance or UPI. Once approved, the bot broadcasts your campaign across partner channels!\n"
+        "6️⃣ When your target members are reached, the bot automatically expires the link and deletes promo posts!"
+    )
+    await callback.answer()
+    if callback.message:
+        try:
+            await callback.message.edit_text(text, reply_markup=help_sub_back_keyboard())
+        except Exception:
+            await callback.message.answer(text, reply_markup=help_sub_back_keyboard())
+
+
+@router.callback_query(F.data == "help_sub_earnings")
+async def help_sub_earnings_callback(callback: CallbackQuery) -> None:
+    text = (
+        "💰 <b>How Channel Owners Earn Revenue</b>\n\n"
+        "1️⃣ Open Mini App and go to <b>Earnings</b> tab.\n"
+        "2️⃣ Accept the content promotion agreement popup.\n"
+        "3️⃣ Add our Telegram bot as Administrator in your channel (Minimum 100 members required).\n"
+        "4️⃣ Enter your channel link and tap <b>Connect & Verify Admin</b>.\n"
+        "5️⃣ Automatically earn revenue whenever users join campaigns through your channel!"
+    )
+    await callback.answer()
+    if callback.message:
+        try:
+            await callback.message.edit_text(text, reply_markup=help_sub_back_keyboard())
+        except Exception:
+            await callback.message.answer(text, reply_markup=help_sub_back_keyboard())
+
+
+@router.callback_query(F.data == "help_sub_wallet")
+async def help_sub_wallet_callback(callback: CallbackQuery) -> None:
+    text = (
+        "💳 <b>Wallet Add Money, GST Invoice & Withdrawals</b>\n\n"
+        "• <b>Add Money:</b> Tap <b>+ Add Money</b> in header or wallet card, pay via UPI, and wallet updates instantly!\n"
+        "• <b>GST Invoice:</b> Receive an official tax invoice with 3% GST breakdown for every wallet deposit.\n"
+        "• <b>Cash Out:</b> Go to <b>Profile/Withdraw</b> section, select payout method (UPI, Paytm, USDT, PayPal), and submit payout request!"
+    )
+    await callback.answer()
+    if callback.message:
+        try:
+            await callback.message.edit_text(text, reply_markup=help_sub_back_keyboard())
+        except Exception:
+            await callback.message.answer(text, reply_markup=help_sub_back_keyboard())
+
+
+@router.callback_query(F.data == "help_sub_referral")
+async def help_sub_referral_callback(callback: CallbackQuery) -> None:
+    text = (
+        "👥 <b>Earn Program Referral Commission</b>\n\n"
+        "1️⃣ Copy your unique referral link from the <b>Profile</b> tab.\n"
+        "2️⃣ Share your link with friends, in Telegram groups, or on social media.\n"
+        "3️⃣ Earn <b>15% Lifetime Commission</b> on all ad coins earned by your referred users forever!"
+    )
+    await callback.answer()
+    if callback.message:
+        try:
+            await callback.message.edit_text(text, reply_markup=help_sub_back_keyboard())
+        except Exception:
+            await callback.message.answer(text, reply_markup=help_sub_back_keyboard())
 
 
 @router.callback_query(F.data == "btn_admin_status")

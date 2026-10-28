@@ -1,38 +1,53 @@
 {
-  "updated_at": "2026-10-27T17:53:41+00:00",
+  "updated_at": "2026-10-28T10:33:21+00:00",
   "users": [
     {
       "id": 1,
-      "email": "tg_842798910@telegram.org",
-      "username": "user_842798910",
+      "email": "tg_592220138@telegram.org",
+      "username": "user_592220138",
       "balance_coins": 0.0,
       "total_earned_coins": 0.0,
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-10-27T17:53:41+00:00"
+      "created_at": "2026-10-28T10:33:16+00:00"
     }
   ],
   "withdrawals": [],
   "promotions": [],
   "connected_channels": [],
-  "wallets": [],
+  "wallets": [
+    {
+      "telegram_id": 592220138,
+      "balance_paise": 0,
+      "created_at": "2026-10-28T10:33:20+00:00",
+      "updated_at": "2026-10-28T10:33:20+00:00"
+    }
+  ],
   "wallet_transactions": [],
   "settings": {
-    "coins_per_ad": "2.0",
+    "coins_per_ad": "0.80",
     "daily_ad_limit": "50",
     "min_withdrawal_usd": "5.0",
     "min_withdrawal_inr": "400.0",
     "coins_per_usd": "100.0",
     "referral_commission_pct": "15.0",
-    "payment_upi_id": "blazeculture@upi",
-    "payment_qr_url": "/static/logo.png",
+    "payment_upi_id": "earnprogram@upi",
+    "payment_qr_url": "/static/payment_qr.jpg",
     "cost_per_2_joins_inr": "1.0",
     "payout_per_2_joins_inr": "0.50",
     "bot_start_quote": "welcome to earn program! watch simple ads, earn coins, promote telegram channels & generate daily income easily.",
-    "bot_tutorial_url": "https://t.me/Tgfuckerx",
-    "bot_help_url": "https://t.me/Tgfuckerx",
-    "force_sub_enabled": "0"
+    "bot_tutorial_url": "https://t.me/earnprogramsupport",
+    "bot_help_url": "https://t.me/earnprogramsupport",
+    "bot_support_url": "https://t.me/earnprogramsupport",
+    "bot_update_url": "https://t.me/earnprogramsupport",
+    "force_sub_enabled": "0",
+    "global_discount_pct": "0.0",
+    "maintenance_full": "0",
+    "maintenance_watch": "0",
+    "maintenance_promote": "0",
+    "maintenance_earnings": "0",
+    "maintenance_withdraw": "0"
   },
   "ad_codes": {
     "interstitial": "<!-- Adsterra / HilltopAds / Monetag Interstitial Script Placeholder -->\n<script type=\"text/javascript\">\n  // Paste your High-Paying Interstitial Script here\n  console.log('Adsterra / HilltopAds Interstitial Loaded');\n</script>",
