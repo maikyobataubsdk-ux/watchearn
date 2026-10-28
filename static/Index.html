@@ -485,24 +485,10 @@
           <i class="fa-solid fa-coins"></i> <span id="userNavBalance">0.0</span>
         </div>
 
-        <!-- Telegram User Profile Pill -->
-        <div class="profile-pill" id="userHeaderProfileCard">
-          <div class="user-avatar" id="headerUserAvatar">TG</div>
-          <div class="user-meta">
-            <span class="user-name" id="headerUserName">Telegram User</span>
-            <span class="user-id-badge" id="headerUserIdBadge"><i class="fa-solid fa-shield"></i> ID: --</span>
-          </div>
-        </div>
-
         <!-- VIP Premium Badge -->
         <div id="premiumBadgeNav" class="hidden glass" style="padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; color: #f59e0b; border: 1px solid rgba(245,158,11,0.4);">
           👑 VIP
         </div>
-
-        <!-- Support Link -->
-        <a href="https://t.me/Tgfuckerx" target="_blank" class="lang-btn" style="text-decoration: none; border-color: rgba(0,255,136,0.3); color: var(--neon-green);">
-          <i class="fa-brands fa-telegram"></i> Support
-        </a>
 
         <!-- Language Toggle -->
         <button class="lang-btn" id="langToggleBtn" onclick="toggleLang()">
@@ -522,6 +508,10 @@
       <button class="nav-link" id="navTabWatch" onclick="nav('watch')">
         <i class="fa-solid fa-circle-play"></i>
         <span>Watch</span>
+      </button>
+      <button class="nav-link" id="navTabTasks" onclick="nav('tasks')">
+        <i class="fa-solid fa-list-check"></i>
+        <span>Tasks</span>
       </button>
       <button class="nav-link" id="navTabPromote" onclick="nav('promote')">
         <i class="fa-solid fa-bullhorn"></i>
@@ -725,10 +715,14 @@
           </div>
         </div>
 
-        <div class="glass" style="padding: 24px; display: flex; flex-direction: column; justify-content: center; gap: 12px;">
-          <button class="btn btn-primary" onclick="nav('watch')"><i class="fa-solid fa-play"></i> Watch Next Ad</button>
-          <button class="btn btn-purple" onclick="nav('promote')"><i class="fa-solid fa-bullhorn"></i> Start Channel Promo</button>
-          <button class="btn btn-secondary" onclick="nav('withdraw')"><i class="fa-solid fa-wallet"></i> Withdraw Cash</button>
+        <div class="glass" style="padding: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px;">
+          <div class="user-avatar" id="dashUserAvatar" style="width: 64px; height: 64px; font-size: 24px; font-weight: 800; margin-bottom: 4px;">TG</div>
+          <div>
+            <div style="font-size: 18px; font-weight: 800; color: #fff;" id="dashUserName">User</div>
+            <div style="font-size: 13px; color: var(--neon-cyan); font-weight: 600; margin-top: 3px;" id="dashUserIdBadge"><i class="fa-solid fa-shield"></i> ID: --</div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;" id="dashUserEmail">email@telegram.org</div>
+          </div>
+          <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="nav('withdraw')"><i class="fa-solid fa-wallet"></i> Withdraw Cash</button>
         </div>
       </div>
 
@@ -836,6 +830,20 @@
       </div>
     </section>
 
+    <!-- PAGE: TASKS PAGE -->
+    <section id="pageTasks" class="hidden">
+      <div style="max-width: 800px; margin: 0 auto;">
+        <div class="glass" style="padding: 30px; margin-bottom: 25px;">
+          <h2 style="font-size: 24px; margin-bottom: 8px;"><i class="fa-solid fa-list-check text-green"></i> Earn Extra Cash via Simple Tasks</h2>
+          <p class="text-muted" style="margin-bottom: 20px; font-size: 14px;">Complete simple sponsor tasks, visit links, or join channels to earn instant rewards credited to your balance!</p>
+
+          <div id="tasksListContainer" style="display: flex; flex-direction: column; gap: 15px;">
+            <div class="text-muted" style="text-align: center;">Loading available tasks...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- PAGE 4: CHANNEL PROMOTION HUB PAGE -->
     <section id="pagePromote" class="hidden">
       <div style="max-width: 800px; margin: 0 auto;">
@@ -896,6 +904,21 @@
             </div>
 
             <form onsubmit="handlePromoSubmit(event)">
+              <div style="margin-bottom: 15px;">
+                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Promotion Link Type</label>
+                <select id="promoLinkTypeSelect" class="glass-input" style="background: rgba(18, 24, 38, 0.9);">
+                  <option value="direct">Direct Join (Standard Invite Link)</option>
+                  <option value="requested">Requested Member (Admin Approval Join Link)</option>
+                </select>
+              </div>
+
+              <div style="margin-bottom: 15px;">
+                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Promotional Image Direct Upload (Optional)</label>
+                <input type="file" id="promoImageFileInput" class="glass-input" accept="image/*" onchange="handlePromoImageUpload(event)">
+                <input type="hidden" id="promoImageUrlVal">
+                <div id="promoImageUploadPreview" style="margin-top: 8px; font-size: 12px; color: var(--neon-cyan);"></div>
+              </div>
+
               <div style="margin-bottom: 15px;">
                 <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Target Channel Category</label>
                 <select id="promoCategorySelect" class="glass-input" style="background: rgba(18, 24, 38, 0.9);">
@@ -1080,11 +1103,11 @@
         <form onsubmit="handleAdminLogin(event)">
           <div style="margin-bottom: 15px;">
             <label style="font-size: 12px; color: var(--text-muted);">Username</label>
-            <input type="text" id="adminUserVal" class="glass-input" placeholder="rajpapa" required>
+            <input type="text" id="adminUserVal" class="glass-input" placeholder="Enter Admin Username" required>
           </div>
           <div style="margin-bottom: 20px;">
             <label style="font-size: 12px; color: var(--text-muted);">Password</label>
-            <input type="password" id="adminPassVal" class="glass-input" placeholder="28@RajPapa" required>
+            <input type="password" id="adminPassVal" class="glass-input" placeholder="Enter Admin Password" required>
           </div>
           <button type="submit" class="btn btn-cyan" style="width: 100%;">Master Login</button>
         </form>
@@ -1101,11 +1124,14 @@
         <div class="glass" style="padding: 8px; margin-bottom: 25px; display: flex; gap: 8px; overflow-x: auto;">
           <button class="btn btn-secondary admin-tab-btn active" id="admTabBtn_overview" onclick="switchAdminTab('overview')"><i class="fa-solid fa-chart-line"></i> Overview</button>
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_payment" onclick="switchAdminTab('payment')"><i class="fa-solid fa-qrcode"></i> Payment & Rates</button>
+          <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_tasks" onclick="switchAdminTab('tasks')"><i class="fa-solid fa-list-check"></i> Tasks</button>
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_promos" onclick="switchAdminTab('promos')"><i class="fa-solid fa-bullhorn"></i> Promotions</button>
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_users" onclick="switchAdminTab('users')"><i class="fa-solid fa-users"></i> Users & VIP</button>
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_channels" onclick="switchAdminTab('channels')"><i class="fa-solid fa-tv"></i> Connected Channels</button>
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_withdraws" onclick="switchAdminTab('withdraws')"><i class="fa-solid fa-wallet"></i> Withdrawals</button>
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_adcodes" onclick="switchAdminTab('adcodes')"><i class="fa-solid fa-code"></i> Ad Codes</button>
+          <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_maintenance" onclick="switchAdminTab('maintenance')"><i class="fa-solid fa-gears"></i> Maintenance</button>
+          <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_staggered" onclick="switchAdminTab('staggered')"><i class="fa-solid fa-paper-plane"></i> Staggered Broadcast</button>
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_bot" onclick="switchAdminTab('bot')"><i class="fa-solid fa-robot"></i> Bot Settings</button>
         </div>
 
@@ -1134,7 +1160,7 @@
             <form onsubmit="handleSavePaymentQr(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
               <div>
                 <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">UPI ID / Payment Handle</label>
-                <input type="text" id="admUpiIdInput" class="glass-input" placeholder="blazeculture@upi">
+                <input type="text" id="admUpiIdInput" class="glass-input" placeholder="earnprogram@upi">
               </div>
               <div>
                 <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">QR Code Image Path / Base64</label>
@@ -1145,6 +1171,67 @@
                 <div style="font-size: 12px; color: var(--neon-green);">Live Preview: <a id="admQrPreviewLink" href="/static/payment_qr.jpg" target="_blank" style="color: var(--neon-cyan);">View QR Image</a></div>
               </div>
             </form>
+          </div>
+
+          <!-- Global Discount Config -->
+          <div class="glass" style="padding: 25px; margin-bottom: 25px;">
+            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-percent text-cyan"></i> Global User Discounts</h3>
+            <form onsubmit="handleSaveGlobalDiscount(event)" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 200px;">
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Global Discount Percentage (%)</label>
+                <input type="number" id="admGlobalDiscountInput" class="glass-input" min="0" max="100" step="1" value="0">
+              </div>
+              <button type="submit" class="btn btn-cyan"><i class="fa-solid fa-floppy-disk"></i> Save Discount %</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- SUBTAB: Tasks Manager (Admin) -->
+        <div id="adminSubtab_tasks" class="admin-subtab hidden">
+          <div class="glass" style="padding: 25px; margin-bottom: 25px;">
+            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-plus-circle text-green"></i> Add New Reward Task</h3>
+            <form onsubmit="handleAdminCreateTask(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Task Title</label>
+                <input type="text" id="admTaskTitleInput" class="glass-input" placeholder="e.g. Join Official Telegram Channel" required>
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Target URL / Link</label>
+                <input type="url" id="admTaskLinkInput" class="glass-input" placeholder="https://t.me/yourchannel" required>
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Reward Amount (₹ INR)</label>
+                <input type="number" id="admTaskRewardInput" class="glass-input" min="0.10" step="0.10" value="1.00" required>
+              </div>
+              <div style="grid-column: 1 / -1;">
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Description / Message</label>
+                <input type="text" id="admTaskDescInput" class="glass-input" placeholder="Tap link, join channel, and claim reward!">
+              </div>
+              <div style="grid-column: 1 / -1;">
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Create Task</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="glass" style="padding: 25px;">
+            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-list-check text-cyan"></i> Active & Inactive Tasks</h3>
+            <div style="overflow-x: auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Link</th>
+                    <th>Reward (₹)</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="adminTasksTableBody">
+                  <tr><td colspan="6" class="text-muted">Loading tasks...</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -1252,6 +1339,88 @@
           </div>
         </div>
 
+        <!-- SUBTAB: Maintenance Manager (Admin) -->
+        <div id="adminSubtab_maintenance" class="admin-subtab hidden">
+          <div class="glass" style="padding: 25px;">
+            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-gears text-gold"></i> Maintenance Mode Control</h3>
+            <p class="text-muted" style="font-size: 13px; margin-bottom: 20px;">Put specific sections or the entire Mini App into maintenance mode. When full maintenance mode is active, users will see "this page is currently on maintenance" across the site.</p>
+
+            <form onsubmit="handleSaveMaintenanceSettings(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px;">
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Full Mini App Maintenance</label>
+                <select id="admMaintFullSelect" class="glass-input" style="background: rgba(18,24,38,0.9);">
+                  <option value="0">Disabled (Normal Access)</option>
+                  <option value="1">ENABLED (Full Maintenance)</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Watch Ads Section Maintenance</label>
+                <select id="admMaintWatchSelect" class="glass-input" style="background: rgba(18,24,38,0.9);">
+                  <option value="0">Disabled (Normal)</option>
+                  <option value="1">Enabled (Maintenance)</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Promote Section Maintenance</label>
+                <select id="admMaintPromoteSelect" class="glass-input" style="background: rgba(18,24,38,0.9);">
+                  <option value="0">Disabled (Normal)</option>
+                  <option value="1">Enabled (Maintenance)</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Earnings Section Maintenance</label>
+                <select id="admMaintEarningsSelect" class="glass-input" style="background: rgba(18,24,38,0.9);">
+                  <option value="0">Disabled (Normal)</option>
+                  <option value="1">Enabled (Maintenance)</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Withdraw Section Maintenance</label>
+                <select id="admMaintWithdrawSelect" class="glass-input" style="background: rgba(18,24,38,0.9);">
+                  <option value="0">Disabled (Normal)</option>
+                  <option value="1">Enabled (Maintenance)</option>
+                </select>
+              </div>
+
+              <div style="grid-column: 1 / -1;">
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save Maintenance Settings</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- SUBTAB: Staggered Broadcast Manager (Admin) -->
+        <div id="adminSubtab_staggered" class="admin-subtab hidden">
+          <div class="glass" style="padding: 25px;">
+            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-paper-plane text-purple"></i> Multi-Channel Staggered Promotional Broadcast</h3>
+            <p class="text-muted" style="font-size: 13px; margin-bottom: 20px;">Send promotional posts to connected Telegram channels in batches (e.g., 20 channels at a time). Messages remain for your chosen duration before auto-deleting and moving to the next batch until all channels are reached!</p>
+
+            <form onsubmit="handleAdminStaggeredBroadcast(event)">
+              <div style="margin-bottom: 15px;">
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Message Text (HTML formatted)</label>
+                <textarea id="admStagMsgText" class="glass-input" rows="4" placeholder="<b>SPECIAL ANNOUNCEMENT</b>&#10;Join our official partner channel for instant cash rewards!" required></textarea>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                <div>
+                  <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Image URL (Optional)</label>
+                  <input type="url" id="admStagImgUrl" class="glass-input" placeholder="https://i.ibb.co/...">
+                </div>
+                <div>
+                  <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Batch Size (Channels per batch)</label>
+                  <input type="number" id="admStagBatchSize" class="glass-input" min="1" max="100" value="20" required>
+                </div>
+                <div>
+                  <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Post Duration (Minutes)</label>
+                  <input type="number" id="admStagDurationMin" class="glass-input" min="1" max="10080" value="60" required>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-purple"><i class="fa-solid fa-rocket"></i> Launch Staggered Broadcast</button>
+            </form>
+          </div>
+        </div>
+
         <!-- SUBTAB 6: Ad Network Code Manager -->
         <div id="adminSubtab_adcodes" class="admin-subtab hidden">
           <div class="glass" style="padding: 25px; margin-bottom: 25px;">
@@ -1332,13 +1501,13 @@
 
     <!-- Site Footer with Legal Links -->
     <footer style="text-align: center; padding: 30px 20px; margin-top: 40px; border-top: 1px solid var(--card-border); color: var(--text-muted); font-size: 13px;">
-      <p>© 2025 Earn Program. All rights reserved.</p>
+      <p>© 2026 Earn Program. All rights reserved.</p>
       <div style="display: flex; justify-content: center; gap: 15px; margin-top: 10px; flex-wrap: wrap;">
         <a href="#" onclick="openLegalModal('tos'); return false;" style="color: var(--neon-cyan); text-decoration: none;">Terms of Service</a> |
         <a href="#" onclick="openLegalModal('privacy'); return false;" style="color: var(--neon-cyan); text-decoration: none;">Privacy Policy</a> |
         <a href="#" onclick="openLegalModal('refund'); return false;" style="color: var(--neon-cyan); text-decoration: none;">Refund Policy</a> |
         <a href="#" onclick="openLegalModal('disclaimer'); return false;" style="color: var(--neon-cyan); text-decoration: none;">Earnings Disclaimer</a> |
-        <a href="https://t.me/Tgfuckerx" target="_blank" style="color: var(--neon-green); text-decoration: none;"><i class="fa-brands fa-telegram"></i> Support (@Tgfuckerx)</a>
+        <a href="https://t.me/earnprogramsupport" target="_blank" style="color: var(--neon-green); text-decoration: none;"><i class="fa-brands fa-telegram"></i> Support (@earnprogramsupport)</a>
       </div>
     </footer>
 
@@ -1403,6 +1572,104 @@
 
         <button type="submit" class="btn btn-danger" style="width: 100%; font-size: 15px;">
           <i class="fa-solid fa-minus"></i> Deduct Funds Now
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- GST Invoice Modal Window -->
+  <div id="gstInvoiceModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 1300; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div class="glass" style="max-width: 550px; width: 100%; padding: 30px; position: relative; background: #0e131f;">
+      <button onclick="closeGstInvoiceModal()" style="position: absolute; top: 15px; right: 20px; background: transparent; border: none; color: #fff; font-size: 22px; cursor: pointer;">&times;</button>
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--card-border); padding-bottom: 15px; margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="https://i.ibb.co/4nLM2yrb/uploaded-image.jpg" alt="Logo" style="width: 38px; height: 38px; border-radius: 50%;">
+          <div>
+            <h3 style="margin: 0; font-size: 18px; color: var(--neon-green);">Earn Program</h3>
+            <div style="font-size: 11px; color: var(--text-muted);">Tax Deposit Invoice (GST 3%)</div>
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 13px; font-weight: bold; color: var(--neon-cyan);" id="invNumberText">INV-000</div>
+          <div style="font-size: 11px; color: var(--text-muted);" id="invDateText">2026-01-01</div>
+        </div>
+      </div>
+
+      <div style="font-size: 13px; line-height: 1.8; margin-bottom: 20px;">
+        <div><strong>Billed To:</strong> <span id="invUserNameText">-</span> (<span id="invUserEmailText">-</span>)</div>
+        <div><strong>Transaction ID:</strong> <code id="invTxnIdText">-</code></div>
+        <div><strong>UTR Reference:</strong> <code id="invUtrText">-</code></div>
+        <div><strong>Payment Purpose:</strong> <span id="invDescText">-</span></div>
+      </div>
+
+      <table style="margin-bottom: 20px;">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th style="text-align: right;">Amount (₹)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Wallet Top-up Base Amount</td>
+            <td style="text-align: right;" id="invBaseAmountText">₹0.00</td>
+          </tr>
+          <tr>
+            <td>GST @ 3.0%</td>
+            <td style="text-align: right;" id="invGstAmountText">₹0.00</td>
+          </tr>
+          <tr style="border-top: 2px solid var(--neon-green); font-weight: bold;">
+            <td style="color: var(--neon-green);">Total Amount Paid</td>
+            <td style="text-align: right; color: var(--neon-green); font-size: 16px;" id="invTotalAmountText">₹0.00</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="text-align: right; display: flex; gap: 10px; justify-content: flex-end;">
+        <button class="btn btn-secondary" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Invoice</button>
+        <button class="btn btn-primary" onclick="closeGstInvoiceModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content Agreement Requirement Modal -->
+  <div id="contentAgreementModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.9); backdrop-filter: blur(12px); z-index: 1400; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div class="glass" style="max-width: 500px; width: 100%; padding: 30px; text-align: center; border: 1px solid var(--gold);">
+      <i class="fa-solid fa-file-contract" style="font-size: 48px; color: var(--gold); margin-bottom: 15px;"></i>
+      <h2 style="color: #fff; font-size: 22px; margin-bottom: 10px;">Channel Owner Agreement</h2>
+      <p style="font-size: 14px; color: var(--text-muted); line-height: 1.7; margin-bottom: 25px;">
+        To connect channels and earn revenue, you must allow Earn Program network and partner channel owners to broadcast sponsored promotional content on your connected Telegram channels.
+      </p>
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button class="btn btn-secondary" onclick="declineEarningsAgreement()"><i class="fa-solid fa-xmark"></i> Decline</button>
+        <button class="btn btn-primary" onclick="acceptEarningsAgreement()"><i class="fa-solid fa-check"></i> Accept & Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full Site Maintenance Overlay -->
+  <div id="fullSiteMaintenanceOverlay" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #07090e; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px;">
+    <i class="fa-solid fa-screwdriver-wrench" style="font-size: 64px; color: var(--gold); margin-bottom: 20px;"></i>
+    <h1 style="font-size: 28px; color: #fff; margin-bottom: 10px;">this page is currently on maintenance</h1>
+    <p style="color: var(--text-muted); max-width: 450px; font-size: 15px;">We are currently performing essential platform upgrades to improve your experience. Please check back shortly!</p>
+  </div>
+
+  <!-- Admin Custom Member Rate Modal -->
+  <div id="adminCustomRateModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div class="glass" style="max-width: 450px; width: 100%; padding: 30px; position: relative;">
+      <button onclick="closeAdminCustomRateModal()" style="position: absolute; top: 15px; right: 20px; background: transparent; border: none; color: #fff; font-size: 22px; cursor: pointer;">&times;</button>
+      <h2 style="color: var(--neon-cyan); margin-bottom: 10px; font-size: 20px;"><i class="fa-solid fa-sliders"></i> Set Custom Member Rate</h2>
+      <p class="text-muted" style="font-size: 13px; margin-bottom: 18px;">Target User: <strong id="adminCustomRateUserText" style="color: var(--gold);">-</strong></p>
+
+      <form onsubmit="handleAdminSubmitCustomRate(event)">
+        <input type="hidden" id="adminCustomRateUserIdVal">
+        <div style="margin-bottom: 15px;">
+          <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 6px;">Members per 1 INR (Default: 2.0)</label>
+          <input type="number" id="adminCustomRateInput" class="glass-input" min="0.1" step="0.1" value="2.0" required>
+        </div>
+
+        <button type="submit" class="btn btn-cyan" style="width: 100%; font-size: 15px;">
+          <i class="fa-solid fa-floppy-disk"></i> Apply Custom Rate
         </button>
       </form>
     </div>
@@ -1525,14 +1792,41 @@
       });
     }
 
+    let siteConfig = null;
+
     // SPA Navigation Router
     function nav(page) {
+      // Maintenance check for specific section
+      if (siteConfig && siteConfig.maintenance) {
+        if (siteConfig.maintenance.full) {
+          document.getElementById('fullSiteMaintenanceOverlay')?.classList.remove('hidden');
+          return;
+        }
+        if (page === 'watch' && siteConfig.maintenance.watch) {
+          alert('Watch Ads section is currently on maintenance.');
+          return;
+        }
+        if (page === 'promote' && siteConfig.maintenance.promote) {
+          alert('Channel Promotion section is currently on maintenance.');
+          return;
+        }
+        if (page === 'channels' && siteConfig.maintenance.earnings) {
+          alert('Earnings section is currently on maintenance.');
+          return;
+        }
+        if (page === 'withdraw' && siteConfig.maintenance.withdraw) {
+          alert('Withdrawal section is currently on maintenance.');
+          return;
+        }
+      }
+
       document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
 
       // Update active nav link
       document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
       if (page === 'home') document.getElementById('navTabHome')?.classList.add('active');
       if (page === 'watch') document.getElementById('navTabWatch')?.classList.add('active');
+      if (page === 'tasks') document.getElementById('navTabTasks')?.classList.add('active');
       if (page === 'promote') document.getElementById('navTabPromote')?.classList.add('active');
       if (page === 'channels') document.getElementById('navTabChannels')?.classList.add('active');
       if (page === 'dashboard') document.getElementById('navTabDash')?.classList.add('active');
@@ -1543,6 +1837,9 @@
       } else if (page === 'dashboard') {
         document.getElementById('pageDashboard').classList.remove('hidden');
         loadDashboardData();
+      } else if (page === 'tasks') {
+        document.getElementById('pageTasks').classList.remove('hidden');
+        loadUserTasks();
       } else if (page === 'watch') {
         document.getElementById('pageWatch').classList.remove('hidden');
         resetAdWatchArea();
@@ -1551,6 +1848,12 @@
         loadPaymentQr();
         loadMyPromotions();
       } else if (page === 'channels') {
+        // Content Promotion Agreement Check
+        if (currentUser && !currentUser.hasAcceptedAgreement && !localStorage.getItem('agreementAccepted')) {
+          document.getElementById('contentAgreementModal')?.classList.remove('hidden');
+          document.getElementById('pageHome').classList.remove('hidden');
+          return;
+        }
         document.getElementById('pageChannels').classList.remove('hidden');
         loadMyChannels();
       } else if (page === 'withdraw') {
@@ -1568,6 +1871,20 @@
         }
       }
       window.scrollTo(0, 0);
+    }
+
+    function acceptEarningsAgreement() {
+      localStorage.setItem('agreementAccepted', 'true');
+      if (currentUser) currentUser.hasAcceptedAgreement = true;
+      document.getElementById('contentAgreementModal')?.classList.add('hidden');
+      apiCall('/api/user/accept-agreement', 'POST', null, userToken).catch(() => {});
+      nav('channels');
+    }
+
+    function declineEarningsAgreement() {
+      document.getElementById('contentAgreementModal')?.classList.add('hidden');
+      alert('You must accept the agreement to access the Earnings section.');
+      nav('home');
     }
 
     // API Helper
@@ -1662,22 +1979,32 @@
     function updateHeaderProfileUI(u) {
       if (!u) return;
       document.getElementById('userNavBalance').textContent = u.balanceCoins.toFixed(1);
-      document.getElementById('headerUserName').textContent = u.first_name || u.username || 'User';
-      document.getElementById('headerUserIdBadge').innerHTML = `<i class="fa-solid fa-shield"></i> ID: ${u.telegram_id || u.id}`;
 
-      const avatar = document.getElementById('headerUserAvatar');
-      if (u.photo_url) {
-        avatar.innerHTML = `<img src="${u.photo_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
-      } else {
-        const initials = ((u.first_name || u.username || 'T').substring(0, 2)).toUpperCase();
-        avatar.textContent = initials;
+      // Dashboard Profile Card
+      const dashName = document.getElementById('dashUserName');
+      if (dashName) dashName.textContent = u.first_name || u.username || 'User';
+
+      const dashId = document.getElementById('dashUserIdBadge');
+      if (dashId) dashId.innerHTML = `<i class="fa-solid fa-shield"></i> ID: ${u.telegram_id || u.id}`;
+
+      const dashEmail = document.getElementById('dashUserEmail');
+      if (dashEmail) dashEmail.textContent = u.email || `${u.username}@telegram.user`;
+
+      const avatar = document.getElementById('dashUserAvatar');
+      if (avatar) {
+        if (u.photo_url) {
+          avatar.innerHTML = `<img src="${u.photo_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+        } else {
+          const initials = ((u.first_name || u.username || 'T').substring(0, 2)).toUpperCase();
+          avatar.textContent = initials;
+        }
       }
 
       if (u.is_premium) {
-        document.getElementById('premiumBadgeNav').classList.remove('hidden');
+        document.getElementById('premiumBadgeNav')?.classList.remove('hidden');
         document.getElementById('premiumDashCard')?.classList.remove('hidden');
       } else {
-        document.getElementById('premiumBadgeNav').classList.add('hidden');
+        document.getElementById('premiumBadgeNav')?.classList.add('hidden');
         document.getElementById('premiumDashCard')?.classList.add('hidden');
       }
     }
@@ -1743,6 +2070,10 @@
     async function loadPublicAdCodes() {
       try {
         const config = await apiCall('/api/config');
+        siteConfig = config;
+        if (config.maintenance && config.maintenance.full) {
+          document.getElementById('fullSiteMaintenanceOverlay')?.classList.remove('hidden');
+        }
         if (config.adCodes && config.adCodes.banner) {
           document.getElementById('homepageBannerSlot').innerHTML = config.adCodes.banner;
         }
@@ -1775,6 +2106,32 @@
       }
     }
 
+    async function openGstInvoiceModal(txnId) {
+      try {
+        const res = await apiCall(`/api/wallet/invoice/${txnId}`, 'GET', null, userToken);
+        if (res.ok && res.invoice) {
+          const inv = res.invoice;
+          document.getElementById('invNumberText').textContent = inv.invoice_number;
+          document.getElementById('invDateText').textContent = inv.date ? inv.date.split('T')[0] : '';
+          document.getElementById('invUserNameText').textContent = `${inv.username} (ID: ${inv.user_id})`;
+          document.getElementById('invUserEmailText').textContent = inv.email;
+          document.getElementById('invTxnIdText').textContent = inv.transaction_id;
+          document.getElementById('invUtrText').textContent = inv.utr;
+          document.getElementById('invDescText').textContent = inv.description;
+          document.getElementById('invBaseAmountText').textContent = `₹${inv.base_amount_inr.toFixed(2)}`;
+          document.getElementById('invGstAmountText').textContent = `₹${inv.gst_amount_inr.toFixed(2)}`;
+          document.getElementById('invTotalAmountText').textContent = `₹${inv.total_amount_inr.toFixed(2)}`;
+          document.getElementById('gstInvoiceModal')?.classList.remove('hidden');
+        }
+      } catch (err) {
+        alert(err.message || 'Failed to generate GST invoice.');
+      }
+    }
+
+    function closeGstInvoiceModal() {
+      document.getElementById('gstInvoiceModal')?.classList.add('hidden');
+    }
+
     async function loadWalletTransactions() {
       if (!userToken) return;
       try {
@@ -1787,13 +2144,15 @@
           res.transactions.forEach(t => {
             const tr = document.createElement('tr');
             const inr = (t.amount_paise / 100.0).toFixed(2);
+            const isDeposit = t.type === 'deposit' || t.type === 'admin_credit';
+            const invoiceBtn = isDeposit ? `<button class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px;" onclick="openGstInvoiceModal('${t.id}')"><i class="fa-solid fa-file-invoice-dollar"></i> Invoice</button>` : '-';
             tr.innerHTML = `
               <td>${t.created_at ? t.created_at.split('T')[0] : '-'}</td>
-              <td><span style="color:var(--neon-green); font-weight:bold; text-transform:uppercase;">${t.type}</span></td>
-              <td class="text-green"><strong>+₹${inr}</strong></td>
+              <td><span style="color:${isDeposit ? 'var(--neon-green)' : 'var(--gold)'}; font-weight:bold; text-transform:uppercase;">${t.type}</span></td>
+              <td class="${isDeposit ? 'text-green' : 'text-gold'}"><strong>${isDeposit ? '+' : '-'}₹${inr}</strong></td>
               <td><code>${t.utr || '-'}</code></td>
               <td><code>${t.order_id || '-'}</code></td>
-              <td><div style="max-width:180px; font-size:12px;" class="text-muted">${t.description || '-'}</div></td>
+              <td>${invoiceBtn}</td>
             `;
             tbody.appendChild(tr);
           });
@@ -1802,6 +2161,88 @@
         }
       } catch (e) {
         console.error('Error loading wallet transactions:', e);
+      }
+    }
+
+    async function loadUserTasks() {
+      if (!userToken) return;
+      try {
+        const res = await apiCall('/api/tasks', 'GET', null, userToken);
+        const container = document.getElementById('tasksListContainer');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (res.tasks && res.tasks.length > 0) {
+          res.tasks.forEach(task => {
+            const card = document.createElement('div');
+            card.className = 'glass';
+            card.style.padding = '20px';
+            card.style.display = 'flex';
+            card.style.alignItems = 'center';
+            card.style.justifyContent = 'space-between';
+            card.style.flexWrap = 'wrap';
+            card.style.gap = '15px';
+
+            const btnText = task.is_completed ? '<i class="fa-solid fa-check"></i> Completed' : '<i class="fa-solid fa-arrow-right-to-bracket"></i> Do Task & Claim';
+            const btnClass = task.is_completed ? 'btn btn-secondary' : 'btn btn-primary';
+
+            card.innerHTML = `
+              <div>
+                <h4 style="color:#fff; font-size:16px; margin-bottom:4px;">${task.title}</h4>
+                <p style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">${task.description || 'Complete task link to earn cash.'}</p>
+                <div style="font-size:14px; font-weight:bold; color:var(--neon-green);">Reward: ₹${task.reward_inr.toFixed(2)} INR</div>
+              </div>
+              <div>
+                <button class="${btnClass}" ${task.is_completed ? 'disabled' : ''} onclick="handleDoTask(${task.id}, '${task.link_url}')">${btnText}</button>
+              </div>
+            `;
+            container.appendChild(card);
+          });
+        } else {
+          container.innerHTML = `<div class="text-muted" style="text-align:center;">No tasks available right now. Check back later!</div>`;
+        }
+      } catch (e) {}
+    }
+
+    async function handleDoTask(taskId, linkUrl) {
+      window.open(linkUrl, '_blank');
+      setTimeout(async () => {
+        try {
+          const res = await apiCall('/api/tasks/complete', 'POST', { taskId: taskId }, userToken);
+          alert(`🎉 Task Completed! ₹${res.reward_inr.toFixed(2)} added to your balance.`);
+          fetchUserProfile();
+          loadUserTasks();
+        } catch (err) {
+          alert(err.message || 'Failed to claim task reward.');
+        }
+      }, 3000);
+    }
+
+    async function handlePromoImageUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const previewDiv = document.getElementById('promoImageUploadPreview');
+      if (previewDiv) previewDiv.textContent = 'Uploading image...';
+
+      try {
+        const res = await fetch('/api/upload-image', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${userToken}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (data.ok && data.image_url) {
+          document.getElementById('promoImageUrlVal').value = data.image_url;
+          if (previewDiv) previewDiv.innerHTML = `<i class="fa-solid fa-circle-check"></i> Image uploaded successfully! (<a href="${data.image_url}" target="_blank" style="color:var(--neon-cyan)">View Image</a>)`;
+        } else {
+          if (previewDiv) previewDiv.textContent = 'Image upload failed.';
+        }
+      } catch (err) {
+        if (previewDiv) previewDiv.textContent = 'Error uploading image.';
       }
     }
 
@@ -2157,6 +2598,8 @@
       const adMessage = document.getElementById('promoMsgVal').value;
       const channelLink = document.getElementById('promoChannelLink').value;
       const category = document.getElementById('promoCategorySelect').value;
+      const linkType = document.getElementById('promoLinkTypeSelect')?.value || 'direct';
+      const imageUrl = document.getElementById('promoImageUrlVal')?.value || '';
 
       let walletInr = currentWalletBalanceInr;
       if (userToken) {
@@ -2177,6 +2620,8 @@
             budget_inr: budget,
             category: category,
             is_category_specific: isCategorySpecific,
+            link_type: linkType,
+            image_url: imageUrl
           };
           if (txnRef) payload.payment_txn_ref = txnRef;
 
@@ -2534,6 +2979,9 @@
           }
         }
 
+        // Load Tasks
+        loadAdminTasks();
+
         // Load Ad Codes
         const adCodeRes = await apiCall('/api/admin/ad-codes');
         if (adCodeRes.adCodes) {
@@ -2570,6 +3018,9 @@
                 </button>
                 <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="openAdminRemoveFundsModal(${u.id}, '${u.username}')">
                   <i class="fa-solid fa-minus"></i> -₹
+                </button>
+                <button class="btn btn-cyan" style="padding: 4px 8px; font-size: 11px;" onclick="openAdminCustomRateModal(${u.id}, '${u.username}')">
+                  <i class="fa-solid fa-sliders"></i> Rate
                 </button>
                 <button class="btn btn-${u.is_banned ? 'cyan' : 'danger'}" style="padding: 4px 8px; font-size: 11px;" onclick="toggleUserBan(${u.id}, ${!u.is_banned})">
                   ${u.is_banned ? 'Unban' : 'Ban'}

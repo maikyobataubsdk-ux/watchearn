@@ -232,6 +232,33 @@ def init_db() -> None:
                 value TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                description TEXT DEFAULT '',
+                link_url TEXT NOT NULL,
+                reward_inr REAL NOT NULL,
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS task_completions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                task_id INTEGER NOT NULL,
+                reward_inr REAL NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(user_id, task_id),
+                FOREIGN KEY(user_id) REFERENCES users(id),
+                FOREIGN KEY(task_id) REFERENCES tasks(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS custom_user_rates (
+                user_id INTEGER PRIMARY KEY,
+                members_per_inr REAL NOT NULL,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            );
+
             CREATE TABLE IF NOT EXISTS ad_codes (
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
@@ -291,23 +318,43 @@ def init_db() -> None:
             conn.execute("ALTER TABLE promotions ADD COLUMN rejection_reason TEXT DEFAULT ''")
         except sqlite3.OperationalError:
             pass
+        try:
+            conn.execute("ALTER TABLE promotions ADD COLUMN image_url TEXT DEFAULT ''")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("ALTER TABLE promotions ADD COLUMN link_type TEXT DEFAULT 'direct'")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN has_accepted_agreement INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
 
         # Default settings if not set
         default_settings = {
-            "coins_per_ad": "2.0",
+            "coins_per_ad": "0.80",
             "daily_ad_limit": "50",
             "min_withdrawal_usd": "5.0",
             "min_withdrawal_inr": "400.0",
             "coins_per_usd": "100.0",
             "referral_commission_pct": "15.0",
-            "payment_upi_id": "blazeculture@upi",
-            "payment_qr_url": "/static/logo.png",
+            "payment_upi_id": "earnprogram@upi",
+            "payment_qr_url": "/static/payment_qr.jpg",
             "cost_per_2_joins_inr": "1.0",
             "payout_per_2_joins_inr": "0.50",
             "bot_start_quote": "welcome to earn program! watch simple ads, earn coins, promote telegram channels & generate daily income easily.",
-            "bot_tutorial_url": "https://t.me/Tgfuckerx",
-            "bot_help_url": "https://t.me/Tgfuckerx",
+            "bot_tutorial_url": "https://t.me/earnprogramsupport",
+            "bot_help_url": "https://t.me/earnprogramsupport",
+            "bot_support_url": "https://t.me/earnprogramsupport",
+            "bot_update_url": "https://t.me/earnprogramsupport",
             "force_sub_enabled": "0",
+            "global_discount_pct": "0.0",
+            "maintenance_full": "0",
+            "maintenance_watch": "0",
+            "maintenance_promote": "0",
+            "maintenance_earnings": "0",
+            "maintenance_withdraw": "0",
         }
         for k, v in default_settings.items():
             conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (k, v))
@@ -569,25 +616,133 @@ def create_promotion(
     is_category_specific: bool = False,
     total_price_inr: float = 0.0,
     ad_message: str = "",
-    status: str = "pending_approval"
+    status: str = "pending_approval",
+    image_url: str = "",
+    link_type: str = "direct"
 ) -> dict:
     tot_price = total_price_inr if total_price_inr > 0 else price_inr
     with db() as conn:
         cursor = conn.execute(
             """
             INSERT INTO promotions (
-                user_id, channel_url, channel_id, channel_title, price_inr, target_joins, current_joins, current_views, status, transaction_ref, category, is_category_specific, total_price_inr, ad_message, created_at
+                user_id, channel_url, channel_id, channel_title, price_inr, target_joins, current_joins, current_views, status, transaction_ref, category, is_category_specific, total_price_inr, ad_message, image_url, link_type, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 user_id, channel_url, str(channel_id), channel_title, price_inr, target_joins,
-                status, transaction_ref, category, 1 if is_category_specific else 0, tot_price, ad_message, utcnow()
+                status, transaction_ref, category, 1 if is_category_specific else 0, tot_price, ad_message, image_url, link_type, utcnow()
             ),
         )
         promo_id = cursor.lastrowid
         row = conn.execute("SELECT * FROM promotions WHERE id=?", (promo_id,)).fetchone()
         return dict(row)
+
+
+# Tasks Functions
+def create_task(title: str, description: str, link_url: str, reward_inr: float) -> dict:
+    with db() as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO tasks (title, description, link_url, reward_inr, is_active, created_at)
+            VALUES (?, ?, ?, ?, 1, ?)
+            """,
+            (title.strip(), description.strip(), link_url.strip(), float(reward_inr), utcnow()),
+        )
+        row = conn.execute("SELECT * FROM tasks WHERE id=?", (cursor.lastrowid,)).fetchone()
+        return dict(row)
+
+
+def get_all_tasks() -> list[dict]:
+    with db() as conn:
+        rows = conn.execute("SELECT * FROM tasks ORDER BY id DESC").fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_user_tasks(user_id: int) -> list[dict]:
+    with db() as conn:
+        tasks = conn.execute("SELECT * FROM tasks WHERE is_active=1 ORDER BY id DESC").fetchall()
+        completed = {r["task_id"] for r in conn.execute("SELECT task_id FROM task_completions WHERE user_id=?", (user_id,)).fetchall()}
+        result = []
+        for t in tasks:
+            td = dict(t)
+            td["is_completed"] = t["id"] in completed
+            result.append(td)
+        return result
+
+
+def complete_task(user_id: int, task_id: int) -> dict:
+    with db() as conn:
+        task = conn.execute("SELECT * FROM tasks WHERE id=? AND is_active=1", (task_id,)).fetchone()
+        if not task:
+            return {"ok": False, "error": "Task not found or inactive."}
+
+        existing = conn.execute("SELECT * FROM task_completions WHERE user_id=? AND task_id=?", (user_id, task_id)).fetchone()
+        if existing:
+            return {"ok": False, "error": "You have already completed this task."}
+
+        reward = float(task["reward_inr"])
+        conn.execute(
+            "INSERT INTO task_completions (user_id, task_id, reward_inr, created_at) VALUES (?, ?, ?, ?)",
+            (user_id, task_id, reward, utcnow()),
+        )
+
+        # Credit reward as coins (where 1 coin = 1 INR in platform coin terms)
+        conn.execute(
+            """
+            UPDATE users
+            SET balance_coins = balance_coins + ?,
+                total_earned_coins = total_earned_coins + ?
+            WHERE id = ?
+            """,
+            (reward, reward, user_id),
+        )
+
+        u = conn.execute("SELECT balance_coins FROM users WHERE id=?", (user_id,)).fetchone()
+        return {"ok": True, "reward_inr": reward, "new_balance": u["balance_coins"]}
+
+
+def delete_task(task_id: int) -> dict:
+    with db() as conn:
+        conn.execute("DELETE FROM task_completions WHERE task_id=?", (task_id,))
+        conn.execute("DELETE FROM tasks WHERE id=?", (task_id,))
+        return {"ok": True}
+
+
+def toggle_task_active(task_id: int) -> dict:
+    with db() as conn:
+        task = conn.execute("SELECT is_active FROM tasks WHERE id=?", (task_id,)).fetchone()
+        if not task:
+            return {"ok": False, "error": "Task not found."}
+        new_val = 0 if task["is_active"] else 1
+        conn.execute("UPDATE tasks SET is_active=? WHERE id=?", (new_val, task_id))
+        return {"ok": True, "is_active": new_val}
+
+
+# Custom Member Rates & Agreement Functions
+def set_custom_user_rate(user_id: int, members_per_inr: float) -> None:
+    with db() as conn:
+        if members_per_inr <= 0:
+            conn.execute("DELETE FROM custom_user_rates WHERE user_id=?", (user_id,))
+        else:
+            conn.execute(
+                """
+                INSERT INTO custom_user_rates (user_id, members_per_inr) VALUES (?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET members_per_inr=excluded.members_per_inr
+                """,
+                (user_id, float(members_per_inr)),
+            )
+
+
+def get_custom_user_rate(user_id: int) -> float | None:
+    with db() as conn:
+        row = conn.execute("SELECT members_per_inr FROM custom_user_rates WHERE user_id=?", (user_id,)).fetchone()
+        return row["members_per_inr"] if row else None
+
+
+def set_user_agreement_status(user_id: int, accepted: bool = True) -> None:
+    with db() as conn:
+        conn.execute("UPDATE users SET has_accepted_agreement=? WHERE id=?", (1 if accepted else 0, user_id))
 
 
 def get_user_promotions(user_id: int) -> list[dict]:

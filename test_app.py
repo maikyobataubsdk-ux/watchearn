@@ -38,7 +38,7 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         res_config = self.client.get("/api/config")
         self.assertEqual(res_config.status_code, 200)
         data = res_config.json()
-        self.assertEqual(data["coinsPerAd"], 2.0)
+        self.assertEqual(data["coinsPerAd"], 0.80)
         self.assertEqual(data["minWithdrawalUsd"], 5.0)
 
         res_stats = self.client.get("/api/stats")
@@ -105,13 +105,13 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         self.assertEqual(claim_res.status_code, 200)
         claim_data = claim_res.json()
         self.assertTrue(claim_data["ok"])
-        self.assertEqual(claim_data["reward_coins"], 2.0)
+        self.assertEqual(claim_data["reward_coins"], 0.80)
 
         user_b_db = db.get_user_by_username("userB")
-        self.assertEqual(user_b_db["balance_coins"], 2.0)
+        self.assertEqual(user_b_db["balance_coins"], 0.80)
 
         user_a_db = db.get_user_by_username("userA")
-        self.assertEqual(user_a_db["balance_coins"], 0.3)
+        self.assertAlmostEqual(user_a_db["balance_coins"], 0.12)
 
     def test_05_premium_status_and_ad_bypass(self):
         user_a = db.get_user_by_username("userA")
@@ -126,7 +126,7 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         self.assertEqual(watch_res.status_code, 200)
         data = watch_res.json()
         self.assertTrue(data["is_premium"])
-        self.assertEqual(data["reward_coins"], 2.0)
+        self.assertEqual(data["reward_coins"], 0.80)
 
     def test_06_channel_promotion_submission_and_approval(self):
         # Credit userA wallet with ₹200 (20000 paise) for testing promotion submission
@@ -363,12 +363,12 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         self.assertEqual(small, "ᴇᴀʀɴ ᴍᴏɴᴇʏ ᴅᴀɪʟʏ")
 
         kb = main_welcome_keyboard()
-        # Verify exactly 3 buttons arranged in 2 rows (row 1: Earn App, row 2: Tutorial & Help)
         total_btns = sum(len(row) for row in kb.inline_keyboard)
-        self.assertEqual(total_btns, 3)
+        self.assertEqual(total_btns, 4)
         self.assertEqual(kb.inline_keyboard[0][0].text, "🚀 ᴇᴀʀɴ ᴘʀᴏɢʀᴀᴍ")
-        self.assertEqual(kb.inline_keyboard[1][0].text, "📚 ᴛᴜᴛᴏʀɪᴀʟ")
-        self.assertEqual(kb.inline_keyboard[1][1].text, "💬 ʜᴇʟᴘ")
+        self.assertEqual(kb.inline_keyboard[1][0].text, "💬 sᴜᴘᴘᴏʀᴛ")
+        self.assertEqual(kb.inline_keyboard[1][1].text, "📢 ᴜᴘᴅᴀᴛᴇ")
+        self.assertEqual(kb.inline_keyboard[2][0].text, "ℹ️ ʜᴇʟᴘ")
 
         # Test analyze_channel with different link formats
         login_a = self.client.post("/api/auth/login", json={"login": "userA", "password": "password123"}).json()
@@ -715,6 +715,82 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
             "status": "unban"
         }, headers={"X-Admin-Token": admin_token})
         self.assertEqual(unban_chan.status_code, 200)
+
+        # 8. Test Tasks System
+        create_task_res = self.client.post("/api/admin/tasks/create", json={
+            "title": "Join Official Channel",
+            "link_url": "https://t.me/earnprogramsupport",
+            "reward_inr": 2.50,
+            "description": "Join channel and claim ₹2.50"
+        }, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(create_task_res.status_code, 200)
+        task_id = create_task_res.json()["task"]["id"]
+
+        # User C fetches tasks
+        tasks_res = self.client.get("/api/tasks", headers={"Authorization": f"Bearer {token_c}"})
+        self.assertEqual(tasks_res.status_code, 200)
+        self.assertTrue(len(tasks_res.json()["tasks"]) >= 1)
+
+        # User C completes task
+        comp_task_res = self.client.post("/api/tasks/complete", json={"taskId": task_id}, headers={"Authorization": f"Bearer {token_c}"})
+        self.assertEqual(comp_task_res.status_code, 200)
+        self.assertEqual(comp_task_res.json()["reward_inr"], 2.50)
+
+        # 9. Test GST 3% Invoice
+        # Deposit ₹100 into User C wallet to create a transaction
+        db.credit_wallet_deposit(user_c["id"], 10000, "GST_TEST_UTR", "GST_ORDER_100", "Topup 100 INR")
+        txns_res = self.client.get("/api/wallet/transactions", headers={"Authorization": f"Bearer {token_c}"})
+        self.assertEqual(txns_res.status_code, 200)
+        last_txn = txns_res.json()["transactions"][0]
+
+        inv_res = self.client.get(f"/api/wallet/invoice/{last_txn['id']}", headers={"Authorization": f"Bearer {token_c}"})
+        self.assertEqual(inv_res.status_code, 200)
+        inv_data = inv_res.json()["invoice"]
+        self.assertEqual(inv_data["total_amount_inr"], 100.0)
+        self.assertEqual(inv_data["base_amount_inr"], 97.09)
+        self.assertEqual(inv_data["gst_amount_inr"], 2.91)
+        self.assertEqual(inv_data["gst_rate_pct"], 3.0)
+
+        # 10. Test Custom User Rate & Global Discount in Promotion Submission
+        # Set custom rate for User C: 5 members per 1 INR
+        rate_res = self.client.post("/api/admin/user/custom-rate", json={
+            "userId": user_c["id"],
+            "membersPerInr": 5.0
+        }, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(rate_res.status_code, 200)
+
+        # Set 10% global discount
+        disc_res = self.client.post("/api/admin/settings/discount", json={"discountPct": 10.0}, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(disc_res.status_code, 200)
+
+        # Submit promotion as User C for budget ₹100
+        # Price should be ₹100 * (1 - 0.10) = ₹90 total price
+        sub_custom = self.client.post("/api/promotions/submit", json={
+            "channel_link": "https://t.me/customratechan",
+            "budget_inr": 100.0,
+            "link_type": "requested"
+        }, headers={"Authorization": f"Bearer {token_c}"})
+        self.assertEqual(sub_custom.status_code, 200)
+        self.assertEqual(sub_custom.json()["promotion"]["total_price_inr"], 90.0)
+        self.assertEqual(sub_custom.json()["promotion"]["link_type"], "requested")
+
+        # Reset global discount back to 0
+        self.client.post("/api/admin/settings/discount", json={"discountPct": 0.0}, headers={"X-Admin-Token": admin_token})
+
+        # 11. Test User Agreement Acceptance
+        agree_res = self.client.post("/api/user/accept-agreement", headers={"Authorization": f"Bearer {token_c}"})
+        self.assertEqual(agree_res.status_code, 200)
+        me_agree = self.client.get("/api/auth/me", headers={"Authorization": f"Bearer {token_c}"}).json()["user"]
+        self.assertTrue(me_agree["hasAcceptedAgreement"])
+
+        # 12. Test Maintenance Settings
+        maint_res = self.client.post("/api/admin/maintenance", json={
+            "maintenanceFull": "0",
+            "maintenanceWatch": "1"
+        }, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(maint_res.status_code, 200)
+        config_maint = self.client.get("/api/config").json()["config" if "config" in self.client.get("/api/config").json() else "maintenance"] if "maintenance" in self.client.get("/api/config").json() else self.client.get("/api/config").json()["maintenance"]
+        self.assertTrue(config_maint["watch"])
 
         # 6. User Deletes Connected Channel
         del_user_res = self.client.post("/api/channels/delete", json={

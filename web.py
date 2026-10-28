@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional
 import httpx
 
-from fastapi import FastAPI, HTTPException, Request, Depends, Header, Query
+from fastapi import FastAPI, HTTPException, Request, Depends, Header, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -32,6 +32,8 @@ from db import (
     get_campaign, record_rewarded_intent,
     get_or_create_wallet, get_wallet_balance, credit_wallet_deposit, get_wallet_transactions,
     deduct_wallet_balance_paise, admin_credit_user_wallet, admin_deduct_user_wallet,
+    create_task, get_all_tasks, get_user_tasks, complete_task, delete_task, toggle_task_active,
+    set_custom_user_rate, get_custom_user_rate, set_user_agreement_status,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -122,13 +124,56 @@ class SubmitPromotionRequest(BaseModel):
     ad_message: Optional[str] = ""
     budget_inr: Optional[float] = None
     priceInr: Optional[float] = None
-    target_joins: Optional[int] = 100
-    targetJoins: Optional[int] = 100
+    target_joins: Optional[int] = None
+    targetJoins: Optional[int] = None
     payment_txn_ref: Optional[str] = None
     transactionRef: Optional[str] = None
     category: Optional[str] = "General"
     is_category_specific: Optional[bool] = False
     isCategorySpecific: Optional[bool] = False
+    image_url: Optional[str] = ""
+    imageUrl: Optional[str] = ""
+    link_type: Optional[str] = "direct"
+    linkType: Optional[str] = "direct"
+
+
+class CreateTaskRequest(BaseModel):
+    title: str = Field(min_length=3, max_length=150)
+    description: Optional[str] = ""
+    link_url: str = Field(min_length=5, max_length=500)
+    reward_inr: float = Field(gt=0)
+
+
+class CompleteTaskRequest(BaseModel):
+    taskId: int
+
+
+class AdminTaskActionRequest(BaseModel):
+    taskId: int
+
+
+class AdminCustomRateRequest(BaseModel):
+    userId: int
+    membersPerInr: float = Field(ge=0)
+
+
+class AdminDiscountRequest(BaseModel):
+    discountPct: float = Field(ge=0, le=100)
+
+
+class AdminMaintenanceRequest(BaseModel):
+    maintenanceFull: Optional[str] = None
+    maintenanceWatch: Optional[str] = None
+    maintenancePromote: Optional[str] = None
+    maintenanceEarnings: Optional[str] = None
+    maintenanceWithdraw: Optional[str] = None
+
+
+class AdminStaggeredBroadcastRequest(BaseModel):
+    message_text: str = Field(min_length=1)
+    image_url: Optional[str] = ""
+    batch_size: Optional[int] = 20
+    duration_minutes: Optional[int] = 60
 
 
 class ConnectChannelRequest(BaseModel):
@@ -458,16 +503,24 @@ async def public_config() -> dict:
     return {
         "appName": "Earn Program",
         "logoUrl": "https://i.ibb.co/4nLM2yrb/uploaded-image.jpg",
-        "coinsPerAd": float(settings.get("coins_per_ad", 2.0)),
+        "coinsPerAd": float(settings.get("coins_per_ad", 0.80)),
         "dailyAdLimit": int(settings.get("daily_ad_limit", 50)),
         "minWithdrawalUsd": float(settings.get("min_withdrawal_usd", 5.0)),
         "minWithdrawalInr": float(settings.get("min_withdrawal_inr", 400.0)),
         "coinsPerUsd": float(settings.get("coins_per_usd", 100.0)),
         "referralCommissionPct": float(settings.get("referral_commission_pct", 15.0)),
-        "paymentUpiId": settings.get("payment_upi_id", "blazeculture@upi"),
+        "paymentUpiId": settings.get("payment_upi_id", "earnprogram@upi"),
         "paymentQrUrl": settings.get("payment_qr_url", "/static/payment_qr.jpg"),
+        "globalDiscountPct": float(settings.get("global_discount_pct", 0.0)),
+        "maintenance": {
+            "full": settings.get("maintenance_full", "0") == "1",
+            "watch": settings.get("maintenance_watch", "0") == "1",
+            "promote": settings.get("maintenance_promote", "0") == "1",
+            "earnings": settings.get("maintenance_earnings", "0") == "1",
+            "withdraw": settings.get("maintenance_withdraw", "0") == "1",
+        },
         "adCodes": ad_codes,
-        "supportTelegram": "@Tgfuckerx",
+        "supportTelegram": "@earnprogramsupport",
     }
 
 
@@ -615,6 +668,7 @@ async def me(user: dict = Depends(get_current_user)) -> dict:
     settings = get_settings()
     daily_ads = get_user_daily_ad_count(user["id"])
     ref_stats = get_referral_stats(user["id"])
+    custom_rate = get_custom_user_rate(user["id"])
 
     return {
         "ok": True,
@@ -631,7 +685,9 @@ async def me(user: dict = Depends(get_current_user)) -> dict:
             "totalAdsWatched": user["total_ads_watched"],
             "isPremium": bool(user.get("is_premium", 0)),
             "is_premium": bool(user.get("is_premium", 0)),
+            "hasAcceptedAgreement": bool(user.get("has_accepted_agreement", 0)),
             "referralCode": user["referral_code"],
+            "customMemberRate": custom_rate,
             "dailyAdsToday": daily_ads,
             "dailyAdLimit": int(settings.get("daily_ad_limit", 50)),
             "referralStats": ref_stats,
@@ -815,14 +871,40 @@ async def submit_promotion(body: SubmitPromotionRequest, user: dict = Depends(ge
     c_id = body.channel_id or body.channelId or channel_id or url
     c_title = body.channel_title or body.channelTitle or f"Channel ({c_id})"
     base_price = body.budget_inr or body.priceInr or 100.0
-    joins = body.target_joins or body.targetJoins or int(base_price * 2)
+
+    # Custom member rate for specific user if set
+    custom_rate = get_custom_user_rate(user["id"])
+    members_per_inr = custom_rate if (custom_rate is not None and custom_rate > 0) else 2.0
+
+    settings = get_settings()
+    global_discount_pct = float(settings.get("global_discount_pct", "0.0"))
 
     cat = (body.category or "General").strip()
     is_cat_specific = bool(body.is_category_specific or body.isCategorySpecific)
 
-    # 20% extra charge if category specific promotion is chosen
     total_price = base_price * 1.20 if is_cat_specific else base_price
+
+    if global_discount_pct > 0:
+        total_price = total_price * (1.0 - (global_discount_pct / 100.0))
+
+    total_price = round(total_price, 2)
     required_paise = int(round(total_price * 100))
+
+    calculated_joins = int(round(base_price * members_per_inr))
+
+    # 30% community cap check
+    stats = get_global_stats()
+    total_community = stats.get("total_community_members", 0) or 1000
+    community_cap = int(total_community * 0.30)
+    if community_cap < 50:
+        community_cap = 50
+
+    joins = body.target_joins or body.targetJoins or calculated_joins
+    if joins > community_cap:
+        joins = community_cap
+
+    img_url = body.image_url or body.imageUrl or ""
+    l_type = body.link_type or body.linkType or "direct"
 
     tg_id = user.get("telegram_id") or user["id"]
     wallet_res = deduct_wallet_balance_paise(
@@ -851,7 +933,9 @@ async def submit_promotion(body: SubmitPromotionRequest, user: dict = Depends(ge
         is_category_specific=is_cat_specific,
         total_price_inr=total_price,
         ad_message=body.ad_message or "",
-        status="pending_approval"
+        status="pending_approval",
+        image_url=img_url,
+        link_type=l_type
     )
 
     return {
@@ -975,6 +1059,86 @@ async def wallet_transactions(user: dict = Depends(get_current_user)) -> dict:
         "ok": True,
         "transactions": txns,
     }
+
+
+@app.get("/api/wallet/invoice/{txn_id}")
+async def wallet_invoice(txn_id: str, user: dict = Depends(get_current_user)) -> dict:
+    tg_id = user.get("telegram_id") or user["id"]
+    txns = get_wallet_transactions(tg_id, limit=200)
+
+    target_txn = None
+    for t in txns:
+        if str(t["id"]) == str(txn_id) or str(t["order_id"]) == str(txn_id) or str(t["utr"]) == str(txn_id):
+            target_txn = t
+            break
+
+    if not target_txn:
+        raise HTTPException(status_code=404, detail="Wallet transaction not found.")
+
+    total_paise = target_txn["amount_paise"]
+    total_inr = round(total_paise / 100.0, 2)
+    base_inr = round(total_inr / 1.03, 2)
+    gst_inr = round(total_inr - base_inr, 2)
+
+    return {
+        "ok": True,
+        "invoice": {
+            "invoice_number": f"INV-{target_txn['id']}-{target_txn['created_at'][:10].replace('-', '')}",
+            "date": target_txn["created_at"],
+            "user_id": user["id"],
+            "username": user["username"],
+            "email": user["email"],
+            "transaction_id": target_txn["order_id"] or target_txn["id"],
+            "utr": target_txn["utr"] or "WALLET_TOPUP",
+            "description": target_txn["description"] or "Wallet Money Addition",
+            "base_amount_inr": base_inr,
+            "gst_rate_pct": 3.0,
+            "gst_amount_inr": gst_inr,
+            "total_amount_inr": total_inr,
+        }
+    }
+
+
+@app.post("/api/upload-image")
+async def upload_image(file: UploadFile = File(...), user: dict = Depends(get_current_user)) -> dict:
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are allowed.")
+
+    uploads_dir = BASE_DIR / "static" / "uploads"
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    file_ext = Path(file.filename or "image.png").suffix.lower()
+    if not file_ext or file_ext not in (".jpg", ".jpeg", ".png", ".webp", ".gif"):
+        file_ext = ".png"
+
+    filename = f"promo_{user['id']}_{uuid.uuid4().hex[:10]}{file_ext}"
+    filepath = uploads_dir / filename
+
+    content = await file.read()
+    with open(filepath, "wb") as f:
+        f.write(content)
+
+    return {"ok": True, "image_url": f"/static/uploads/{filename}"}
+
+
+@app.get("/api/tasks")
+async def list_user_tasks(user: dict = Depends(get_current_user)) -> dict:
+    tasks = get_user_tasks(user["id"])
+    return {"ok": True, "tasks": tasks}
+
+
+@app.post("/api/tasks/complete")
+async def complete_user_task(body: CompleteTaskRequest, user: dict = Depends(get_current_user)) -> dict:
+    res = complete_task(user["id"], body.taskId)
+    if not res.get("ok"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Failed to complete task."))
+    return res
+
+
+@app.post("/api/user/accept-agreement")
+async def accept_user_agreement(user: dict = Depends(get_current_user)) -> dict:
+    set_user_agreement_status(user["id"], True)
+    return {"ok": True, "message": "Agreement accepted successfully."}
 
 
 @app.post("/api/youpi-webhook")
@@ -1243,6 +1407,107 @@ async def admin_update_promotion_status(body: AdminPromotionStatusRequest, reque
         msg += f". Promotion rejected and funds refunded to user's wallet."
 
     return {"ok": True, "message": msg}
+
+
+@app.get("/api/admin/tasks")
+async def admin_get_tasks(_: bool = Depends(require_admin)) -> dict:
+    tasks = get_all_tasks()
+    return {"ok": True, "tasks": tasks}
+
+
+@app.post("/api/admin/tasks/create")
+async def admin_create_task(body: CreateTaskRequest, _: bool = Depends(require_admin)) -> dict:
+    task = create_task(body.title, body.description or "", body.link_url, body.reward_inr)
+    return {"ok": True, "task": task}
+
+
+@app.post("/api/admin/tasks/toggle")
+async def admin_toggle_task(body: AdminTaskActionRequest, _: bool = Depends(require_admin)) -> dict:
+    res = toggle_task_active(body.taskId)
+    if not res.get("ok"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Task not found."))
+    return res
+
+
+@app.post("/api/admin/tasks/delete")
+async def admin_delete_task(body: AdminTaskActionRequest, _: bool = Depends(require_admin)) -> dict:
+    res = delete_task(body.taskId)
+    return res
+
+
+@app.post("/api/admin/user/custom-rate")
+async def admin_set_custom_rate(body: AdminCustomRateRequest, _: bool = Depends(require_admin)) -> dict:
+    set_custom_user_rate(body.userId, body.membersPerInr)
+    return {"ok": True, "message": f"Custom member rate updated to {body.membersPerInr} members/INR for User #{body.userId}."}
+
+
+@app.post("/api/admin/settings/discount")
+async def admin_set_discount(body: AdminDiscountRequest, _: bool = Depends(require_admin)) -> dict:
+    update_settings({"global_discount_pct": str(body.discountPct)})
+    return {"ok": True, "message": f"Global discount updated to {body.discountPct}% for all users."}
+
+
+@app.post("/api/admin/maintenance")
+async def admin_set_maintenance(body: AdminMaintenanceRequest, _: bool = Depends(require_admin)) -> dict:
+    new_settings = {}
+    if body.maintenanceFull is not None: new_settings["maintenance_full"] = body.maintenanceFull
+    if body.maintenanceWatch is not None: new_settings["maintenance_watch"] = body.maintenanceWatch
+    if body.maintenancePromote is not None: new_settings["maintenance_promote"] = body.maintenancePromote
+    if body.maintenanceEarnings is not None: new_settings["maintenance_earnings"] = body.maintenanceEarnings
+    if body.maintenanceWithdraw is not None: new_settings["maintenance_withdraw"] = body.maintenanceWithdraw
+    update_settings(new_settings)
+    return {"ok": True, "message": "Maintenance settings updated successfully!"}
+
+
+@app.post("/api/admin/broadcast-staggered")
+async def admin_staggered_broadcast(body: AdminStaggeredBroadcastRequest, _: bool = Depends(require_admin)) -> dict:
+    import asyncio
+    import bot as bot_module
+
+    channels = get_all_connected_channels()
+    approved_channels = [c for c in channels if c.get("status") in ("approved", "active")]
+
+    if not approved_channels:
+        return {"ok": False, "error": "No approved connected channels found for broadcast."}
+
+    batch_size = max(1, body.batch_size or 20)
+    duration_min = max(1, body.duration_minutes or 60)
+
+    async def staggered_worker():
+        if bot_module.bot is None:
+            return
+        for i in range(0, len(approved_channels), batch_size):
+            batch = approved_channels[i:i + batch_size]
+            posted_messages = []
+
+            for ch in batch:
+                try:
+                    chat_arg = int(ch["channel_id"]) if str(ch["channel_id"]).lstrip("-").isdigit() else ch["channel_id"]
+                    if body.image_url:
+                        msg = await bot_module.bot.send_photo(chat_id=chat_arg, photo=body.image_url, caption=body.message_text)
+                    else:
+                        msg = await bot_module.bot.send_message(chat_id=chat_arg, text=body.message_text)
+                    posted_messages.append((chat_arg, msg.message_id))
+                except Exception:
+                    pass
+
+            # Wait set duration
+            await asyncio.sleep(duration_min * 60)
+
+            # Auto-delete from batch
+            for chat_arg, msg_id in posted_messages:
+                try:
+                    await bot_module.bot.delete_message(chat_id=chat_arg, message_id=msg_id)
+                except Exception:
+                    pass
+
+    asyncio.create_task(staggered_worker())
+
+    return {
+        "ok": True,
+        "message": f"Staggered broadcast started for {len(approved_channels)} channels! (Batch size: {batch_size}, Duration: {duration_min} min per batch)",
+        "total_channels": len(approved_channels)
+    }
 
 
 @app.get("/api/admin/ad-codes")
