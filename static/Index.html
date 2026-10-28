@@ -509,10 +509,6 @@
         <i class="fa-solid fa-circle-play"></i>
         <span>Watch</span>
       </button>
-      <button class="nav-link" id="navTabTasks" onclick="nav('tasks')">
-        <i class="fa-solid fa-list-check"></i>
-        <span>Tasks</span>
-      </button>
       <button class="nav-link" id="navTabPromote" onclick="nav('promote')">
         <i class="fa-solid fa-bullhorn"></i>
         <span>Promote</span>
@@ -985,8 +981,8 @@
               <thead>
                 <tr>
                   <th>Campaign</th>
-                  <th>Budget</th>
-                  <th>Joins / Views</th>
+                  <th>Budget / Spent</th>
+                  <th>Joins Progress</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -1043,7 +1039,7 @@
 
         <!-- My Connected Channels Table -->
         <div class="glass" style="padding: 25px;">
-          <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-tv text-cyan"></i> My Connected Channels & Analytics</h3>
+          <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-tv text-cyan"></i> My Connected Channels & Earnings</h3>
           <div style="overflow-x: auto;">
             <table>
               <thead>
@@ -1051,14 +1047,12 @@
                   <th>Channel</th>
                   <th>Category</th>
                   <th>Status</th>
-                  <th>Total Joins</th>
-                  <th>Total Left</th>
                   <th>Earned (INR)</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody id="myChannelsTableBody">
-                <tr><td colspan="7" class="text-muted" style="text-align: center;">No channels connected yet.</td></tr>
+                <tr><td colspan="5" class="text-muted" style="text-align: center;">No channels connected yet.</td></tr>
               </tbody>
             </table>
           </div>
@@ -2744,10 +2738,13 @@
               rejMsgHtml = `<div style="font-size: 11px; color: var(--error); margin-top: 4px; font-weight: 600;"><i class="fa-solid fa-circle-xmark"></i> ${msg}</div>`;
             }
 
+            const totPrice = p.total_price_inr || p.price_inr || p.budget_inr || 0;
+            const spentInr = p.spent_inr !== undefined ? p.spent_inr : Math.min(totPrice, Math.round((totPrice * (p.current_joins || 0)) / (p.target_joins || 1) * 100) / 100);
+
             tr.innerHTML = `
               <td><strong>${p.channel_title || p.channel_link}</strong>${rejMsgHtml}</td>
-              <td>₹${p.budget_inr} INR</td>
-              <td>${p.current_joins || p.joins_count || 0} joins / ${p.current_views || p.views_count || 0} views</td>
+              <td><span class="text-green"><strong>₹${spentInr.toFixed(2)}</strong></span> / ₹${totPrice.toFixed(2)} INR</td>
+              <td><span class="text-cyan"><strong>${p.current_joins || 0}</strong></span> / ${p.target_joins || 0} Joins</td>
               <td><span style="color:${color}; font-weight:bold; text-transform:uppercase;">${statusText}</span></td>
             `;
             tbody.appendChild(tr);
@@ -2812,8 +2809,6 @@
               <td><strong>${c.channel_title || c.title}</strong> (${c.channel_username || c.username})</td>
               <td><span class="badge" style="font-size: 11px; padding: 2px 8px;">${categoryName}</span></td>
               <td><span style="color: ${stColor}; font-weight: bold; font-size: 12px;">${stLabel}</span></td>
-              <td class="text-green"><strong>${c.total_joins}</strong></td>
-              <td class="text-gold">${c.total_lefts || c.total_left || 0}</td>
               <td class="text-cyan"><strong>₹${(c.total_earned_inr || c.earnings_inr || 0).toFixed(2)}</strong></td>
               <td>
                 <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="deleteMyChannel('${c.channel_id}')">
@@ -2922,7 +2917,21 @@
         document.getElementById('admTotalUsers').textContent = statsData.totalUsersCount;
         document.getElementById('admPendingWithdrawals').textContent = statsData.pendingWithdrawalsCount;
 
-        // Load Payment QR Config
+        // Load Config & Payment QR Config
+        const configData = await apiCall('/api/config');
+        if (configData) {
+          if (document.getElementById('admGlobalDiscountInput')) {
+            document.getElementById('admGlobalDiscountInput').value = configData.globalDiscountPct || 0;
+          }
+          if (configData.maintenance) {
+            if (document.getElementById('admMaintFullSelect')) document.getElementById('admMaintFullSelect').value = configData.maintenance.full ? '1' : '0';
+            if (document.getElementById('admMaintWatchSelect')) document.getElementById('admMaintWatchSelect').value = configData.maintenance.watch ? '1' : '0';
+            if (document.getElementById('admMaintPromoteSelect')) document.getElementById('admMaintPromoteSelect').value = configData.maintenance.promote ? '1' : '0';
+            if (document.getElementById('admMaintEarningsSelect')) document.getElementById('admMaintEarningsSelect').value = configData.maintenance.earnings ? '1' : '0';
+            if (document.getElementById('admMaintWithdrawSelect')) document.getElementById('admMaintWithdrawSelect').value = configData.maintenance.withdraw ? '1' : '0';
+          }
+        }
+
         const qrRes = await apiCall('/api/admin/payment-qr');
         document.getElementById('admUpiIdInput').value = qrRes.upi_id || '';
         document.getElementById('admQrUrlInput').value = qrRes.qr_image_url || '';
@@ -3306,6 +3315,165 @@
         loadAdminDashboardData();
       } catch (err) {
         alert(err.message);
+      }
+    }
+
+    async function loadAdminTasks() {
+      try {
+        const res = await apiCall('/api/admin/tasks');
+        const tbody = document.getElementById('adminTasksTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (res.tasks && res.tasks.length > 0) {
+          res.tasks.forEach(t => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>#${t.id}</td>
+              <td><strong>${t.title}</strong></td>
+              <td><a href="${t.link_url}" target="_blank" style="color:var(--neon-cyan)">${t.link_url}</a></td>
+              <td class="text-green">₹${t.reward_inr.toFixed(2)}</td>
+              <td><span style="color:${t.is_active ? 'var(--neon-green)' : 'var(--error)'}">${t.is_active ? 'Active' : 'Inactive'}</span></td>
+              <td>
+                <div style="display:flex; gap:6px;">
+                  <button class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="toggleAdminTask(${t.id})">
+                    ${t.is_active ? 'Disable' : 'Enable'}
+                  </button>
+                  <button class="btn btn-danger" style="padding: 3px 8px; font-size: 11px;" onclick="deleteAdminTask(${t.id})">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No tasks created yet.</td></tr>';
+        }
+      } catch (e) {}
+    }
+
+    async function handleAdminCreateTask(e) {
+      e.preventDefault();
+      try {
+        const title = document.getElementById('admTaskTitleInput').value;
+        const link = document.getElementById('admTaskLinkInput').value;
+        const reward = parseFloat(document.getElementById('admTaskRewardInput').value);
+        const desc = document.getElementById('admTaskDescInput').value;
+
+        const res = await apiCall('/api/admin/tasks/create', 'POST', {
+          title: title,
+          link_url: link,
+          reward_inr: reward,
+          description: desc
+        });
+        alert('Task created successfully!');
+        document.getElementById('admTaskTitleInput').value = '';
+        document.getElementById('admTaskLinkInput').value = '';
+        document.getElementById('admTaskDescInput').value = '';
+        loadAdminTasks();
+      } catch (err) {
+        alert(err.message || 'Failed to create task.');
+      }
+    }
+
+    async function toggleAdminTask(taskId) {
+      try {
+        await apiCall('/api/admin/tasks/toggle', 'POST', { taskId: taskId });
+        loadAdminTasks();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteAdminTask(taskId) {
+      if (!confirm('Are you sure you want to delete this task?')) return;
+      try {
+        await apiCall('/api/admin/tasks/delete', 'POST', { taskId: taskId });
+        loadAdminTasks();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function handleSaveGlobalDiscount(e) {
+      e.preventDefault();
+      try {
+        const disc = parseFloat(document.getElementById('admGlobalDiscountInput').value) || 0;
+        const res = await apiCall('/api/admin/settings/discount', 'POST', { discountPct: disc });
+        alert(res.message || 'Global discount saved!');
+      } catch (err) {
+        alert(err.message || 'Failed to save discount.');
+      }
+    }
+
+    async function handleSaveMaintenanceSettings(e) {
+      e.preventDefault();
+      try {
+        const full = document.getElementById('admMaintFullSelect').value;
+        const watch = document.getElementById('admMaintWatchSelect').value;
+        const promote = document.getElementById('admMaintPromoteSelect').value;
+        const earnings = document.getElementById('admMaintEarningsSelect').value;
+        const withdraw = document.getElementById('admMaintWithdrawSelect').value;
+
+        const res = await apiCall('/api/admin/maintenance', 'POST', {
+          maintenanceFull: full,
+          maintenanceWatch: watch,
+          maintenancePromote: promote,
+          maintenanceEarnings: earnings,
+          maintenanceWithdraw: withdraw
+        });
+        alert(res.message || 'Maintenance settings updated!');
+        loadPublicAdCodes(); // Refresh siteConfig
+      } catch (err) {
+        alert(err.message || 'Failed to save maintenance settings.');
+      }
+    }
+
+    async function handleAdminStaggeredBroadcast(e) {
+      e.preventDefault();
+      try {
+        const msg = document.getElementById('admStagMsgText').value;
+        const img = document.getElementById('admStagImgUrl').value;
+        const batch = parseInt(document.getElementById('admStagBatchSize').value) || 20;
+        const dur = parseInt(document.getElementById('admStagDurationMin').value) || 60;
+
+        const res = await apiCall('/api/admin/broadcast-staggered', 'POST', {
+          message_text: msg,
+          image_url: img,
+          batch_size: batch,
+          duration_minutes: dur
+        });
+        alert(res.message || 'Staggered broadcast launched!');
+      } catch (err) {
+        alert(err.message || 'Failed to launch staggered broadcast.');
+      }
+    }
+
+    function openAdminCustomRateModal(userId, username) {
+      document.getElementById('adminCustomRateUserIdVal').value = userId;
+      document.getElementById('adminCustomRateUserText').textContent = `${username} (#${userId})`;
+      document.getElementById('adminCustomRateModal')?.classList.remove('hidden');
+    }
+
+    function closeAdminCustomRateModal() {
+      document.getElementById('adminCustomRateModal')?.classList.add('hidden');
+    }
+
+    async function handleAdminSubmitCustomRate(e) {
+      e.preventDefault();
+      const userId = parseInt(document.getElementById('adminCustomRateUserIdVal').value);
+      const rate = parseFloat(document.getElementById('adminCustomRateInput').value);
+
+      try {
+        const res = await apiCall('/api/admin/user/custom-rate', 'POST', {
+          userId: userId,
+          membersPerInr: rate
+        });
+        alert(res.message || 'Custom member rate updated!');
+        closeAdminCustomRateModal();
+      } catch (err) {
+        alert(err.message || 'Failed to set custom rate.');
       }
     }
   </script>

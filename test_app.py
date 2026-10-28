@@ -828,6 +828,45 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         self.assertEqual(del_adm_res.status_code, 200)
         self.assertTrue(del_adm_res.json()["ok"])
 
+    def test_20_special_tracking_and_spent_stats(self):
+        # 1. Test special promo invite link recording & lookup in DB
+        db.record_promo_invite_link("https://t.me/+SpecialTrackLink123", 42, "@sourcechannel")
+        link_info = db.get_promo_invite_link("https://t.me/+SpecialTrackLink123")
+        self.assertIsNotNone(link_info)
+        self.assertEqual(link_info["promotion_id"], 42)
+        self.assertEqual(link_info["source_channel_id"], "@sourcechannel")
+
+        # 2. Test record_channel_join_event_with_source
+        user_c = db.get_user_by_username("userC")
+        # Connect source channel for User C
+        db.connect_channel(user_c["id"], "@sourcechannel", "Source Channel", "sourcechannel", status="approved")
+
+        # Create promotion 42 for target channel
+        promo = db.create_promotion(
+            user_id=user_c["id"],
+            channel_url="https://t.me/targetchan",
+            channel_id="@targetchan",
+            channel_title="Target Channel",
+            price_inr=100.0,
+            target_joins=200,
+            transaction_ref="REF42",
+            status="active"
+        )
+
+        owner_bal_before = db.get_user_by_id(user_c["id"])["balance_coins"]
+
+        # Record join event with source channel
+        db.record_channel_join_event_with_source(promo["id"], "@sourcechannel", 99001)
+
+        # Verify promotion current_joins increased
+        promo_after = next(p for p in db.get_user_promotions(user_c["id"]) if p["id"] == promo["id"])
+        self.assertEqual(promo_after["current_joins"], 1)
+        self.assertEqual(promo_after["spent_inr"], 0.50)
+
+        # Verify owner received coin earnings
+        owner_bal_after = db.get_user_by_id(user_c["id"])["balance_coins"]
+        self.assertAlmostEqual(owner_bal_after - owner_bal_before, 0.3125)
+
 
 if __name__ == "__main__":
     unittest.main()
