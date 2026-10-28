@@ -456,6 +456,16 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         bal_dup = self.client.get("/api/wallet/balance", headers={"Authorization": f"Bearer {user_token}"})
         self.assertEqual(bal_dup.json()["balance_paise"], 25000)
 
+        # Test /api/wallet/confirm-payment endpoint
+        confirm_res = self.client.post("/api/wallet/confirm-payment", json={
+            "order_id": "WALLET-555666777-CONFIRM1",
+            "amount_inr": 100.0,
+            "utr": "UTR_CONFIRM_99"
+        }, headers={"Authorization": f"Bearer {user_token}"})
+        self.assertEqual(confirm_res.status_code, 200)
+        self.assertTrue(confirm_res.json()["ok"])
+        self.assertEqual(confirm_res.json()["balance_inr"], 350.0)
+
         # Test invalid signature
         wh_bad_sig = self.client.post(
             "/api/youpi-webhook",
