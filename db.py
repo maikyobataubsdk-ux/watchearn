@@ -263,6 +263,13 @@ def init_db() -> None:
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS promo_invite_links (
+                invite_link TEXT PRIMARY KEY,
+                promotion_id INTEGER NOT NULL,
+                source_channel_id TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
             """
         )
 
@@ -748,7 +755,18 @@ def set_user_agreement_status(user_id: int, accepted: bool = True) -> None:
 def get_user_promotions(user_id: int) -> list[dict]:
     with db() as conn:
         rows = conn.execute("SELECT * FROM promotions WHERE user_id=? ORDER BY id DESC", (user_id,)).fetchall()
-        return [dict(r) for r in rows]
+        result = []
+        for r in rows:
+            d = dict(r)
+            tot_price = d.get("total_price_inr") if (d.get("total_price_inr") and d.get("total_price_inr") > 0) else (d.get("price_inr") or 0.0)
+            target = d.get("target_joins") or 1
+            curr_joins = d.get("current_joins") or 0
+            if target > 0:
+                d["spent_inr"] = round((tot_price * min(curr_joins, target)) / target, 2)
+            else:
+                d["spent_inr"] = 0.0
+            result.append(d)
+        return result
 
 
 def get_all_promotions() -> list[dict]:
@@ -761,7 +779,18 @@ def get_all_promotions() -> list[dict]:
             ORDER BY p.id DESC
             """
         ).fetchall()
-        return [dict(r) for r in rows]
+        result = []
+        for r in rows:
+            d = dict(r)
+            tot_price = d.get("total_price_inr") if (d.get("total_price_inr") and d.get("total_price_inr") > 0) else (d.get("price_inr") or 0.0)
+            target = d.get("target_joins") or 1
+            curr_joins = d.get("current_joins") or 0
+            if target > 0:
+                d["spent_inr"] = round((tot_price * min(curr_joins, target)) / target, 2)
+            else:
+                d["spent_inr"] = 0.0
+            result.append(d)
+        return result
 
 
 def update_promotion_status(promo_id: int, status: str, rejection_reason: str = "") -> dict:
@@ -904,6 +933,78 @@ def get_all_connected_channels() -> list[dict]:
         return [dict(r) for r in rows]
 
 
+def record_promo_invite_link(invite_link: str, promotion_id: int, source_channel_id: str) -> None:
+    with db() as conn:
+        conn.execute(
+            """
+            INSERT INTO promo_invite_links (invite_link, promotion_id, source_channel_id, created_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(invite_link) DO UPDATE SET promotion_id=excluded.promotion_id, source_channel_id=excluded.source_channel_id
+            """,
+            (invite_link.strip(), promotion_id, str(source_channel_id).strip(), utcnow()),
+        )
+
+
+def get_promo_invite_link(invite_link: str) -> dict | None:
+    with db() as conn:
+        row = conn.execute("SELECT * FROM promo_invite_links WHERE invite_link=?", (invite_link.strip(),)).fetchone()
+        return dict(row) if row else None
+
+
+def record_channel_join_event_with_source(promotion_id: int, source_channel_id: str, user_id: int) -> dict:
+    settings = get_settings()
+    payout_per_2_joins = float(settings.get("payout_per_2_joins_inr", "0.50"))
+    payout_per_join = payout_per_2_joins / 2.0  # 0.25 INR per user join
+
+    clean_id = str(source_channel_id).strip()
+    username_part = clean_id.split("t.me/")[-1].lstrip("@").strip("/")
+    at_username = f"@{username_part}" if username_part else clean_id
+
+    with db() as conn:
+        conn.execute(
+            "INSERT INTO join_analytics (channel_id, user_id, status, created_at) VALUES (?, ?, 'joined', ?)",
+            (clean_id, user_id, utcnow()),
+        )
+
+        # Credit source connected channel
+        ch = conn.execute(
+            "SELECT * FROM connected_channels WHERE channel_id=? OR channel_id=? OR channel_username=?",
+            (clean_id, at_username, username_part),
+        ).fetchone()
+        if ch:
+            earned_bonus = payout_per_join
+            conn.execute(
+                """
+                UPDATE connected_channels
+                SET total_joins = total_joins + 1,
+                    total_earned_inr = total_earned_inr + ?
+                WHERE id = ?
+                """,
+                (earned_bonus, ch["id"]),
+            )
+
+            # Credit channel owner coins balance (using 1 USD = 80 INR, coins per USD = 100)
+            coins_per_usd = float(settings.get("coins_per_usd", "100.0"))
+            coins_earned = (earned_bonus / 80.0) * coins_per_usd
+            conn.execute(
+                """
+                UPDATE users
+                SET balance_coins = balance_coins + ?,
+                    total_earned_coins = total_earned_coins + ?
+                WHERE id = ?
+                """,
+                (coins_earned, coins_earned, ch["owner_user_id"]),
+            )
+
+        # Update active promotion target current_joins
+        conn.execute(
+            "UPDATE promotions SET current_joins = current_joins + 1 WHERE id=? AND status='active'",
+            (promotion_id,),
+        )
+
+        return {"ok": True}
+
+
 def record_channel_join_event(channel_id: str, user_id: int) -> dict:
     settings = get_settings()
     payout_per_2_joins = float(settings.get("payout_per_2_joins_inr", "0.50"))
@@ -931,9 +1032,9 @@ def record_channel_join_event(channel_id: str, user_id: int) -> dict:
                 UPDATE connected_channels
                 SET total_joins = total_joins + 1,
                     total_earned_inr = total_earned_inr + ?
-                WHERE channel_id = ?
+                WHERE id = ?
                 """,
-                (earned_bonus, str(channel_id)),
+                (earned_bonus, ch["id"]),
             )
 
             # Credit channel owner coins balance (using 1 USD = 80 INR, coins per USD = 100)

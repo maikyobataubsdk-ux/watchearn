@@ -24,6 +24,7 @@ from db import (
     get_active_promotions_for_rotation, get_connected_channels_by_category,
     get_rotated_channel_ids_for_promotion, record_promo_rotation,
     get_active_promo_rotations_due_for_deletion, mark_promo_rotation_deleted,
+    record_promo_invite_link, get_promo_invite_link, record_channel_join_event_with_source,
 )
 
 router = Router()
@@ -195,15 +196,51 @@ async def admin_command_handler(message: Message) -> None:
         await message.answer("⚠️ <b>Access Denied</b>\n\nYou do not have master administrator privileges.")
         return
 
+    from db import get_global_stats, get_all_users
+    stats = get_global_stats()
+    users = get_all_users()
+    total_users_count = len(users)
+
+    force_title = get_setting("force_chat_title") or "Disabled"
+    force_enabled = get_setting("force_sub_enabled") == "1"
+    target_title = get_setting("target_chat_title") or "Not configured"
+    target_mode = get_setting("target_invite_mode") or "direct"
+
     admin_app_url = f"{WEBAPP_URL}/admin"
+
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="👑 Launch Master Admin Panel", web_app=WebAppInfo(url=admin_app_url))],
-        [InlineKeyboardButton(text="📊 View System Status", callback_data="btn_admin_status")]
+        [
+            InlineKeyboardButton(text="👑 Launch Master Web Admin", web_app=WebAppInfo(url=admin_app_url))
+        ],
+        [
+            InlineKeyboardButton(text="📊 Live System Stats", callback_data="btn_admin_full_stats"),
+            InlineKeyboardButton(text=f"📢 Force Sub: {'ON' if force_enabled else 'OFF'}", callback_data="btn_admin_toggle_force")
+        ],
+        [
+            InlineKeyboardButton(text="👥 User Broadcast Help", callback_data="btn_admin_user_broadcast_info"),
+            InlineKeyboardButton(text="📺 Channel Broadcast Help", callback_data="btn_admin_channel_broadcast_info")
+        ]
     ])
+
     await message.answer(
-        "👑 <b>Master Admin Control Center</b>\n\n"
-        "Welcome Master Admin! You can manage user VIP statuses, approve channel promotions, "
-        "process cash withdrawals, configure bot settings, and update ad network scripts.",
+        f"👑 <b>Master Admin Control Center</b>\n\n"
+        f"👥 Total Bot Users: <b>{total_users_count:,}</b>\n"
+        f"📺 Connected Channels: <b>{stats.get('total_channels', 0):,}</b>\n"
+        f"🌐 Total Community Members: <b>{stats.get('total_community_members', 0):,}</b>\n"
+        f"🎯 Active Promotions: <b>{stats.get('active_promotions', 0):,}</b>\n"
+        f"💰 Total Payouts: <b>₹{stats.get('total_paid_inr', 0.0):,.2f}</b>\n\n"
+        f"📢 <b>Force Sub:</b> {escape(force_title)} ({'Active' if force_enabled else 'Off'})\n"
+        f"🎯 <b>Target:</b> {escape(target_title)} ({target_mode})\n\n"
+        "<b>Admin Commands List:</b>\n"
+        "• <code>/userbroadcast &lt;HTML Text&gt;</code> - Direct broadcast to ALL bot users\n"
+        "• <code>/broadcast &lt;HTML Text&gt;</code> - Post ad to all connected channels\n"
+        "• <code>/setforce @channel</code> - Set required force sub channel\n"
+        "• <code>/offforce</code> - Disable force sub requirement\n"
+        "• <code>/listforce</code> - View force sub settings\n"
+        "• <code>/toggleforce</code> - Toggle force sub ON/OFF\n"
+        "• <code>/settarget @channel direct|request</code> - Set target channel\n"
+        "• <code>/genlink</code> - Generate campaign unlock link\n"
+        "• <code>/status</code> - View detailed system status",
         reply_markup=kb
     )
 
@@ -336,6 +373,49 @@ async def generate_link_handler(message: Message) -> None:
     await message.answer(f"🚀 <b>Campaign Link Generated:</b>\n\n<code>{escape(link)}</code>")
 
 
+@router.message(Command("userbroadcast"))
+async def user_broadcast_handler(message: Message) -> None:
+    user_id = message.from_user.id if message.from_user else 0
+    if not is_admin(user_id):
+        await message.answer("⚠️ Command restricted to master administrator.")
+        return
+
+    parts = (message.text or "").split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer("Usage: <code>/userbroadcast Your promotional or announcement message HTML content</code>")
+        return
+
+    broadcast_text = parts[1].strip()
+    from db import get_all_users
+    users = get_all_users()
+    tg_users = [u for u in users if u.get("telegram_id")]
+
+    if not tg_users:
+        await message.answer("⚠️ No registered Telegram users found for broadcast.")
+        return
+
+    await message.answer(f"⏳ Starting direct user broadcast to <b>{len(tg_users)}</b> Telegram users...")
+
+    assert bot is not None
+    sent_count = 0
+    fail_count = 0
+
+    for u in tg_users:
+        try:
+            tg_id = int(u["telegram_id"])
+            await bot.send_message(chat_id=tg_id, text=broadcast_text)
+            sent_count += 1
+            await asyncio.sleep(0.05)
+        except Exception:
+            fail_count += 1
+
+    await message.answer(
+        f"📣 <b>Direct User Broadcast Complete!</b>\n\n"
+        f"✅ Successfully delivered to <b>{sent_count}</b> users.\n"
+        f"❌ Failed / Blocked: <b>{fail_count}</b> users."
+    )
+
+
 @router.message(Command("broadcast"))
 async def broadcast_handler(message: Message) -> None:
     user_id = message.from_user.id if message.from_user else 0
@@ -363,7 +443,38 @@ async def broadcast_handler(message: Message) -> None:
         except Exception:
             fail_count += 1
 
-    await message.answer(f"📢 <b>Broadcast Complete!</b>\n\n✅ Successfully posted to <b>{sent_count}</b> channels.\n❌ Failed on <b>{fail_count}</b> channels.")
+    await message.answer(f"📢 <b>Channel Broadcast Complete!</b>\n\n✅ Successfully posted to <b>{sent_count}</b> channels.\n❌ Failed on <b>{fail_count}</b> channels.")
+
+
+@router.message(Command("listforce"))
+async def list_force_handler(message: Message) -> None:
+    user_id = message.from_user.id if message.from_user else 0
+    if not is_admin(user_id):
+        await message.answer("⚠️ Command restricted to master administrator.")
+        return
+    force_title = get_setting("force_chat_title") or "Not configured"
+    force_url = get_setting("force_join_url") or "Not configured"
+    force_enabled = get_setting("force_sub_enabled") == "1"
+    await message.answer(
+        f"📢 <b>Force Subscription Configuration</b>\n\n"
+        f"• Status: <b>{'ENABLED (Active)' if force_enabled else 'DISABLED (Off)'}</b>\n"
+        f"• Title / ID: <b>{escape(force_title)}</b>\n"
+        f"• Join URL: <code>{escape(force_url)}</code>\n\n"
+        "Use <code>/setforce @channel</code> or <code>/toggleforce</code> to manage."
+    )
+
+
+@router.message(Command("toggleforce"))
+async def toggle_force_handler(message: Message) -> None:
+    user_id = message.from_user.id if message.from_user else 0
+    if not is_admin(user_id):
+        await message.answer("⚠️ Command restricted to master administrator.")
+        return
+    current = get_setting("force_sub_enabled")
+    new_val = "0" if current == "1" else "1"
+    set_setting("force_sub_enabled", new_val)
+    status_str = "ENABLED" if new_val == "1" else "DISABLED"
+    await message.answer(f"✅ Force-subscription status set to: <b>{status_str}</b>")
 
 
 @router.message(Command("status"))
@@ -561,6 +672,67 @@ async def help_sub_referral_callback(callback: CallbackQuery) -> None:
             await callback.message.edit_text(text, reply_markup=help_sub_back_keyboard())
         except Exception:
             await callback.message.answer(text, reply_markup=help_sub_back_keyboard())
+
+
+@router.callback_query(F.data == "btn_admin_toggle_force")
+async def admin_toggle_force_callback(callback: CallbackQuery) -> None:
+    user_id = callback.from_user.id if callback.from_user else 0
+    if not is_admin(user_id):
+        await callback.answer("⚠️ Access restricted.", show_alert=True)
+        return
+    current = get_setting("force_sub_enabled")
+    new_val = "0" if current == "1" else "1"
+    set_setting("force_sub_enabled", new_val)
+    status_str = "ENABLED" if new_val == "1" else "DISABLED"
+    await callback.answer(f"📢 Force sub is now {status_str}!", show_alert=True)
+
+
+@router.callback_query(F.data == "btn_admin_full_stats")
+async def admin_full_stats_callback(callback: CallbackQuery) -> None:
+    user_id = callback.from_user.id if callback.from_user else 0
+    if not is_admin(user_id):
+        await callback.answer("⚠️ Access restricted.", show_alert=True)
+        return
+    from db import get_global_stats, get_all_users
+    stats = get_global_stats()
+    users = get_all_users()
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(
+            "📊 <b>Full Platform System Analytics</b>\n\n"
+            f"👥 Registered Users: <b>{len(users):,}</b>\n"
+            f"📺 Connected Channels: <b>{stats.get('total_channels', 0):,}</b>\n"
+            f"🌐 Total Community Members: <b>{stats.get('total_community_members', 0):,}</b>\n"
+            f"🎯 Active Promotions: <b>{stats.get('active_promotions', 0):,}</b>\n"
+            f"🎬 Total Ads Watched: <b>{stats.get('total_ads_watched', 0):,}</b>\n"
+            f"💰 Total Payouts: <b>${stats.get('total_paid_usd', 0.0):.2f} / ₹{stats.get('total_paid_inr', 0.0):.2f}</b>"
+        )
+
+
+@router.callback_query(F.data == "btn_admin_user_broadcast_info")
+async def admin_user_broadcast_info_callback(callback: CallbackQuery) -> None:
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(
+            "📣 <b>Direct User Broadcast Guide</b>\n\n"
+            "To send a direct message to all registered Telegram bot users, send:\n"
+            "<code>/userbroadcast &lt;HTML Message&gt;</code>\n\n"
+            "<b>Example:</b>\n"
+            "<code>/userbroadcast &lt;b&gt;NEW BONUS ALERT!&lt;/b&gt;\nWatch 10 ads today and get extra coins bonus!</code>"
+        )
+
+
+@router.callback_query(F.data == "btn_admin_channel_broadcast_info")
+async def admin_channel_broadcast_info_callback(callback: CallbackQuery) -> None:
+    await callback.answer()
+    if callback.message:
+        await callback.message.answer(
+            "📺 <b>Channel Network Broadcast Guide</b>\n\n"
+            "To post a promotional message across all connected channels in the network, send:\n"
+            "<code>/broadcast &lt;HTML Message&gt;</code>\n\n"
+            "<b>Example:</b>\n"
+            "<code>/broadcast &lt;b&gt;SPONSORED ANNOUNCEMENT&lt;/b&gt;\nJoin @ourchannel for daily giveaways!</code>"
+        )
 
 
 @router.callback_query(F.data == "btn_admin_status")
@@ -776,6 +948,7 @@ async def process_promotion_rotations() -> None:
                     )
                     if invite and invite.invite_link:
                         tracking_url = invite.invite_link
+                        record_promo_invite_link(invite.invite_link, promo["id"], str(ch["channel_id"]))
                 except Exception:
                     pass
 
@@ -818,7 +991,14 @@ async def chat_member_update_handler(event: ChatMemberUpdated) -> None:
 
     # Join Event
     if old_status in ("left", "kicked") and new_status in ("member", "administrator"):
-        record_channel_join_event(chat_id, user_id)
+        invite_obj = getattr(event, "invite_link", None)
+        invite_str = getattr(invite_obj, "invite_link", None) if invite_obj else None
+
+        link_info = get_promo_invite_link(invite_str) if invite_str else None
+        if link_info:
+            record_channel_join_event_with_source(link_info["promotion_id"], link_info["source_channel_id"], user_id)
+        else:
+            record_channel_join_event(chat_id, user_id)
 
     # Left Event
     if old_status in ("member", "administrator", "restricted") and new_status in ("left", "kicked"):

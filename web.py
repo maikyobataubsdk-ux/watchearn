@@ -315,6 +315,14 @@ def require_admin(x_admin_token: Optional[str] = Header(None)) -> bool:
     return True
 
 
+def check_maintenance(section: str = "full") -> None:
+    settings = get_settings()
+    if settings.get("maintenance_full", "0") == "1":
+        raise HTTPException(status_code=503, detail="Site is currently on maintenance. Please check back later.")
+    if section != "full" and settings.get(f"maintenance_{section}", "0") == "1":
+        raise HTTPException(status_code=503, detail=f"The {section} section is currently on maintenance.")
+
+
 def normalize_telegram_channel(input_str: str) -> tuple[str, str, str]:
     """
     Parses any telegram channel link or input format and returns:
@@ -712,6 +720,7 @@ async def logout(authorization: Optional[str] = Header(None)) -> dict:
 # Ad Watching & Reward Endpoints
 @app.post("/api/user/watch-ad")
 async def watch_ad(request: Request, body: Optional[WatchAdRequest] = None, user: dict = Depends(get_current_user)) -> dict:
+    check_maintenance("watch")
     settings = get_settings()
     coins_per_ad = float(settings.get("coins_per_ad", 2.0))
     camp_token = (body.campaignToken or body.campaign) if body else None
@@ -770,6 +779,7 @@ async def watch_ad(request: Request, body: Optional[WatchAdRequest] = None, user
 
 @app.post("/api/user/claim-reward")
 async def claim_reward(body: ClaimRewardRequest, user: dict = Depends(get_current_user)) -> dict:
+    check_maintenance("watch")
     camp_token = body.campaignToken or body.campaign
     if camp_token:
         record_rewarded_intent(user["id"], camp_token)
@@ -784,6 +794,7 @@ async def claim_reward(body: ClaimRewardRequest, user: dict = Depends(get_curren
 # Withdrawal Endpoints
 @app.post("/api/user/withdraw")
 async def request_withdraw(body: WithdrawRequest, user: dict = Depends(get_current_user)) -> dict:
+    check_maintenance("withdraw")
     settings = get_settings()
     min_usd = float(settings.get("min_withdrawal_usd", 5.0))
     coins_per_usd = float(settings.get("coins_per_usd", 100.0))
@@ -870,6 +881,7 @@ async def analyze_channel(body: AnalyzeChannelRequest, user: dict = Depends(get_
 
 @app.post("/api/promotions/submit")
 async def submit_promotion(body: SubmitPromotionRequest, user: dict = Depends(get_current_user)) -> dict:
+    check_maintenance("promote")
     raw_input = body.channel_link or body.channelUrl or "https://t.me/channel"
     clean_url, channel_id, channel_username = normalize_telegram_channel(raw_input)
 
@@ -961,6 +973,7 @@ async def user_promotions(user: dict = Depends(get_current_user)) -> dict:
 
 @app.post("/api/channels/connect")
 async def user_connect_channel(body: ConnectChannelRequest, user: dict = Depends(get_current_user)) -> dict:
+    check_maintenance("earnings")
     raw_input = body.channel_link or body.channel_id or body.channelId or "https://t.me/channel"
     clean_url, channel_id, channel_username = normalize_telegram_channel(raw_input)
 
