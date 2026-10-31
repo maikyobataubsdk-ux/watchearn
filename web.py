@@ -24,7 +24,7 @@ from db import (
     get_user_daily_ad_count, get_ip_daily_ad_count, start_ad_session,
     claim_ad_reward, create_withdrawal, get_user_withdrawals, get_all_withdrawals,
     update_withdrawal_status, get_top_earners, get_global_stats,
-    get_referral_stats, get_settings, update_settings, get_ad_codes, update_ad_codes,
+    get_referral_stats, get_settings, get_setting, update_settings, get_ad_codes, update_ad_codes,
     hash_password, create_promotion, get_user_promotions, get_all_promotions,
     update_promotion_status, connect_channel, update_connected_channel_status,
     get_user_connected_channels, get_all_connected_channels,
@@ -32,7 +32,7 @@ from db import (
     get_campaign, record_rewarded_intent,
     get_or_create_wallet, get_wallet_balance, credit_wallet_deposit, get_wallet_transactions,
     deduct_wallet_balance_paise, admin_credit_user_wallet, admin_deduct_user_wallet,
-    create_task, get_all_tasks, get_user_tasks, complete_task, delete_task, toggle_task_active,
+    create_task, get_all_tasks, get_task_by_id, get_user_tasks, complete_task, delete_task, toggle_task_active,
     set_custom_user_rate, get_custom_user_rate, set_user_agreement_status,
     create_coupon, get_all_coupons, get_coupon_by_code, toggle_coupon_status,
     delete_coupon, apply_coupon_discount, record_coupon_usage,
@@ -55,6 +55,25 @@ app.add_middleware(
 # In-memory sessions token map: token -> user_id
 USER_SESSIONS: dict[str, int] = {}
 ADMIN_SESSIONS: set[str] = set()
+
+def load_admin_sessions() -> set[str]:
+    try:
+        raw = get_setting("admin_sessions") or ""
+        if raw:
+            tokens = set(raw.split(","))
+            return {t.strip() for t in tokens if t.strip()}
+    except Exception:
+        pass
+    return set()
+
+def save_admin_session(token: str) -> None:
+    ADMIN_SESSIONS.add(token)
+    try:
+        current = load_admin_sessions()
+        current.add(token)
+        update_settings({"admin_sessions": ",".join(current)})
+    except Exception:
+        pass
 
 ADMIN_USERNAME = "rajpapa"
 ADMIN_PASSWORD = "28@RajPapa"
@@ -190,6 +209,9 @@ class AdminMaintenanceRequest(BaseModel):
 class AdminStaggeredBroadcastRequest(BaseModel):
     message_text: str = Field(min_length=1)
     image_url: Optional[str] = ""
+    button_name: Optional[str] = ""
+    button_link: Optional[str] = ""
+    link_type: Optional[str] = "direct"
     batch_size: Optional[int] = 20
     duration_minutes: Optional[int] = 60
 
@@ -328,9 +350,15 @@ def get_current_user(authorization: Optional[str] = Header(None), token: Optiona
 
 
 def require_admin(x_admin_token: Optional[str] = Header(None)) -> bool:
-    if not x_admin_token or x_admin_token not in ADMIN_SESSIONS:
+    if not x_admin_token:
         raise HTTPException(status_code=401, detail="Admin authorization required.")
-    return True
+    if x_admin_token in ADMIN_SESSIONS:
+        return True
+    persisted = load_admin_sessions()
+    if x_admin_token in persisted:
+        ADMIN_SESSIONS.add(x_admin_token)
+        return True
+    raise HTTPException(status_code=401, detail="Admin authorization required.")
 
 
 def check_maintenance(section: str = "full") -> None:
@@ -552,7 +580,8 @@ async def public_config() -> dict:
             "withdraw": settings.get("maintenance_withdraw", "0") == "1",
         },
         "adCodes": ad_codes,
-        "supportTelegram": "@earnprogramsupport",
+        "supportTelegram": "EarnProgramSupport",
+        "supportUrl": "https://t.me/EarnProgramSupport",
     }
 
 
@@ -1217,6 +1246,56 @@ async def list_user_tasks(user: dict = Depends(get_current_user)) -> dict:
 
 @app.post("/api/tasks/complete")
 async def complete_user_task(body: CompleteTaskRequest, user: dict = Depends(get_current_user)) -> dict:
+    import os
+    from config import BOT_TOKEN
+
+    # Retrieve task
+    task = get_task_by_id(body.taskId)
+    if not task or not task.get("is_active"):
+        raise HTTPException(status_code=400, detail="Task not found or inactive.")
+
+    # Check if target is a Telegram channel / group
+    target_link = (task.get("link_url") or "").strip()
+    is_tg = "t.me/" in target_link or "telegram.me/" in target_link or target_link.startswith("@")
+
+    if is_tg and os.getenv("TESTING") != "1" and BOT_TOKEN and BOT_TOKEN != "PASTE_BOT_TOKEN_HERE":
+        user_tg_id = user.get("telegram_id")
+        if not user_tg_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Aapka Telegram account connected nahi hai. Channel task verify karne ke liye Telegram se login karein."
+            )
+
+        # Parse chat reference
+        chat_ref = target_link
+        if "t.me/" in chat_ref:
+            raw_path = chat_ref.split("t.me/")[-1].split("?")[0].strip()
+            if raw_path.startswith("+") or "joinchat" in raw_path:
+                chat_ref = raw_path
+            else:
+                chat_ref = f"@{raw_path}"
+        elif not chat_ref.startswith("@") and not chat_ref.startswith("-"):
+            chat_ref = f"@{chat_ref}"
+
+        # If it's a public channel or known username, check getChatMember
+        if not chat_ref.startswith("+") and "joinchat" not in chat_ref:
+            try:
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    chat_res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember", params={
+                        "chat_id": chat_ref,
+                        "user_id": user_tg_id
+                    })
+                    chat_data = chat_res.json()
+                    if chat_data.get("ok"):
+                        status = chat_data.get("result", {}).get("status", "")
+                        is_member = status in ("creator", "administrator", "member") or (status == "restricted" and bool(chat_data.get("result", {}).get("is_member", False)))
+                        if not is_member:
+                            raise HTTPException(status_code=400, detail="Aapne abhi tak yeh channel/group join nahi kiya hai. Pehle join karein fir claim karein.")
+            except HTTPException:
+                raise
+            except Exception:
+                pass
+
     res = complete_task(user["id"], body.taskId)
     if not res.get("ok"):
         raise HTTPException(status_code=400, detail=res.get("error", "Failed to complete task."))
@@ -1330,7 +1409,7 @@ async def youpi_webhook(request: Request) -> dict:
 async def admin_login(body: AdminLoginRequest) -> dict:
     if body.username == ADMIN_USERNAME and body.password == ADMIN_PASSWORD:
         admin_token = secrets.token_hex(24)
-        ADMIN_SESSIONS.add(admin_token)
+        save_admin_session(admin_token)
         return {"ok": True, "adminToken": admin_token}
     raise HTTPException(status_code=401, detail="Invalid admin credentials.")
 
@@ -1367,8 +1446,8 @@ async def admin_get_bot_config(_: bool = Depends(require_admin)) -> dict:
         "target_chat_title": settings.get("target_chat_title", ""),
         "target_invite_mode": settings.get("target_invite_mode", "direct"),
         "bot_start_quote": settings.get("bot_start_quote", "welcome to earn program! watch simple ads, earn coins, promote telegram channels & generate daily income easily."),
-        "bot_tutorial_url": settings.get("bot_tutorial_url", "https://t.me/Tgfuckerx"),
-        "bot_help_url": settings.get("bot_help_url", "https://t.me/Tgfuckerx"),
+        "bot_tutorial_url": settings.get("bot_tutorial_url", "https://t.me/EarnProgramSupport"),
+        "bot_help_url": settings.get("bot_help_url", "https://t.me/EarnProgramSupport"),
         "force_sub_enabled": settings.get("force_sub_enabled", "0"),
     }
 
@@ -1591,6 +1670,7 @@ async def admin_set_maintenance(body: AdminMaintenanceRequest, _: bool = Depends
 @app.post("/api/admin/broadcast-staggered")
 async def admin_staggered_broadcast(body: AdminStaggeredBroadcastRequest, _: bool = Depends(require_admin)) -> dict:
     import asyncio
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
     import bot as bot_module
 
     channels = get_all_connected_channels()
@@ -1601,6 +1681,17 @@ async def admin_staggered_broadcast(body: AdminStaggeredBroadcastRequest, _: boo
 
     batch_size = max(1, body.batch_size or 20)
     duration_min = max(1, body.duration_minutes or 60)
+
+    # Build inline keyboard if button details provided
+    reply_markup = None
+    btn_text = (body.button_name or "").strip()
+    btn_link = (body.button_link or "").strip()
+    if btn_text and btn_link:
+        if not (btn_link.startswith("http://") or btn_link.startswith("https://") or btn_link.startswith("tg://")):
+            btn_link = f"https://{btn_link}"
+        reply_markup = InlineKeyboardMarkup(
+            inline_keyboard=[[InlineKeyboardButton(text=btn_text, url=btn_link)]]
+        )
 
     async def staggered_worker():
         if bot_module.bot is None:
@@ -1613,9 +1704,18 @@ async def admin_staggered_broadcast(body: AdminStaggeredBroadcastRequest, _: boo
                 try:
                     chat_arg = int(ch["channel_id"]) if str(ch["channel_id"]).lstrip("-").isdigit() else ch["channel_id"]
                     if body.image_url:
-                        msg = await bot_module.bot.send_photo(chat_id=chat_arg, photo=body.image_url, caption=body.message_text)
+                        msg = await bot_module.bot.send_photo(
+                            chat_id=chat_arg,
+                            photo=body.image_url,
+                            caption=body.message_text,
+                            reply_markup=reply_markup
+                        )
                     else:
-                        msg = await bot_module.bot.send_message(chat_id=chat_arg, text=body.message_text)
+                        msg = await bot_module.bot.send_message(
+                            chat_id=chat_arg,
+                            text=body.message_text,
+                            reply_markup=reply_markup
+                        )
                     posted_messages.append((chat_arg, msg.message_id))
                 except Exception:
                     pass

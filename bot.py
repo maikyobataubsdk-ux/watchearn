@@ -96,16 +96,16 @@ def to_small_caps(text: str) -> str:
 
 def main_welcome_keyboard(token: str = "") -> InlineKeyboardMarkup:
     web_url = get_webapp_url(token)
-    sup_url = get_setting("bot_support_url") or "https://t.me/earnprogramsupport"
-    upd_url = get_setting("bot_update_url") or "https://t.me/earnprogramsupport"
+    sup_url = get_setting("bot_support_url") or "https://t.me/EarnProgramSupport"
+    upd_url = get_setting("bot_update_url") or "https://t.me/EarnProgramSupport"
 
     buttons = [
         [
             InlineKeyboardButton(text="🚀 ᴇᴀʀɴ ᴘʀᴏɢʀᴀᴍ", web_app=WebAppInfo(url=web_url))
         ],
         [
-            InlineKeyboardButton(text="💬 sᴜᴘᴘᴏʀᴛ", url=sup_url if sup_url.startswith("http") else "https://t.me/earnprogramsupport"),
-            InlineKeyboardButton(text="📢 ᴜᴘᴅᴀᴛᴇ", url=upd_url if upd_url.startswith("http") else "https://t.me/earnprogramsupport")
+            InlineKeyboardButton(text="💬 sᴜᴘᴘᴏʀᴛ", url=sup_url if sup_url.startswith("http") else "https://t.me/EarnProgramSupport"),
+            InlineKeyboardButton(text="📢 ᴜᴘᴅᴀᴛᴇ", url=upd_url if upd_url.startswith("http") else "https://t.me/EarnProgramSupport")
         ],
         [
             InlineKeyboardButton(text="ℹ️ ʜᴇʟᴘ", callback_data="btn_help_main")
@@ -617,7 +617,7 @@ async def premium_info_callback(callback: CallbackQuery) -> None:
     if is_prem:
         await callback.answer("⭐ You are an Earn Program Premium Member! Ads are completely bypassed for you.", show_alert=True)
     else:
-        await callback.answer("⭐ Earn Program Premium Pass allows instant access to all channel links without watching ads! Contact @Tgfuckerx or upgrade in Mini App.", show_alert=True)
+        await callback.answer("⭐ Earn Program Premium Pass allows instant access to all channel links without watching ads! Contact EarnProgramSupport (https://t.me/EarnProgramSupport) or upgrade in Mini App.", show_alert=True)
 
 
 @router.callback_query(F.data == "btn_stats")
@@ -659,12 +659,12 @@ async def support_callback(callback: CallbackQuery) -> None:
     text = (
         "💬 <b>Official Earn Program Support</b>\n\n"
         "Need help with payments, promotion campaigns, or channel connection?\n"
-        "Contact our official support handle: <b>@earnprogramsupport</b>"
+        "Contact our official support handle: <a href=\"https://t.me/EarnProgramSupport\"><b>EarnProgramSupport</b></a>"
     )
     await callback.answer()
     if callback.message:
         await callback.message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="💬 Contact Support (@earnprogramsupport)", url="https://t.me/earnprogramsupport")]
+            [InlineKeyboardButton(text="💬 Contact Support (EarnProgramSupport)", url="https://t.me/EarnProgramSupport")]
         ]))
 
 

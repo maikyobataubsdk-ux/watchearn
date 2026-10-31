@@ -892,6 +892,43 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         all_fs_after = db.get_all_force_sub_channels()
         self.assertFalse(any(c["channel_id"] == "@multichannel1" for c in all_fs_after))
 
+    def test_22_staggered_broadcast_and_admin_persistence(self):
+        # Admin login
+        admin_login_res = self.client.post("/api/admin/login", json={
+            "username": "rajpapa",
+            "password": "28@RajPapa"
+        })
+        self.assertEqual(admin_login_res.status_code, 200)
+        admin_token = admin_login_res.json()["adminToken"]
+
+        # Test Staggered broadcast with inline buttons
+        staggered_res = self.client.post("/api/admin/broadcast-staggered", json={
+            "message_text": "<b>Big Launch Promo</b>",
+            "image_url": "https://i.ibb.co/test.jpg",
+            "button_name": "Join Official Channel",
+            "button_link": "https://t.me/EarnProgramSupport",
+            "link_type": "direct",
+            "batch_size": 10,
+            "duration_minutes": 30
+        }, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(staggered_res.status_code, 200)
+        self.assertTrue(staggered_res.json()["ok"])
+
+        # Test admin session persistence
+        import web
+        # Simulate memory clear
+        web.ADMIN_SESSIONS.clear()
+        # require_admin should reload token from settings
+        stats_res = self.client.get("/api/admin/stats", headers={"X-Admin-Token": admin_token})
+        self.assertEqual(stats_res.status_code, 200)
+        self.assertTrue(stats_res.json()["ok"])
+
+        # Test config support link
+        config_res = self.client.get("/api/config")
+        self.assertEqual(config_res.status_code, 200)
+        self.assertEqual(config_res.json()["supportTelegram"], "EarnProgramSupport")
+        self.assertEqual(config_res.json()["supportUrl"], "https://t.me/EarnProgramSupport")
+
 
 if __name__ == "__main__":
     unittest.main()
