@@ -270,6 +270,29 @@ def init_db() -> None:
                 source_channel_id TEXT NOT NULL,
                 created_at TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS coupons (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code TEXT UNIQUE NOT NULL,
+                discount_pct REAL DEFAULT 0.0,
+                discount_amount_inr REAL DEFAULT 0.0,
+                min_budget_inr REAL DEFAULT 0.0,
+                max_uses INTEGER DEFAULT 0,
+                used_count INTEGER DEFAULT 0,
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS force_sub_channels (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                channel_id TEXT UNIQUE NOT NULL,
+                channel_title TEXT NOT NULL,
+                channel_username TEXT DEFAULT '',
+                join_url TEXT NOT NULL,
+                invite_type TEXT DEFAULT 'direct',
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT NOT NULL
+            );
             """
         )
 
@@ -1576,3 +1599,159 @@ def get_active_promo_rotations_due_for_deletion(now_iso: str) -> list[dict]:
 def mark_promo_rotation_deleted(rotation_id: int) -> None:
     with db() as conn:
         conn.execute("UPDATE promo_rotations SET status='deleted' WHERE id=?", (rotation_id,))
+
+
+# Discount Coupon Management Functions
+def create_coupon(
+    code: str,
+    discount_pct: float = 0.0,
+    discount_amount_inr: float = 0.0,
+    min_budget_inr: float = 0.0,
+    max_uses: int = 0
+) -> dict:
+    clean_code = str(code).strip().upper()
+    if not clean_code:
+        raise ValueError("Coupon code cannot be empty")
+    with db() as conn:
+        conn.execute(
+            """
+            INSERT INTO coupons (code, discount_pct, discount_amount_inr, min_budget_inr, max_uses, used_count, is_active, created_at)
+            VALUES (?, ?, ?, ?, ?, 0, 1, ?)
+            """,
+            (clean_code, float(discount_pct or 0.0), float(discount_amount_inr or 0.0), float(min_budget_inr or 0.0), int(max_uses or 0), utcnow()),
+        )
+        row = conn.execute("SELECT * FROM coupons WHERE code=?", (clean_code,)).fetchone()
+        return dict(row)
+
+
+def get_all_coupons() -> list[dict]:
+    with db() as conn:
+        rows = conn.execute("SELECT * FROM coupons ORDER BY id DESC").fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_coupon_by_code(code: str) -> dict | None:
+    clean_code = str(code).strip().upper()
+    with db() as conn:
+        row = conn.execute("SELECT * FROM coupons WHERE UPPER(code)=?", (clean_code,)).fetchone()
+        return dict(row) if row else None
+
+
+def toggle_coupon_status(coupon_id: int) -> dict:
+    with db() as conn:
+        row = conn.execute("SELECT * FROM coupons WHERE id=?", (coupon_id,)).fetchone()
+        if not row:
+            return {"ok": False, "error": "Coupon not found"}
+        new_status = 0 if row["is_active"] else 1
+        conn.execute("UPDATE coupons SET is_active=? WHERE id=?", (new_status, coupon_id))
+        return {"ok": True, "is_active": new_status}
+
+
+def delete_coupon(coupon_id: int) -> dict:
+    with db() as conn:
+        conn.execute("DELETE FROM coupons WHERE id=?", (coupon_id,))
+        return {"ok": True}
+
+
+def apply_coupon_discount(code: str, budget_inr: float) -> dict:
+    clean_code = str(code).strip().upper()
+    coupon = get_coupon_by_code(clean_code)
+    if not coupon:
+        return {"valid": False, "discount_inr": 0.0, "message": "Invalid coupon code."}
+
+    if not coupon.get("is_active"):
+        return {"valid": False, "discount_inr": 0.0, "message": "This coupon code is deactivated."}
+
+    min_budget = float(coupon.get("min_budget_inr") or 0.0)
+    if budget_inr < min_budget:
+        return {"valid": False, "discount_inr": 0.0, "message": f"Coupon requires minimum budget of ₹{min_budget:.2f}."}
+
+    max_uses = int(coupon.get("max_uses") or 0)
+    used_count = int(coupon.get("used_count") or 0)
+    if max_uses > 0 and used_count >= max_uses:
+        return {"valid": False, "discount_inr": 0.0, "message": "Coupon usage limit has been reached."}
+
+    pct = float(coupon.get("discount_pct") or 0.0)
+    fixed_amt = float(coupon.get("discount_amount_inr") or 0.0)
+
+    discount_inr = 0.0
+    if pct > 0:
+        discount_inr += (budget_inr * (pct / 100.0))
+    if fixed_amt > 0:
+        discount_inr += fixed_amt
+
+    discount_inr = min(discount_inr, budget_inr)
+    discount_inr = round(discount_inr, 2)
+
+    return {
+        "valid": True,
+        "discount_inr": discount_inr,
+        "coupon_code": clean_code,
+        "message": f"Coupon '{clean_code}' applied successfully!",
+        "coupon": coupon
+    }
+
+
+def record_coupon_usage(code: str) -> None:
+    clean_code = str(code).strip().upper()
+    with db() as conn:
+        conn.execute("UPDATE coupons SET used_count = used_count + 1 WHERE UPPER(code)=?", (clean_code,))
+
+
+# Advanced Multi Force-Sub Management Functions
+def add_force_sub_channel(
+    channel_id: str,
+    channel_title: str,
+    join_url: str,
+    channel_username: str = "",
+    invite_type: str = "direct"
+) -> dict:
+    clean_id = str(channel_id).strip()
+    with db() as conn:
+        conn.execute(
+            """
+            INSERT INTO force_sub_channels (channel_id, channel_title, channel_username, join_url, invite_type, is_active, created_at)
+            VALUES (?, ?, ?, ?, ?, 1, ?)
+            ON CONFLICT(channel_id) DO UPDATE SET
+                channel_title=excluded.channel_title,
+                channel_username=excluded.channel_username,
+                join_url=excluded.join_url,
+                invite_type=excluded.invite_type,
+                is_active=1
+            """,
+            (clean_id, channel_title, channel_username, join_url, invite_type, utcnow()),
+        )
+        row = conn.execute("SELECT * FROM force_sub_channels WHERE channel_id=?", (clean_id,)).fetchone()
+        return dict(row)
+
+
+def remove_force_sub_channel(channel_id_or_username: str) -> dict:
+    arg = str(channel_id_or_username).strip()
+    username_part = arg.split("t.me/")[-1].lstrip("@").strip("/")
+    at_username = f"@{username_part}" if username_part else arg
+    with db() as conn:
+        res = conn.execute(
+            "DELETE FROM force_sub_channels WHERE channel_id=? OR channel_username=? OR channel_username=?",
+            (arg, username_part, at_username),
+        )
+        return {"ok": True, "deleted": res.rowcount}
+
+
+def get_all_force_sub_channels(active_only: bool = True) -> list[dict]:
+    with db() as conn:
+        if active_only:
+            rows = conn.execute("SELECT * FROM force_sub_channels WHERE is_active=1 ORDER BY id ASC").fetchall()
+        else:
+            rows = conn.execute("SELECT * FROM force_sub_channels ORDER BY id ASC").fetchall()
+        return [dict(r) for r in rows]
+
+
+def toggle_force_sub_channel(channel_id: str) -> dict:
+    clean_id = str(channel_id).strip()
+    with db() as conn:
+        row = conn.execute("SELECT * FROM force_sub_channels WHERE channel_id=?", (clean_id,)).fetchone()
+        if not row:
+            return {"ok": False, "error": "Channel not found"}
+        new_val = 0 if row["is_active"] else 1
+        conn.execute("UPDATE force_sub_channels SET is_active=? WHERE channel_id=?", (new_val, clean_id))
+        return {"ok": True, "is_active": new_val}

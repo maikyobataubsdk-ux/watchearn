@@ -25,6 +25,7 @@ from db import (
     get_rotated_channel_ids_for_promotion, record_promo_rotation,
     get_active_promo_rotations_due_for_deletion, mark_promo_rotation_deleted,
     record_promo_invite_link, get_promo_invite_link, record_channel_join_event_with_source,
+    add_force_sub_channel, remove_force_sub_channel, get_all_force_sub_channels, toggle_force_sub_channel,
 )
 
 router = Router()
@@ -43,23 +44,46 @@ def get_webapp_url(token: str = "") -> str:
     return f"{WEBAPP_URL}/?{urlencode(params)}" if params else WEBAPP_URL
 
 
-async def member_of_force_channel(user_id: int) -> bool:
+async def get_unjoined_force_channels(user_id: int) -> list[dict]:
     force_enabled = get_setting("force_sub_enabled")
     if force_enabled == "0":
-        return True
-    force_chat_id = get_setting("force_chat_id")
-    if not force_chat_id:
-        return True
+        return []
+    active_channels = get_all_force_sub_channels(active_only=True)
+
+    # Legacy setting fallback
+    legacy_chat_id = get_setting("force_chat_id")
+    if legacy_chat_id and not any(str(c["channel_id"]) == str(legacy_chat_id) for c in active_channels):
+        active_channels.append({
+            "channel_id": legacy_chat_id,
+            "channel_title": get_setting("force_chat_title") or "Required Channel",
+            "join_url": get_setting("force_join_url") or "https://t.me/",
+            "invite_type": "direct",
+        })
+
+    if not active_channels:
+        return []
+
     assert bot is not None
-    try:
-        force_chat = int(force_chat_id) if force_chat_id.lstrip("-").isdigit() else force_chat_id
-        member = await bot.get_chat_member(chat_id=force_chat, user_id=user_id)
-        status = getattr(member, "status", "")
-        if status in ("creator", "administrator", "member"):
-            return True
-        return status == "restricted" and bool(getattr(member, "is_member", False))
-    except (TelegramBadRequest, TelegramForbiddenError):
-        return False
+    unjoined = []
+    for ch in active_channels:
+        try:
+            cid_str = str(ch["channel_id"])
+            force_chat = int(cid_str) if cid_str.lstrip("-").isdigit() else cid_str
+            member = await bot.get_chat_member(chat_id=force_chat, user_id=user_id)
+            status = getattr(member, "status", "")
+            is_in = status in ("creator", "administrator", "member") or (status == "restricted" and bool(getattr(member, "is_member", False)))
+            if not is_in:
+                unjoined.append(ch)
+        except (TelegramBadRequest, TelegramForbiddenError):
+            unjoined.append(ch)
+        except Exception:
+            pass
+    return unjoined
+
+
+async def member_of_force_channel(user_id: int) -> bool:
+    unjoined = await get_unjoined_force_channels(user_id)
+    return len(unjoined) == 0
 
 
 def to_small_caps(text: str) -> str:
@@ -109,13 +133,27 @@ def help_sub_back_keyboard() -> InlineKeyboardMarkup:
     ])
 
 
-def force_join_keyboard(token: str | None = None) -> InlineKeyboardMarkup:
-    join_url = get_setting("force_join_url") or "https://t.me/"
+def force_join_keyboard(token: str | None = None, channels: list[dict] | None = None) -> InlineKeyboardMarkup:
     callback_data = f"checkforce:{token}" if token else "checkforce"
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📢 Join Required Channel", url=join_url)],
-        [InlineKeyboardButton(text="🔄 I Joined — Check Again", callback_data=callback_data)],
-    ])
+    buttons = []
+    if channels:
+        for idx, ch in enumerate(channels, 1):
+            title = ch.get("channel_title") or f"Channel {idx}"
+            url = ch.get("join_url") or "https://t.me/"
+            buttons.append([InlineKeyboardButton(text=f"📢 Join {title}", url=url)])
+    else:
+        active = get_all_force_sub_channels(active_only=True)
+        if active:
+            for idx, ch in enumerate(active, 1):
+                title = ch.get("channel_title") or f"Channel {idx}"
+                url = ch.get("join_url") or "https://t.me/"
+                buttons.append([InlineKeyboardButton(text=f"📢 Join {title}", url=url)])
+        else:
+            join_url = get_setting("force_join_url") or "https://t.me/"
+            buttons.append([InlineKeyboardButton(text="📢 Join Required Channel", url=join_url)])
+
+    buttons.append([InlineKeyboardButton(text="🔄 I Joined — Check Again", callback_data=callback_data)])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def campaign_keyboard(token: str) -> InlineKeyboardMarkup:
@@ -300,25 +338,82 @@ async def resolve_channel(chat_ref: str):
 
 
 @router.message(Command("setforce"))
+@router.message(Command("setforcesub"))
 async def set_force_handler(message: Message) -> None:
     user_id = message.from_user.id if message.from_user else 0
     if not is_admin(user_id):
         await message.answer("⚠️ Command restricted to master administrator.")
         return
-    args = (message.text or "").split(maxsplit=1)
-    if len(args) != 2:
-        await message.answer("Usage: <code>/setforce @channel_or_chat_id</code>")
+    parts = (message.text or "").split()
+    if len(parts) < 2:
+        await message.answer("Usage: <code>/setforcesub @channel [direct/request]</code>\nExample: <code>/setforcesub @mychannel direct</code>")
         return
+    channel_target = parts[1].strip()
+    invite_mode = parts[2].lower() if len(parts) > 2 and parts[2].lower() in ("direct", "request") else "direct"
+
     assert bot is not None
     try:
-        chat = await resolve_channel(args[1].strip())
-        join_url = f"https://t.me/{chat.username}" if chat.username else (await bot.create_chat_invite_link(chat_id=chat.id, name="Force sub")).invite_link
+        chat = await resolve_channel(channel_target)
+        if invite_mode == "request":
+            link_obj = await bot.create_chat_invite_link(chat_id=chat.id, name="Force Sub", creates_join_request=True)
+            join_url = link_obj.invite_link
+        else:
+            if chat.username:
+                join_url = f"https://t.me/{chat.username}"
+            else:
+                link_obj = await bot.create_chat_invite_link(chat_id=chat.id, name="Force Sub", creates_join_request=False)
+                join_url = link_obj.invite_link
+
+        title = chat.title or chat.full_name or str(chat.id)
+        username = chat.username or ""
+
+        add_force_sub_channel(
+            channel_id=str(chat.id),
+            channel_title=title,
+            join_url=join_url,
+            channel_username=username,
+            invite_type=invite_mode
+        )
+
         set_setting("force_chat_id", str(chat.id))
-        set_setting("force_chat_title", chat.title or chat.full_name or str(chat.id))
+        set_setting("force_chat_title", title)
         set_setting("force_join_url", join_url)
-        await message.answer(f"✅ Force-subscription set to: <b>{escape(chat.title or str(chat.id))}</b>")
+        set_setting("force_sub_enabled", "1")
+
+        all_channels = get_all_force_sub_channels(active_only=True)
+        await message.answer(
+            f"✅ <b>Force-Subscription Channel Added/Updated!</b>\n\n"
+            f"📢 Channel: <b>{escape(title)}</b>\n"
+            f"🆔 ID: <code>{chat.id}</code>\n"
+            f"🔗 Type: <b>{invite_mode.upper()}</b>\n"
+            f"🌐 Link: <code>{escape(join_url)}</code>\n\n"
+            f"📊 Total Active Force Channels: <b>{len(all_channels)}</b>\n"
+            f"Use <code>/listforcesub</code> to view all."
+        )
     except Exception as exc:
         await message.answer(f"❌ Error setting force sub: {escape(str(exc))}")
+
+
+@router.message(Command("delforcesub"))
+@router.message(Command("remforce"))
+async def del_force_sub_handler(message: Message) -> None:
+    user_id = message.from_user.id if message.from_user else 0
+    if not is_admin(user_id):
+        await message.answer("⚠️ Command restricted to master administrator.")
+        return
+    parts = (message.text or "").split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer("Usage: <code>/delforcesub @channel_or_id</code>")
+        return
+    target = parts[1].strip()
+    res = remove_force_sub_channel(target)
+
+    if get_setting("force_chat_id") == target or get_setting("force_chat_title") == target:
+        set_setting("force_chat_id", None)
+        set_setting("force_chat_title", None)
+        set_setting("force_join_url", None)
+
+    await message.answer(f"✅ Force-subscription channel <code>{escape(target)}</code> removed.")
 
 
 @router.message(Command("offforce"))
@@ -327,10 +422,8 @@ async def off_force_handler(message: Message) -> None:
     if not is_admin(user_id):
         await message.answer("⚠️ Command restricted to master administrator.")
         return
-    set_setting("force_chat_id", None)
-    set_setting("force_chat_title", None)
-    set_setting("force_join_url", None)
-    await message.answer("✅ Force-subscription disabled.")
+    set_setting("force_sub_enabled", "0")
+    await message.answer("✅ Force-subscription requirement disabled globally.")
 
 
 @router.message(Command("settarget"))
@@ -447,21 +540,41 @@ async def broadcast_handler(message: Message) -> None:
 
 
 @router.message(Command("listforce"))
+@router.message(Command("listforcesub"))
 async def list_force_handler(message: Message) -> None:
     user_id = message.from_user.id if message.from_user else 0
     if not is_admin(user_id):
         await message.answer("⚠️ Command restricted to master administrator.")
         return
-    force_title = get_setting("force_chat_title") or "Not configured"
-    force_url = get_setting("force_join_url") or "Not configured"
     force_enabled = get_setting("force_sub_enabled") == "1"
-    await message.answer(
-        f"📢 <b>Force Subscription Configuration</b>\n\n"
-        f"• Status: <b>{'ENABLED (Active)' if force_enabled else 'DISABLED (Off)'}</b>\n"
-        f"• Title / ID: <b>{escape(force_title)}</b>\n"
-        f"• Join URL: <code>{escape(force_url)}</code>\n\n"
-        "Use <code>/setforce @channel</code> or <code>/toggleforce</code> to manage."
-    )
+    channels = get_all_force_sub_channels(active_only=False)
+
+    lines = [
+        f"📢 <b>ᴀᴅᴠᴀɴᴄᴇᴅ ғᴏʀᴄᴇ sᴜʙsᴄʀɪᴘᴛɪᴏɴ ᴄᴏɴғɪɢᴜʀᴀᴛɪᴏɴ</b>\n",
+        f"• Global Status: <b>{'🟢 ENABLED (Active)' if force_enabled else '🔴 DISABLED (Off)'}</b>",
+        f"• Total Channels: <b>{len(channels)}</b>\n"
+    ]
+
+    if not channels:
+        legacy_title = get_setting("force_chat_title") or "None"
+        legacy_url = get_setting("force_join_url") or "None"
+        lines.append(f"• Legacy Channel: <b>{escape(legacy_title)}</b> (<code>{escape(legacy_url)}</code>)")
+    else:
+        for idx, ch in enumerate(channels, 1):
+            st = "🟢" if ch.get("is_active") else "🔴"
+            itype = (ch.get("invite_type") or "direct").upper()
+            lines.append(
+                f"{idx}. {st} <b>{escape(ch['channel_title'])}</b>\n"
+                f"   🆔 <code>{escape(ch['channel_id'])}</code> | Type: <b>{itype}</b>\n"
+                f"   🔗 <code>{escape(ch['join_url'])}</code>"
+            )
+
+    lines.append("\n<b>Commands:</b>")
+    lines.append("• <code>/setforcesub @channel [direct/request]</code> - Add channel")
+    lines.append("• <code>/delforcesub @channel_or_id</code> - Remove channel")
+    lines.append("• <code>/toggleforce</code> - Toggle global force sub ON/OFF")
+
+    await message.answer("\n".join(lines))
 
 
 @router.message(Command("toggleforce"))
@@ -1003,6 +1116,23 @@ async def chat_member_update_handler(event: ChatMemberUpdated) -> None:
     # Left Event
     if old_status in ("member", "administrator", "restricted") and new_status in ("left", "kicked"):
         record_channel_left_event(chat_id, user_id)
+
+
+# Real-time ChatJoinRequest Handler (For Join Request / Requested Member Promotion Links)
+@router.chat_join_request()
+async def chat_join_request_handler(event: ChatJoinRequest) -> None:
+    if event.from_user and event.from_user.is_bot:
+        return
+    chat_id = str(event.chat.id)
+    user_id = event.from_user.id
+    invite_obj = getattr(event, "invite_link", None)
+    invite_str = getattr(invite_obj, "invite_link", None) if invite_obj else None
+
+    link_info = get_promo_invite_link(invite_str) if invite_str else None
+    if link_info:
+        record_channel_join_event_with_source(link_info["promotion_id"], link_info["source_channel_id"], user_id)
+    else:
+        record_channel_join_event(chat_id, user_id)
 
 
 async def main() -> None:

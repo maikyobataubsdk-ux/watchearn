@@ -867,6 +867,31 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         owner_bal_after = db.get_user_by_id(user_c["id"])["balance_coins"]
         self.assertAlmostEqual(owner_bal_after - owner_bal_before, 0.3125)
 
+        # Verify owner also received paise in wallet
+        owner_tg = user_c.get("telegram_id") or user_c["id"]
+        owner_wallet_paise = db.get_wallet_balance(owner_tg)
+        self.assertGreaterEqual(owner_wallet_paise, 25)
+
+    def test_coupons_and_forcesub_management(self):
+        # Test coupon creation and application
+        coupon = db.create_coupon("SAVE25", discount_pct=25.0, min_budget_inr=100.0, max_uses=5)
+        self.assertEqual(coupon["code"], "SAVE25")
+
+        val = db.apply_coupon_discount("save25", 200.0)
+        self.assertTrue(val["valid"])
+        self.assertEqual(val["discount_inr"], 50.0)
+
+        # Test multi-channel force sub
+        fs = db.add_force_sub_channel("@multichannel1", "Force Channel 1", "https://t.me/multichannel1", "multichannel1", "direct")
+        self.assertEqual(fs["channel_id"], "@multichannel1")
+        all_fs = db.get_all_force_sub_channels()
+        self.assertTrue(any(c["channel_id"] == "@multichannel1" for c in all_fs))
+
+        # Remove force sub channel
+        db.remove_force_sub_channel("@multichannel1")
+        all_fs_after = db.get_all_force_sub_channels()
+        self.assertFalse(any(c["channel_id"] == "@multichannel1" for c in all_fs_after))
+
 
 if __name__ == "__main__":
     unittest.main()
