@@ -2862,6 +2862,9 @@
             } else if (p.status === 'rejected') {
               color = 'var(--error)';
               statusText = 'REJECTED';
+            } else if (p.status === 'stopped' || p.status === 'paused') {
+              color = 'var(--orange, #ff9900)';
+              statusText = 'STOPPED (PAUSED)';
             }
 
             let rejMsgHtml = '';
@@ -3113,21 +3116,46 @@
             let badgeColor = 'var(--gold)';
             if (st === 'active' || st === 'approved') badgeColor = 'var(--neon-green)';
             if (st === 'rejected') badgeColor = 'var(--error)';
+            if (st === 'stopped' || st === 'paused') badgeColor = 'var(--orange, #ff9900)';
+
+            const budgetDisplay = p.total_price_inr || p.price_inr || p.budget_inr || 0;
+            const joinsDisplay = `${p.current_joins || 0} / ${p.target_joins || 0} Joins`;
+
+            let actionHtml = '';
+            if (st === 'pending' || st === 'pending_approval') {
+              actionHtml = `
+                <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                  <button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="approvePromotion(${p.id})"><i class="fa-solid fa-check"></i> Approve</button>
+                  <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="rejectPromotion(${p.id})"><i class="fa-solid fa-xmark"></i> Reject</button>
+                </div>
+              `;
+            } else if (st === 'active' || st === 'approved') {
+              actionHtml = `
+                <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
+                  <button class="btn btn-warning" style="padding: 4px 10px; font-size: 12px; background:#e67e22; border:none; color:#fff;" onclick="stopPromotion(${p.id})" title="Band Karein / Stop Promotion"><i class="fa-solid fa-stop"></i> Stop (Band Karein)</button>
+                  <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="rejectPromotion(${p.id})" title="Reject & Refund"><i class="fa-solid fa-xmark"></i> Reject</button>
+                </div>
+              `;
+            } else if (st === 'stopped' || st === 'paused') {
+              actionHtml = `
+                <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
+                  <button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="resumePromotion(${p.id})" title="Resume Promotion"><i class="fa-solid fa-play"></i> Resume</button>
+                  <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="rejectPromotion(${p.id})" title="Reject & Refund"><i class="fa-solid fa-xmark"></i> Reject</button>
+                </div>
+              `;
+            } else {
+              actionHtml = `<span style="font-weight:bold; color:${badgeColor}">${st.toUpperCase()}</span>${p.rejection_reason ? `<div style="font-size:10px; color:var(--error);">${p.rejection_reason}</div>` : ''}`;
+            }
 
             tr.innerHTML = `
               <td>#${p.id}</td>
               <td><strong>${p.username}</strong></td>
               <td><a href="${p.channel_url || p.channel_link}" target="_blank" style="color:var(--neon-cyan);">${p.channel_title || p.channel_link}</a></td>
-              <td>₹${p.budget_inr} INR</td>
+              <td>₹${budgetDisplay} INR<div style="font-size:11px;" class="text-cyan">${joinsDisplay}</div></td>
               <td><code>${p.transaction_ref || p.payment_txn_ref}</code></td>
               <td><div style="max-width:200px; font-size:12px;" class="text-muted">${p.ad_message || '-'}</div></td>
               <td>
-                ${(st === 'pending' || st === 'pending_approval') ? `
-                  <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                    <button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" onclick="approvePromotion(${p.id})"><i class="fa-solid fa-check"></i> Approve</button>
-                    <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="rejectPromotion(${p.id})"><i class="fa-solid fa-xmark"></i> Reject</button>
-                  </div>
-                ` : `<span style="font-weight:bold; color:${badgeColor}">${st.toUpperCase()}</span>${p.rejection_reason ? `<div style="font-size:10px; color:var(--error);">${p.rejection_reason}</div>` : ''}`}
+                ${actionHtml}
               </td>
             `;
             promoTbody.appendChild(tr);
@@ -3353,6 +3381,28 @@
       try {
         const res = await apiCall('/api/admin/promotions/approve', 'POST', { promotionId: promoId });
         alert(res.message || 'Promotion approved & broadcasted!');
+        loadAdminDashboardData();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function stopPromotion(promoId) {
+      if (!confirm(`Are you sure you want to stop/band Promotion #${promoId}? The promotion will be paused and removed from active rotation.`)) return;
+      try {
+        const res = await apiCall('/api/admin/promotions/stop', 'POST', { promotionId: promoId });
+        alert(res.message || 'Promotion stopped/band kar diya gaya!');
+        loadAdminDashboardData();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function resumePromotion(promoId) {
+      if (!confirm(`Are you sure you want to resume Promotion #${promoId}? It will be active again in rotation.`)) return;
+      try {
+        const res = await apiCall('/api/admin/promotions/resume', 'POST', { promotionId: promoId });
+        alert(res.message || 'Promotion resumed successfully!');
         loadAdminDashboardData();
       } catch (err) {
         alert(err.message);

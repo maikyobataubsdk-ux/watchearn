@@ -1552,6 +1552,8 @@ async def admin_get_promotions(_: bool = Depends(require_admin)) -> dict:
 
 @app.post("/api/admin/promotions/approve")
 @app.post("/api/admin/promotions/reject")
+@app.post("/api/admin/promotions/stop")
+@app.post("/api/admin/promotions/resume")
 @app.post("/api/admin/promotion/status")
 async def admin_update_promotion_status(body: AdminPromotionStatusRequest, request: Request, _: bool = Depends(require_admin)) -> dict:
     p_id = body.promotionId or body.promotion_id
@@ -1559,8 +1561,10 @@ async def admin_update_promotion_status(body: AdminPromotionStatusRequest, reque
         raise HTTPException(status_code=400, detail="promotionId is required")
 
     status = body.status
-    if "approve" in request.url.path:
+    if "approve" in request.url.path or "resume" in request.url.path:
         status = "active"
+    elif "stop" in request.url.path:
+        status = "stopped"
     elif "reject" in request.url.path:
         status = "rejected"
 
@@ -1574,7 +1578,7 @@ async def admin_update_promotion_status(body: AdminPromotionStatusRequest, reque
     if status == "rejected":
         msg += f". Promotion rejected and funds refunded to user's wallet."
 
-    return {"ok": True, "message": msg}
+    return {"ok": True, "message": msg, "new_status": res.get("new_status", status)}
 
 
 @app.get("/api/admin/tasks")
