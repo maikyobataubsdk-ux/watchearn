@@ -489,11 +489,6 @@
         <div id="premiumBadgeNav" class="hidden glass" style="padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; color: #f59e0b; border: 1px solid rgba(245,158,11,0.4);">
           👑 VIP
         </div>
-
-        <!-- Language Toggle -->
-        <button class="lang-btn" id="langToggleBtn" onclick="toggleLang()">
-          <i class="fa-solid fa-globe"></i> <span id="currentLangLabel">HI</span>
-        </button>
       </div>
     </nav>
   </header>
@@ -629,12 +624,6 @@
           <h1 style="font-size: 26px;" data-i18n="dashboardTitle">User Dashboard</h1>
           <p class="text-muted" id="userWelcomeText">Welcome back!</p>
         </div>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-          <button class="btn btn-purple" onclick="nav('promote')"><i class="fa-solid fa-bullhorn"></i> Paid Promotion</button>
-          <button class="btn btn-primary" onclick="nav('watch')">
-            <i class="fa-solid fa-circle-play"></i> <span data-i18n="watchAdsNow">Watch Ads</span>
-          </button>
-        </div>
       </div>
 
       <!-- VIP Banner if Premium -->
@@ -648,32 +637,57 @@
         </div>
       </div>
 
-      <!-- Wallet & Coins Stats Cards -->
-      <div class="grid-3" style="margin-bottom: 25px;">
+      <!-- Top Profile & Wallet Details Area -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 25px;">
+        <!-- User Profile Card -->
+        <div class="glass" style="padding: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 12px; border: 1px solid rgba(0, 229, 255, 0.4); background: rgba(0, 229, 255, 0.04);">
+          <div class="user-avatar" id="dashUserAvatar" style="width: 70px; height: 70px; font-size: 26px; font-weight: 800; border: 2px solid var(--neon-cyan);">TG</div>
+          <div>
+            <div style="font-size: 20px; font-weight: 800; color: #fff;" id="dashUserName">User</div>
+            <div style="font-size: 13px; color: var(--neon-cyan); font-weight: 600; margin-top: 4px;" id="dashUserIdBadge"><i class="fa-solid fa-shield"></i> ID: --</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="dashUserEmail">email@telegram.org</div>
+          </div>
+          <button class="btn btn-secondary" style="width: 100%; max-width: 200px; margin-top: 6px;" onclick="nav('withdraw')"><i class="fa-solid fa-wallet"></i> Withdraw Cash</button>
+        </div>
+
         <!-- INR Wallet Card -->
-        <div class="glass" style="padding: 20px; border: 1px solid var(--neon-green);">
+        <div class="glass" style="padding: 24px; border: 1px solid var(--neon-green); background: rgba(0, 255, 136, 0.04); display: flex; flex-direction: column; justify-content: space-between;">
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div class="text-muted" style="font-size: 12px; text-transform: uppercase;">INR Wallet Balance</div>
-            <button class="btn btn-primary" style="padding: 4px 12px; font-size: 12px;" onclick="openAddMoneyModal()"><i class="fa-solid fa-plus"></i> Add Money</button>
+            <div class="text-muted" style="font-size: 12px; text-transform: uppercase; font-weight: 700;"><i class="fa-solid fa-wallet text-green"></i> INR Wallet Balance</div>
+            <button class="btn btn-primary" style="padding: 6px 14px; font-size: 12px;" onclick="openAddMoneyModal()"><i class="fa-solid fa-plus"></i> Add Money</button>
           </div>
-          <div style="font-size: 30px; font-weight: 800; color: var(--neon-green); margin: 6px 0;">
-            ₹<span id="dashWalletInr">0.00</span>
+          <div style="margin: 12px 0;">
+            <div style="font-size: 34px; font-weight: 800; color: var(--neon-green);">
+              ₹<span id="dashWalletInr">0.00</span>
+            </div>
+            <div style="font-size: 13px;" class="text-muted">
+              Paise: <span id="dashWalletPaise" class="text-green">0</span>
+            </div>
           </div>
-          <div style="font-size: 12px;" class="text-muted">
-            Paise: <span id="dashWalletPaise" class="text-green">0</span>
-          </div>
-        </div>
-
-        <div class="glass" style="padding: 20px;">
-          <div class="text-muted" style="font-size: 12px; text-transform: uppercase;" data-i18n="currentBalance">Current Balance</div>
-          <div style="font-size: 30px; font-weight: 800; color: var(--gold); margin: 6px 0;">
-            <i class="fa-solid fa-coins"></i> <span id="dashBalanceCoins">0.0</span> <span style="font-size: 13px; color: #fff;">Coins</span>
-          </div>
-          <div style="font-size: 13px; color: var(--neon-green);">
-            ≈ $<span id="dashBalanceUsd">0.00</span> / ₹<span id="dashBalanceInr">0.00</span>
+          <div style="font-size: 12px; color: var(--text-muted);">
+            Instant Deposit & Channel Promotion Budget
           </div>
         </div>
 
+        <!-- Coins Balance Card -->
+        <div class="glass" style="padding: 24px; border: 1px solid rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.04); display: flex; flex-direction: column; justify-content: space-between;">
+          <div class="text-muted" style="font-size: 12px; text-transform: uppercase; font-weight: 700;" data-i18n="currentBalance"><i class="fa-solid fa-coins text-gold"></i> Current Balance</div>
+          <div style="margin: 12px 0;">
+            <div style="font-size: 34px; font-weight: 800; color: var(--gold);">
+              <i class="fa-solid fa-coins"></i> <span id="dashBalanceCoins">0.0</span> <span style="font-size: 14px; color: #fff;">Coins</span>
+            </div>
+            <div style="font-size: 13px; color: var(--neon-green);">
+              ≈ $<span id="dashBalanceUsd">0.00</span> / ₹<span id="dashBalanceInr">0.00</span>
+            </div>
+          </div>
+          <div style="font-size: 12px; color: var(--text-muted);">
+            Earned from watching ads & referral commissions
+          </div>
+        </div>
+      </div>
+
+      <!-- Additional Stats Cards -->
+      <div class="grid-3" style="margin-bottom: 25px;">
         <div class="glass" style="padding: 20px;">
           <div class="text-muted" style="font-size: 12px; text-transform: uppercase;" data-i18n="adsWatchedToday">Daily Ads Progress</div>
           <div style="font-size: 26px; font-weight: 800; color: var(--neon-cyan); margin: 6px 0;">
@@ -693,32 +707,30 @@
             Total Ads: <span id="dashTotalAds" class="text-green">0</span>
           </div>
         </div>
+
+        <div class="glass" style="padding: 20px;">
+          <div class="text-muted" style="font-size: 12px; text-transform: uppercase;">Total Network Referrals</div>
+          <div style="font-size: 26px; font-weight: 800; color: var(--neon-cyan); margin: 6px 0;">
+            <span id="dashTotalReferralsCard">0</span>
+          </div>
+          <div style="font-size: 12px;" class="text-muted">
+            15% Lifetime Commissions
+          </div>
+        </div>
       </div>
 
       <!-- Referral Link Box -->
-      <div class="grid-3" style="margin-bottom: 25px;">
-        <div class="glass" style="padding: 24px; grid-column: span 2;">
-          <h3 style="margin-bottom: 12px;" data-i18n="referralTitle"><i class="fa-solid fa-users text-cyan"></i> Referral Link & 15% Lifetime Commission</h3>
-          <p class="text-muted" style="font-size: 13px; margin-bottom: 15px;" data-i18n="referralDesc">Share your unique referral link with friends. You will earn 15% commission on all ad view coins they earn forever!</p>
+      <div class="glass" style="padding: 24px; margin-bottom: 25px;">
+        <h3 style="margin-bottom: 12px;" data-i18n="referralTitle"><i class="fa-solid fa-users text-cyan"></i> Referral Link & 15% Lifetime Commission</h3>
+        <p class="text-muted" style="font-size: 13px; margin-bottom: 15px;" data-i18n="referralDesc">Share your unique referral link with friends. You will earn 15% commission on all ad view coins they earn forever!</p>
 
-          <div style="display: flex; gap: 10px;">
-            <input type="text" id="referralLinkInput" class="glass-input" readonly value="Loading referral link...">
-            <button class="btn btn-cyan" onclick="copyReferralLink()"><i class="fa-solid fa-copy"></i> Copy</button>
-          </div>
-
-          <div style="margin-top: 15px; font-size: 13px;">
-            Total Referrals: <strong id="dashTotalReferrals" class="text-cyan">0</strong>
-          </div>
+        <div style="display: flex; gap: 10px;">
+          <input type="text" id="referralLinkInput" class="glass-input" readonly value="Loading referral link...">
+          <button class="btn btn-cyan" onclick="copyReferralLink()"><i class="fa-solid fa-copy"></i> Copy</button>
         </div>
 
-        <div class="glass" style="padding: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px;">
-          <div class="user-avatar" id="dashUserAvatar" style="width: 64px; height: 64px; font-size: 24px; font-weight: 800; margin-bottom: 4px;">TG</div>
-          <div>
-            <div style="font-size: 18px; font-weight: 800; color: #fff;" id="dashUserName">User</div>
-            <div style="font-size: 13px; color: var(--neon-cyan); font-weight: 600; margin-top: 3px;" id="dashUserIdBadge"><i class="fa-solid fa-shield"></i> ID: --</div>
-            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;" id="dashUserEmail">email@telegram.org</div>
-          </div>
-          <button class="btn btn-secondary" style="width: 100%; margin-top: 8px;" onclick="nav('withdraw')"><i class="fa-solid fa-wallet"></i> Withdraw Cash</button>
+        <div style="margin-top: 15px; font-size: 13px;">
+          Total Referrals: <strong id="dashTotalReferrals" class="text-cyan">0</strong>
         </div>
       </div>
 
@@ -1012,7 +1024,7 @@
             <h4 style="color: var(--neon-green); margin-bottom: 8px;"><i class="fa-solid fa-circle-info"></i> Connection Setup Requirements</h4>
             <ol style="margin-left: 20px; font-size: 13px; color: var(--text-muted); line-height: 1.8;">
               <li>Aap sirf wahi Telegram channel add kar sakte hai jo aap <strong>own (creator/admin)</strong> karte hain.</li>
-              <li>Bot (e.g. <code>@BlazecultureBot</code>) ko channel me <strong>Admin with permissions</strong> ke sath add hona chahiye.</li>
+              <li>Bot (e.g. <code>@EarnProgramapp</code>) ko channel me <strong>Admin with permissions</strong> ke sath add hona chahiye.</li>
               <li>Channel me <strong>Minimum 100 members</strong> hona required hai.</li>
               <li>Sabhi requirements poori hone par channel link neeche enter karke <strong>"Connect & Verify Admin"</strong> par click karein.</li>
             </ol>
@@ -1044,7 +1056,7 @@
         </div>
 
         <!-- My Connected Channels Table -->
-        <div class="glass" style="padding: 25px;">
+        <div class="glass" style="padding: 25px; margin-bottom: 25px;">
           <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-tv text-cyan"></i> My Connected Channels & Earnings</h3>
           <div style="overflow-x: auto;">
             <table>
@@ -1062,6 +1074,14 @@
               </tbody>
             </table>
           </div>
+        </div>
+
+        <!-- Policy Quote Notice on Promotional User Growth Campaigns -->
+        <div class="glass" style="padding: 20px 24px; border-left: 4px solid var(--neon-cyan); background: rgba(0, 229, 255, 0.05); margin-bottom: 90px;">
+          <blockquote style="margin: 0; font-size: 13px; line-height: 1.7; color: #d1d5db; font-style: italic;">
+            <i class="fa-solid fa-quote-left text-cyan" style="font-size: 16px; margin-right: 8px;"></i>
+            "Please note: Platform administrators may periodically conduct promotional user growth campaigns to acquire active users and enhance community reach. Joins resulting from internal promotional campaigns are uncompensated and non-billable to connected channel owners."
+          </blockquote>
         </div>
       </div>
     </section>
@@ -1481,6 +1501,26 @@
                 </div>
               </div>
 
+              <!-- Inline Button Configurations -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px dashed rgba(255,255,255,0.15);">
+                <div>
+                  <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Inline Button Name (Optional)</label>
+                  <input type="text" id="admStagBtnName" class="glass-input" placeholder="e.g. Join Channel Now 🚀">
+                </div>
+                <div>
+                  <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Inline Button Link (URL)</label>
+                  <input type="url" id="admStagBtnLink" class="glass-input" placeholder="https://t.me/yourchannel or website">
+                </div>
+                <div>
+                  <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Link Type</label>
+                  <select id="admStagLinkType" class="glass-input" style="background: rgba(18, 24, 38, 0.9);">
+                    <option value="direct">Direct Telegram Link / URL</option>
+                    <option value="requested">Telegram Join Request Link</option>
+                    <option value="external">External Website / Web App</option>
+                  </select>
+                </div>
+              </div>
+
               <button type="submit" class="btn btn-purple"><i class="fa-solid fa-rocket"></i> Launch Staggered Broadcast</button>
             </form>
           </div>
@@ -1534,11 +1574,11 @@
               </div>
               <div>
                 <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Bot Tutorial Button Link</label>
-                <input type="text" id="admBotTutorialUrlInput" class="glass-input" placeholder="https://t.me/Tgfuckerx">
+                <input type="text" id="admBotTutorialUrlInput" class="glass-input" placeholder="https://t.me/EarnProgramSupport">
               </div>
               <div>
                 <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Bot Help / Support Button Link</label>
-                <input type="text" id="admBotHelpUrlInput" class="glass-input" placeholder="https://t.me/Tgfuckerx">
+                <input type="text" id="admBotHelpUrlInput" class="glass-input" placeholder="https://t.me/EarnProgramSupport">
               </div>
               <div>
                 <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Target Campaign Channel Title</label>
@@ -1572,7 +1612,7 @@
         <a href="#" onclick="openLegalModal('privacy'); return false;" style="color: var(--neon-cyan); text-decoration: none;">Privacy Policy</a> |
         <a href="#" onclick="openLegalModal('refund'); return false;" style="color: var(--neon-cyan); text-decoration: none;">Refund Policy</a> |
         <a href="#" onclick="openLegalModal('disclaimer'); return false;" style="color: var(--neon-cyan); text-decoration: none;">Earnings Disclaimer</a> |
-        <a href="https://t.me/earnprogramsupport" target="_blank" style="color: var(--neon-green); text-decoration: none;"><i class="fa-brands fa-telegram"></i> Support (@earnprogramsupport)</a>
+        <a href="https://t.me/EarnProgramSupport" target="_blank" style="color: var(--neon-green); text-decoration: none;"><i class="fa-brands fa-telegram"></i> Support (EarnProgramSupport)</a>
       </div>
     </footer>
 
@@ -2417,7 +2457,11 @@
 
       const refLink = `${window.location.origin}/?ref=${currentUser.referralCode}`;
       document.getElementById('referralLinkInput').value = refLink;
-      document.getElementById('dashTotalReferrals').textContent = currentUser.referralStats ? currentUser.referralStats.total_referrals : 0;
+      const refCount = currentUser.referralStats ? currentUser.referralStats.total_referrals : 0;
+      document.getElementById('dashTotalReferrals').textContent = refCount;
+      if (document.getElementById('dashTotalReferralsCard')) {
+        document.getElementById('dashTotalReferralsCard').textContent = refCount;
+      }
 
       refreshWalletBalance();
       loadWalletTransactions();
@@ -2558,7 +2602,7 @@
           <br>
           <p><strong>3. Channel Promotions & 20% Category Surcharge</strong><br>Promoters can run general or category-specific campaigns. Category-specific promotions incur a 20% surcharge added to base budget and are deducted directly from user wallet balance. Promotions run in 5-channel batches with 3-hour post lifetime auto-deletions if targets remain unfulfilled.</p>
           <br>
-          <p><strong>4. Official Support</strong><br>For questions or assistance regarding payments, promotions, or payouts, contact official support at <strong>@Tgfuckerx</strong>.</p>
+          <p><strong>4. Official Support</strong><br>For questions or assistance regarding payments, promotions, or payouts, contact official support at <a href="https://t.me/EarnProgramSupport" target="_blank" style="color:var(--neon-green); text-decoration:none;"><strong>EarnProgramSupport</strong></a>.</p>
         `;
       } else if (type === 'privacy') {
         title.textContent = '🔒 Privacy Policy';
@@ -2576,7 +2620,7 @@
           <br>
           <p><strong>2. Promotion Campaign Refunds</strong><br>If a promotion campaign cannot be delivered or is rejected by administration, the full amount will be credited back to your Blazeculture wallet balance instantly.</p>
           <br>
-          <p><strong>3. Support Queries</strong><br>For deposit dispute resolution, please contact support handle <strong>@Tgfuckerx</strong> with transaction UTR numbers.</p>
+          <p><strong>3. Support Queries</strong><br>For deposit dispute resolution, please contact support at <a href="https://t.me/EarnProgramSupport" target="_blank" style="color:var(--neon-green); text-decoration:none;"><strong>EarnProgramSupport</strong></a> with transaction UTR numbers.</p>
         `;
       } else if (type === 'disclaimer') {
         title.textContent = '⚖️ Earnings & Channel Promotion Disclaimer';
@@ -2590,7 +2634,7 @@
         body.innerHTML = `
           <p><strong>1. Copyright Compliance</strong><br>Blazeculture respects intellectual property rights. Users and channel owners are prohibited from promoting copyrighted or infringing materials.</p>
           <br>
-          <p><strong>2. Takedown Requests</strong><br>To submit a copyright violation complaint, notify our legal handle <strong>@Tgfuckerx</strong> with proof of ownership and channel link. Incomplete notices will be removed within 24 hours.</p>
+          <p><strong>2. Takedown Requests</strong><br>To submit a copyright violation complaint, notify us at <a href="https://t.me/EarnProgramSupport" target="_blank" style="color:var(--neon-green); text-decoration:none;"><strong>EarnProgramSupport</strong></a> with proof of ownership and channel link. Incomplete notices will be removed within 24 hours.</p>
         `;
       } else if (type === 'about') {
         title.textContent = 'ℹ️ About Blazeculture Ecosystem';
@@ -3000,6 +3044,18 @@
     }
 
     async function loadAdminDashboardData() {
+      try {
+        const statsData = await apiCall('/api/admin/stats');
+      } catch (authErr) {
+        if (authErr.message && (authErr.message.toLowerCase().includes('admin authorization') || authErr.message.includes('401'))) {
+          adminToken = null;
+          localStorage.removeItem('adEarnAdminToken');
+          document.getElementById('adminDashboardView')?.classList.add('hidden');
+          document.getElementById('adminLoginView')?.classList.remove('hidden');
+          return;
+        }
+      }
+
       try {
         const statsData = await apiCall('/api/admin/stats');
         document.getElementById('admTotalUsers').textContent = statsData.totalUsersCount;
@@ -3613,10 +3669,16 @@
         const img = document.getElementById('admStagImgUrl').value;
         const batch = parseInt(document.getElementById('admStagBatchSize').value) || 20;
         const dur = parseInt(document.getElementById('admStagDurationMin').value) || 60;
+        const btnName = document.getElementById('admStagBtnName')?.value || '';
+        const btnLink = document.getElementById('admStagBtnLink')?.value || '';
+        const linkType = document.getElementById('admStagLinkType')?.value || 'direct';
 
         const res = await apiCall('/api/admin/broadcast-staggered', 'POST', {
           message_text: msg,
           image_url: img,
+          button_name: btnName,
+          button_link: btnLink,
+          link_type: linkType,
           batch_size: batch,
           duration_minutes: dur
         });

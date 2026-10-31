@@ -683,6 +683,12 @@ def create_task(title: str, description: str, link_url: str, reward_inr: float) 
         return dict(row)
 
 
+def get_task_by_id(task_id: int) -> dict | None:
+    with db() as conn:
+        row = conn.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+        return dict(row) if row else None
+
+
 def get_all_tasks() -> list[dict]:
     with db() as conn:
         rows = conn.execute("SELECT * FROM tasks ORDER BY id DESC").fetchall()
