@@ -34,6 +34,9 @@ from db import (
     deduct_wallet_balance_paise, admin_credit_user_wallet, admin_deduct_user_wallet,
     create_task, get_all_tasks, get_user_tasks, complete_task, delete_task, toggle_task_active,
     set_custom_user_rate, get_custom_user_rate, set_user_agreement_status,
+    create_coupon, get_all_coupons, get_coupon_by_code, toggle_coupon_status,
+    delete_coupon, apply_coupon_discount, record_coupon_usage,
+    add_force_sub_channel, remove_force_sub_channel, get_all_force_sub_channels, toggle_force_sub_channel,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -135,6 +138,21 @@ class SubmitPromotionRequest(BaseModel):
     imageUrl: Optional[str] = ""
     link_type: Optional[str] = "direct"
     linkType: Optional[str] = "direct"
+    coupon_code: Optional[str] = None
+    couponCode: Optional[str] = None
+
+
+class ApplyCouponRequest(BaseModel):
+    coupon_code: str = Field(min_length=1, max_length=50)
+    budget_inr: float = Field(gt=0)
+
+
+class CreateCouponRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=50)
+    discount_pct: Optional[float] = 0.0
+    discount_amount_inr: Optional[float] = 0.0
+    min_budget_inr: Optional[float] = 0.0
+    max_uses: Optional[int] = 0
 
 
 class CreateTaskRequest(BaseModel):
@@ -905,6 +923,16 @@ async def submit_promotion(body: SubmitPromotionRequest, user: dict = Depends(ge
     if global_discount_pct > 0:
         total_price = total_price * (1.0 - (global_discount_pct / 100.0))
 
+    # Apply Coupon Discount if coupon code provided
+    coupon_applied = None
+    input_coupon = (body.coupon_code or body.couponCode or "").strip().upper()
+    if input_coupon:
+        c_res = apply_coupon_discount(input_coupon, total_price)
+        if not c_res["valid"]:
+            raise HTTPException(status_code=400, detail=c_res["message"])
+        coupon_applied = input_coupon
+        total_price = max(0.0, total_price - c_res["discount_inr"])
+
     total_price = round(total_price, 2)
     required_paise = int(round(total_price * 100))
 
@@ -939,6 +967,9 @@ async def submit_promotion(body: SubmitPromotionRequest, user: dict = Depends(ge
 
     txn_ref = body.payment_txn_ref or body.transactionRef or wallet_res.get("order_id") or "WALLET_DEBIT"
 
+    if coupon_applied:
+        record_coupon_usage(coupon_applied)
+
     promo = create_promotion(
         user_id=user["id"],
         channel_url=url,
@@ -961,6 +992,23 @@ async def submit_promotion(body: SubmitPromotionRequest, user: dict = Depends(ge
         "message": f"Promotion submitted! ₹{total_price:.2f} deducted from wallet. Promotion will start after Admin approval.",
         "promotion": promo,
         "wallet_balance_inr": wallet_res["balance_paise"] / 100.0,
+        "coupon_applied": coupon_applied,
+    }
+
+
+@app.post("/api/promotions/apply-coupon")
+async def check_promo_coupon(body: ApplyCouponRequest, user: dict = Depends(get_current_user)) -> dict:
+    res = apply_coupon_discount(body.coupon_code, body.budget_inr)
+    if not res["valid"]:
+        raise HTTPException(status_code=400, detail=res["message"])
+    final_amount = max(0.0, round(body.budget_inr - res["discount_inr"], 2))
+    return {
+        "ok": True,
+        "valid": True,
+        "coupon_code": res["coupon_code"],
+        "discount_inr": res["discount_inr"],
+        "final_amount_inr": final_amount,
+        "message": res["message"],
     }
 
 
@@ -1473,6 +1521,46 @@ async def admin_toggle_task(body: AdminTaskActionRequest, _: bool = Depends(requ
 @app.post("/api/admin/tasks/delete")
 async def admin_delete_task(body: AdminTaskActionRequest, _: bool = Depends(require_admin)) -> dict:
     res = delete_task(body.taskId)
+    return res
+
+
+# Admin Coupon Endpoints
+class AdminCouponActionRequest(BaseModel):
+    couponId: int
+
+
+@app.get("/api/admin/coupons")
+async def admin_get_coupons(_: bool = Depends(require_admin)) -> dict:
+    coupons = get_all_coupons()
+    return {"ok": True, "coupons": coupons}
+
+
+@app.post("/api/admin/coupons/create")
+async def admin_create_coupon(body: CreateCouponRequest, _: bool = Depends(require_admin)) -> dict:
+    try:
+        coupon = create_coupon(
+            code=body.code,
+            discount_pct=body.discount_pct or 0.0,
+            discount_amount_inr=body.discount_amount_inr or 0.0,
+            min_budget_inr=body.min_budget_inr or 0.0,
+            max_uses=body.max_uses or 0,
+        )
+        return {"ok": True, "message": f"Coupon '{coupon['code']}' created successfully!", "coupon": coupon}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/admin/coupons/toggle")
+async def admin_toggle_coupon(body: AdminCouponActionRequest, _: bool = Depends(require_admin)) -> dict:
+    res = toggle_coupon_status(body.couponId)
+    if not res.get("ok"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Coupon not found."))
+    return res
+
+
+@app.post("/api/admin/coupons/delete")
+async def admin_delete_coupon(body: AdminCouponActionRequest, _: bool = Depends(require_admin)) -> dict:
+    res = delete_coupon(body.couponId)
     return res
 
 

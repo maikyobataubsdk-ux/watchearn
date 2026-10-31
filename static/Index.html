@@ -877,9 +877,9 @@
             </div>
           </div>
 
-          <!-- Step 2: Campaign Details & Wallet / YOUPI Payment -->
+          <!-- Step 2: Campaign Details & Payment -->
           <div id="promoStep2Area" class="hidden">
-            <h3 style="font-size: 17px; margin-bottom: 15px; color: var(--gold);"><i class="fa-solid fa-wallet"></i> Step 2: Select Package & Payment Method</h3>
+            <h3 style="font-size: 17px; margin-bottom: 15px; color: var(--gold);"><i class="fa-solid fa-bullhorn"></i> Step 2: Configure Promotion Campaign</h3>
 
             <!-- Rate Announcement Banner -->
             <div class="glass" style="padding: 18px; text-align: center; border: 1px solid var(--neon-green); background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 229, 255, 0.1)); margin-bottom: 20px;">
@@ -894,39 +894,21 @@
               </div>
             </div>
 
-            <!-- Wallet & YOUPI Payment Summary Box -->
-            <div class="glass" id="promoWalletStatusCard" style="padding: 20px; margin-bottom: 20px; border: 1px solid var(--neon-green); background: rgba(0, 255, 136, 0.05);">
-              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
-                <div style="font-weight: 800; font-size: 16px; color: var(--neon-green);">
-                  <i class="fa-solid fa-wallet"></i> Wallet Balance: ₹<span id="promoAvailWalletBalanceText">0.00</span>
-                </div>
-                <button type="button" class="btn btn-primary" style="padding: 4px 12px; font-size: 12px;" onclick="openAddMoneyModal()">
-                  <i class="fa-solid fa-plus"></i> Add Money
-                </button>
-              </div>
-              <div id="promoPaymentInfoNotice" style="font-size: 13px; color: var(--text-main); line-height: 1.5;">
-                Checking wallet balance...
-              </div>
-            </div>
-
             <form onsubmit="handlePromoSubmit(event)">
-              <div style="margin-bottom: 15px;">
-                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Promotion Link Type</label>
-                <select id="promoLinkTypeSelect" class="glass-input" style="background: rgba(18, 24, 38, 0.9);">
-                  <option value="direct">Direct Join (Standard Invite Link)</option>
-                  <option value="requested">Requested Member (Admin Approval Join Link)</option>
-                </select>
+              <!-- 1. Promotion 20% option / toggle -->
+              <div style="margin-bottom: 15px; background: rgba(168,85,247,0.1); padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(168,85,247,0.3);">
+                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; font-weight: bold; color: var(--purple);">
+                  <input type="checkbox" id="promoCategorySpecificToggle" onchange="updatePromoPricePreview()" style="width: 18px; height: 18px; accent-color: var(--purple);">
+                  🎯 Promotion 20% Category-Wise (+20% Extra Charge)
+                </label>
+                <p style="font-size: 12px; color: var(--text-muted); margin-top: 5px;">
+                  Target audience matching your exact category! A 20% surcharge is added to base budget.
+                </p>
               </div>
 
+              <!-- 2. Target Channel Category select (under 20% toggle) -->
               <div style="margin-bottom: 15px;">
-                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Promotional Image Direct Upload (Optional)</label>
-                <input type="file" id="promoImageFileInput" class="glass-input" accept="image/*" onchange="handlePromoImageUpload(event)">
-                <input type="hidden" id="promoImageUrlVal">
-                <div id="promoImageUploadPreview" style="margin-top: 8px; font-size: 12px; color: var(--neon-cyan);"></div>
-              </div>
-
-              <div style="margin-bottom: 15px;">
-                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Target Channel Category</label>
+                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Select Channel Category</label>
                 <select id="promoCategorySelect" class="glass-input" style="background: rgba(18, 24, 38, 0.9);">
                   <option value="General">General / All Categories</option>
                   <option value="Tech & Coding">Tech & Coding</option>
@@ -940,34 +922,58 @@
                 </select>
               </div>
 
-              <div style="margin-bottom: 15px; background: rgba(168,85,247,0.1); padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(168,85,247,0.3);">
-                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; font-weight: bold; color: var(--purple);">
-                  <input type="checkbox" id="promoCategorySpecificToggle" onchange="updatePromoPricePreview()" style="width: 18px; height: 18px; accent-color: var(--purple);">
-                  🎯 Promote Category-Wise (+20% Extra Charge)
-                </label>
-                <p style="font-size: 12px; color: var(--text-muted); margin-top: 5px;">
-                  Target audience matching your exact category! A 20% surcharge is added to base budget and deducted directly from your wallet balance.
-                </p>
-              </div>
-
+              <!-- 3. Promotion Budget (under category select) -->
               <div style="margin-bottom: 15px;">
-                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Base Promotion Budget (INR ₹)</label>
+                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Promotion Budget (INR ₹)</label>
                 <input type="number" id="promoBudgetVal" class="glass-input" min="50" step="50" value="100" required oninput="updatePromoPricePreview()">
               </div>
 
               <div style="margin-bottom: 15px; padding: 12px; background: rgba(0,255,136,0.1); border-radius: 10px; border: 1px dashed var(--neon-green);">
                 <div style="font-size: 13px; color: #fff;">
-                  Total Amount Required: <strong id="promoTotalPricePreviewText" style="color: var(--neon-green); font-size: 16px;">₹100.00 INR</strong>
+                  Total Amount: <strong id="promoTotalPricePreviewText" style="color: var(--neon-green); font-size: 16px;">₹100.00 INR</strong>
                 </div>
               </div>
 
+              <!-- 4. Promotion Image (under budget) -->
               <div style="margin-bottom: 15px;">
-                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Ad Message / Description (With Links)</label>
+                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Promotion Image Upload (Optional)</label>
+                <input type="file" id="promoImageFileInput" class="glass-input" accept="image/*" onchange="handlePromoImageUpload(event)">
+                <input type="hidden" id="promoImageUrlVal">
+                <div id="promoImageUploadPreview" style="margin-top: 8px; font-size: 12px; color: var(--neon-cyan);"></div>
+              </div>
+
+              <!-- 5. Promotion Message (under image) -->
+              <div style="margin-bottom: 15px;">
+                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Promotion Message / Ad Content</label>
                 <textarea id="promoMsgVal" class="glass-input" rows="3" placeholder="Join @yourchannel for daily high-paying tasks and exclusive giveaways!" required></textarea>
               </div>
 
-              <button type="submit" id="promoSubmitBtn" class="btn btn-purple" style="width: 100%; font-size: 16px;">
-                <i class="fa-solid fa-paper-plane"></i> Pay & Start Automated Channel Promotion
+              <!-- 6. Promotion Link Type (under message) -->
+              <div style="margin-bottom: 15px;">
+                <label style="font-size: 13px; color: var(--text-muted); display: block; margin-bottom: 6px;">Promotion Link Type</label>
+                <select id="promoLinkTypeSelect" class="glass-input" style="background: rgba(18, 24, 38, 0.9);">
+                  <option value="direct">Direct Join (Standard Invite Link)</option>
+                  <option value="requested">Requested Member (Admin Approval Join Link)</option>
+                </select>
+              </div>
+
+              <!-- 7. Discount Coupon Option (above pay button) -->
+              <div style="margin-bottom: 20px; background: rgba(0,229,255,0.06); padding: 14px; border-radius: 12px; border: 1px solid rgba(0,229,255,0.25);">
+                <label style="font-size: 13px; color: var(--neon-cyan); font-weight: bold; display: block; margin-bottom: 8px;">
+                  <i class="fa-solid fa-ticket"></i> Apply Discount Coupon (Optional)
+                </label>
+                <div style="display: flex; gap: 8px;">
+                  <input type="text" id="promoCouponInput" class="glass-input" placeholder="Enter coupon code (e.g. DISCOUNT20)" style="text-transform: uppercase;">
+                  <button type="button" class="btn btn-cyan" onclick="handleApplyPromoCoupon()" style="padding: 8px 16px; white-space: nowrap;">
+                    Apply Coupon
+                  </button>
+                </div>
+                <div id="promoCouponStatusMsg" style="margin-top: 8px; font-size: 12px; font-weight: 600;"></div>
+              </div>
+
+              <!-- 8. Pay Button -->
+              <button type="submit" id="promoSubmitBtn" class="btn btn-purple" style="width: 100%; font-size: 16px; padding: 14px;">
+                <i class="fa-solid fa-lock"></i> Pay & Start Automated Channel Promotion
               </button>
             </form>
           </div>
@@ -1128,6 +1134,7 @@
         <div class="glass" style="padding: 8px; margin-bottom: 25px; display: flex; gap: 8px; overflow-x: auto;">
           <button class="btn btn-secondary admin-tab-btn active" id="admTabBtn_overview" onclick="switchAdminTab('overview')"><i class="fa-solid fa-chart-line"></i> Overview</button>
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_payment" onclick="switchAdminTab('payment')"><i class="fa-solid fa-qrcode"></i> Payment & Rates</button>
+          <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_coupons" onclick="switchAdminTab('coupons')"><i class="fa-solid fa-ticket"></i> Coupons</button>
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_tasks" onclick="switchAdminTab('tasks')"><i class="fa-solid fa-list-check"></i> Tasks</button>
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_promos" onclick="switchAdminTab('promos')"><i class="fa-solid fa-bullhorn"></i> Promotions</button>
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_users" onclick="switchAdminTab('users')"><i class="fa-solid fa-users"></i> Users & VIP</button>
@@ -1187,6 +1194,60 @@
               </div>
               <button type="submit" class="btn btn-cyan"><i class="fa-solid fa-floppy-disk"></i> Save Discount %</button>
             </form>
+          </div>
+        </div>
+
+        <!-- SUBTAB: Discount Coupons Manager (Admin) -->
+        <div id="adminSubtab_coupons" class="admin-subtab hidden">
+          <div class="glass" style="padding: 25px; margin-bottom: 25px;">
+            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-plus-circle text-cyan"></i> Create Promotion Discount Coupon</h3>
+            <form onsubmit="handleAdminCreateCoupon(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Coupon Code (e.g. DISCOUNT20)</label>
+                <input type="text" id="admCouponCodeInput" class="glass-input" placeholder="DISCOUNT20" style="text-transform: uppercase;" required>
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Discount Percentage (%)</label>
+                <input type="number" id="admCouponPctInput" class="glass-input" min="0" max="100" step="1" value="20">
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Fixed Discount (₹ INR)</label>
+                <input type="number" id="admCouponAmtInput" class="glass-input" min="0" step="5" value="0">
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Minimum Budget (₹ INR)</label>
+                <input type="number" id="admCouponMinBudgetInput" class="glass-input" min="0" step="10" value="50">
+              </div>
+              <div>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Max Uses (0 = Unlimited)</label>
+                <input type="number" id="admCouponMaxUsesInput" class="glass-input" min="0" step="1" value="0">
+              </div>
+              <div style="grid-column: 1 / -1;">
+                <button type="submit" class="btn btn-cyan"><i class="fa-solid fa-plus"></i> Create Discount Coupon</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="glass" style="padding: 25px;">
+            <h3 style="margin-bottom: 15px;"><i class="fa-solid fa-ticket text-cyan"></i> Active & Managed Coupons</h3>
+            <div style="overflow-x: auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Code</th>
+                    <th>Discount</th>
+                    <th>Min Budget</th>
+                    <th>Uses / Max</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="adminCouponsTableBody">
+                  <tr><td colspan="7" class="text-muted">Loading coupons...</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -2574,44 +2635,69 @@
       }
     }
 
+    let appliedPromoCoupon = null;
+    let appliedPromoDiscountInr = 0.0;
+
+    async function handleApplyPromoCoupon() {
+      const code = (document.getElementById('promoCouponInput')?.value || '').trim();
+      const statusDiv = document.getElementById('promoCouponStatusMsg');
+      if (!code) {
+        if (statusDiv) {
+          statusDiv.style.color = 'var(--error)';
+          statusDiv.textContent = 'Please enter a coupon code.';
+        }
+        return;
+      }
+
+      const budget = parseFloat(document.getElementById('promoBudgetVal')?.value) || 100;
+      const isCatSpecific = document.getElementById('promoCategorySpecificToggle')?.checked || false;
+      const preDiscountTotal = isCatSpecific ? budget * 1.20 : budget;
+
+      try {
+        const res = await apiCall('/api/promotions/apply-coupon', 'POST', {
+          coupon_code: code,
+          budget_inr: preDiscountTotal
+        }, userToken);
+
+        if (res.ok && res.valid) {
+          appliedPromoCoupon = res.coupon_code;
+          appliedPromoDiscountInr = res.discount_inr;
+          if (statusDiv) {
+            statusDiv.style.color = 'var(--neon-green)';
+            statusDiv.innerHTML = `<i class="fa-solid fa-circle-check"></i> Coupon <b>${res.coupon_code}</b> applied! ₹${res.discount_inr.toFixed(2)} discount received.`;
+          }
+          await updatePromoPricePreview();
+        }
+      } catch (err) {
+        appliedPromoCoupon = null;
+        appliedPromoDiscountInr = 0.0;
+        if (statusDiv) {
+          statusDiv.style.color = 'var(--error)';
+          statusDiv.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> ${err.message || 'Invalid coupon code.'}`;
+        }
+        await updatePromoPricePreview();
+      }
+    }
+
     async function updatePromoPricePreview() {
       const budget = parseFloat(document.getElementById('promoBudgetVal')?.value) || 100;
       const isCatSpecific = document.getElementById('promoCategorySpecificToggle')?.checked || false;
-      const total = isCatSpecific ? budget * 1.20 : budget;
+      const preDiscountTotal = isCatSpecific ? budget * 1.20 : budget;
+      const total = Math.max(0.0, preDiscountTotal - appliedPromoDiscountInr);
       const targetMembers = Math.round(budget * 2);
-      const elem = document.getElementById('promoTotalPricePreviewText');
-      if (elem) elem.textContent = `₹${total.toFixed(2)} INR (${targetMembers} Members / Joins)`;
 
-      if (userToken) {
-        try {
-          const wal = await apiCall('/api/wallet/balance', 'GET', null, userToken);
-          currentWalletBalanceInr = wal.balance_inr || 0;
-        } catch (e) {}
+      const elem = document.getElementById('promoTotalPricePreviewText');
+      if (elem) {
+        if (appliedPromoDiscountInr > 0) {
+          elem.innerHTML = `<span style="text-decoration: line-through; opacity: 0.6; font-size: 13px;">₹${preDiscountTotal.toFixed(2)}</span> <span style="color:var(--neon-green);">₹${total.toFixed(2)} INR</span> (${targetMembers} Members / Joins)`;
+        } else {
+          elem.textContent = `₹${total.toFixed(2)} INR (${targetMembers} Members / Joins)`;
+        }
       }
 
-      const balElem = document.getElementById('promoAvailWalletBalanceText');
-      if (balElem) balElem.textContent = currentWalletBalanceInr.toFixed(2);
-
-      const noticeElem = document.getElementById('promoPaymentInfoNotice');
       const submitBtn = document.getElementById('promoSubmitBtn');
-
-      if (currentWalletBalanceInr >= total) {
-        if (noticeElem) {
-          noticeElem.innerHTML = `<span style="color:var(--neon-green); font-weight:bold;"><i class="fa-solid fa-circle-check"></i> Sufficient Wallet Balance!</span> ₹${total.toFixed(2)} will be deducted directly from your wallet balance on submission.`;
-        }
-        if (submitBtn) {
-          submitBtn.className = "btn btn-primary";
-          submitBtn.innerHTML = `<i class="fa-solid fa-bolt"></i> Pay ₹${total.toFixed(2)} from Wallet & Start Promotion`;
-        }
-      } else {
-        const shortfall = total - currentWalletBalanceInr;
-        if (noticeElem) {
-          noticeElem.innerHTML = `<span style="color:var(--gold); font-weight:bold;"><i class="fa-solid fa-triangle-exclamation"></i> Low Wallet Balance!</span> Available: ₹${currentWalletBalanceInr.toFixed(2)} | Shortfall: <strong style="color:var(--error);">₹${shortfall.toFixed(2)}</strong>.<br>Submit button below will open YOUPI PG Gateway to pay ₹${shortfall.toFixed(2)} shortfall directly via UPI!`;
-        }
-        if (submitBtn) {
-          submitBtn.className = "btn btn-purple";
-          submitBtn.innerHTML = `<i class="fa-solid fa-credit-card"></i> Pay ₹${shortfall.toFixed(2)} via YOUPI Gateway & Start Promotion`;
-        }
+      if (submitBtn) {
+        submitBtn.innerHTML = `<i class="fa-solid fa-lock"></i> Pay ₹${total.toFixed(2)} & Start Automated Channel Promotion`;
       }
     }
 
@@ -2619,14 +2705,15 @@
       e.preventDefault();
       const budget = parseFloat(document.getElementById('promoBudgetVal').value) || 100;
       const isCategorySpecific = document.getElementById('promoCategorySpecificToggle')?.checked || false;
-      const total = isCategorySpecific ? budget * 1.20 : budget;
+      const preDiscountTotal = isCategorySpecific ? budget * 1.20 : budget;
+      const total = Math.max(0.0, preDiscountTotal - appliedPromoDiscountInr);
       const adMessage = document.getElementById('promoMsgVal').value;
       const channelLink = document.getElementById('promoChannelLink').value;
       const category = document.getElementById('promoCategorySelect').value;
       const linkType = document.getElementById('promoLinkTypeSelect')?.value || 'direct';
       const imageUrl = document.getElementById('promoImageUrlVal')?.value || '';
 
-      let walletInr = currentWalletBalanceInr;
+      let walletInr = 0;
       if (userToken) {
         try {
           const wal = await apiCall('/api/wallet/balance', 'GET', null, userToken);
@@ -2646,7 +2733,8 @@
             category: category,
             is_category_specific: isCategorySpecific,
             link_type: linkType,
-            image_url: imageUrl
+            image_url: imageUrl,
+            coupon_code: appliedPromoCoupon || null
           };
           if (txnRef) payload.payment_txn_ref = txnRef;
 
@@ -3030,8 +3118,9 @@
           }
         }
 
-        // Load Tasks
+        // Load Tasks & Coupons
         loadAdminTasks();
+        loadAdminCoupons();
 
         // Load Ad Codes
         const adCodeRes = await apiCall('/api/admin/ad-codes');
@@ -3313,6 +3402,93 @@
         await apiCall('/api/admin/withdrawal/status', 'POST', { withdrawalId, status });
         alert(`Withdrawal #${withdrawalId} status set to ${status}!`);
         loadAdminDashboardData();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function loadAdminCoupons() {
+      try {
+        const res = await apiCall('/api/admin/coupons');
+        const tbody = document.getElementById('adminCouponsTableBody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        if (res.coupons && res.coupons.length > 0) {
+          res.coupons.forEach(c => {
+            const tr = document.createElement('tr');
+            const discountStr = c.discount_pct > 0 ? `${c.discount_pct}%` : `₹${c.discount_amount_inr}`;
+            const maxUsesStr = c.max_uses > 0 ? `${c.used_count} / ${c.max_uses}` : `${c.used_count} / ∞`;
+            const isActive = !!c.is_active;
+            tr.innerHTML = `
+              <td>#${c.id}</td>
+              <td><strong class="text-cyan">${c.code}</strong></td>
+              <td><span class="text-green">${discountStr}</span></td>
+              <td>₹${c.min_budget_inr || 0}</td>
+              <td>${maxUsesStr}</td>
+              <td>
+                <span style="color: ${isActive ? 'var(--neon-green)' : 'var(--error)'}; font-weight: bold; font-size: 11px;">
+                  ${isActive ? 'ACTIVE' : 'INACTIVE'}
+                </span>
+              </td>
+              <td>
+                <div style="display: flex; gap: 4px;">
+                  <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px;" onclick="toggleAdminCoupon(${c.id})">
+                    ${isActive ? 'Deactivate' : 'Activate'}
+                  </button>
+                  <button class="btn btn-danger" style="padding: 2px 8px; font-size: 11px;" onclick="deleteAdminCoupon(${c.id})">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="7" class="text-muted">No coupons created yet.</td></tr>';
+        }
+      } catch (err) {
+        console.error('Error loading admin coupons:', err);
+      }
+    }
+
+    async function handleAdminCreateCoupon(e) {
+      e.preventDefault();
+      try {
+        const code = document.getElementById('admCouponCodeInput').value.trim();
+        const discountPct = parseFloat(document.getElementById('admCouponPctInput').value) || 0;
+        const discountAmt = parseFloat(document.getElementById('admCouponAmtInput').value) || 0;
+        const minBudget = parseFloat(document.getElementById('admCouponMinBudgetInput').value) || 0;
+        const maxUses = parseInt(document.getElementById('admCouponMaxUsesInput').value) || 0;
+
+        await apiCall('/api/admin/coupons/create', 'POST', {
+          code: code,
+          discount_pct: discountPct,
+          discount_amount_inr: discountAmt,
+          min_budget_inr: minBudget,
+          max_uses: maxUses
+        });
+        alert('Coupon created successfully!');
+        document.getElementById('admCouponCodeInput').value = '';
+        loadAdminCoupons();
+      } catch (err) {
+        alert(err.message || 'Failed to create coupon.');
+      }
+    }
+
+    async function toggleAdminCoupon(couponId) {
+      try {
+        await apiCall('/api/admin/coupons/toggle', 'POST', { couponId });
+        loadAdminCoupons();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function deleteAdminCoupon(couponId) {
+      if (!confirm('Are you sure you want to delete this coupon?')) return;
+      try {
+        await apiCall('/api/admin/coupons/delete', 'POST', { couponId });
+        loadAdminCoupons();
       } catch (err) {
         alert(err.message);
       }
