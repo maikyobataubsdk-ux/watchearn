@@ -1,5 +1,6 @@
 import os
 import unittest
+import uuid
 from pathlib import Path
 
 test_db_path = Path(__file__).parent / "test_data.sqlite3"
@@ -980,6 +981,107 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         # Verify promo is back in active rotation
         active_promos = db.get_active_promotions_for_rotation()
         self.assertTrue(any(p["id"] == promo_id for p in active_promos))
+
+    def test_user_channel_deletion_and_user_stop_promotion(self):
+        # 1. Register a test user
+        email = f"user_stop_{uuid.uuid4().hex[:6]}@test.com"
+        username = f"stopuser_{uuid.uuid4().hex[:6]}"
+        reg_res = self.client.post("/api/auth/register", json={
+            "email": email,
+            "username": username,
+            "password": "password123"
+        })
+        self.assertEqual(reg_res.status_code, 200)
+        user_token = reg_res.json()["token"]
+        user_id = reg_res.json()["user"]["id"]
+        tg_id = reg_res.json()["user"].get("telegram_id") or user_id
+
+        # 2. Add connected channel for this user and test deletion via /api/channels/delete
+        chan = db.connect_channel(
+            owner_user_id=user_id,
+            channel_id=f"@ch_delete_{uuid.uuid4().hex[:6]}",
+            channel_title="Test Delete Channel",
+            channel_username="ch_delete_test",
+            status="approved"
+        )
+        my_channels = db.get_user_connected_channels(user_id)
+        self.assertEqual(len(my_channels), 1)
+
+        del_res = self.client.post(
+            "/api/channels/delete",
+            json={"channel_id": chan["channel_id"]},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        self.assertEqual(del_res.status_code, 200)
+        self.assertTrue(del_res.json()["ok"])
+        my_channels_after = db.get_user_connected_channels(user_id)
+        self.assertEqual(len(my_channels_after), 0)
+
+        # 3. Create wallet balance for user to test promotion stopping & refund
+        db.admin_credit_user_wallet(user_id, 200.0, "Initial Test Balance")
+        bal_before = db.get_wallet_balance(tg_id)
+        self.assertEqual(bal_before, 20000)  # 200.00 INR in paise
+
+        # 4. User starts a promotion: total_price = 100 INR, target = 100 joins
+        promo = db.create_promotion(
+            user_id=user_id,
+            channel_url="https://t.me/test_stop_promo",
+            channel_id="@test_stop_promo",
+            channel_title="Test Stop Promo Channel",
+            price_inr=100.0,
+            target_joins=100,
+            transaction_ref="TXN_STOP_TEST_USER",
+            total_price_inr=100.0,
+            status="active"
+        )
+        promo_id = promo["id"]
+
+        # Record a promo rotation message in a channel
+        rot = db.record_promo_rotation(
+            promotion_id=promo_id,
+            channel_id="-1001234567890",
+            message_id=999,
+            delete_at="2099-01-01T00:00:00"
+        )
+        active_rotations = db.get_active_promo_rotations_for_promo(promo_id)
+        self.assertEqual(len(active_rotations), 1)
+
+        # Simulate 40 joins out of 100 joins completed -> spent = 40 INR, unspent refund = 60 INR
+        with db.db() as conn:
+            conn.execute("UPDATE promotions SET current_joins=40 WHERE id=?", (promo_id,))
+
+        # Stop promotion via user endpoint /api/promotions/stop
+        stop_promo_res = self.client.post(
+            "/api/promotions/stop",
+            json={"promotion_id": promo_id},
+            headers={"Authorization": f"Bearer {user_token}"}
+        )
+        self.assertEqual(stop_promo_res.status_code, 200)
+        stop_data = stop_promo_res.json()
+        self.assertTrue(stop_data["ok"])
+        self.assertEqual(stop_data["spent_inr"], 40.0)
+        self.assertEqual(stop_data["refund_inr"], 60.0)
+        self.assertEqual(stop_data["new_status"], "stopped")
+
+        # Verify wallet credited 60.00 INR (6000 paise)
+        bal_after = db.get_wallet_balance(tg_id)
+        self.assertEqual(bal_after, 20000 + 6000)
+
+        # Verify rotation marked deleted
+        active_rotations_after = db.get_active_promo_rotations_for_promo(promo_id)
+        self.assertEqual(len(active_rotations_after), 0)
+
+        # 5. Verify another user cannot stop someone else's promotion
+        other_user = db.create_user(f"other_{uuid.uuid4().hex[:6]}@test.com", f"other_{uuid.uuid4().hex[:6]}", "password123")
+        other_login = self.client.post("/api/auth/login", json={"login": other_user["email"], "password": "password123"})
+        other_token = other_login.json()["token"]
+
+        forbidden_stop = self.client.post(
+            "/api/promotions/stop",
+            json={"promotion_id": promo_id},
+            headers={"Authorization": f"Bearer {other_token}"}
+        )
+        self.assertEqual(forbidden_stop.status_code, 400)
 
 
 if __name__ == "__main__":
