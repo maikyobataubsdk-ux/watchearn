@@ -1002,10 +1002,11 @@
                   <th>Budget / Spent</th>
                   <th>Joins Progress</th>
                   <th>Status</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="myPromotionsTableBody">
-                <tr><td colspan="4" class="text-muted" style="text-align: center;">No promotion campaigns yet.</td></tr>
+                <tr><td colspan="5" class="text-muted" style="text-align: center;">No promotion campaigns yet.</td></tr>
               </tbody>
             </table>
           </div>
@@ -2876,18 +2877,45 @@
             const totPrice = p.total_price_inr || p.price_inr || p.budget_inr || 0;
             const spentInr = p.spent_inr !== undefined ? p.spent_inr : Math.min(totPrice, Math.round((totPrice * (p.current_joins || 0)) / (p.target_joins || 1) * 100) / 100);
 
+            let actionHtml = '-';
+            const isStoppable = (p.status === 'active' || p.status === 'approved' || p.status === 'pending' || p.status === 'pending_approval');
+            if (isStoppable) {
+              actionHtml = `
+                <button class="btn btn-warning" style="padding: 4px 10px; font-size: 12px; background: #e67e22; border: none; color: #fff;" onclick="stopMyPromotion(${p.id})">
+                  <i class="fa-solid fa-stop"></i> Stop
+                </button>
+              `;
+            } else if (p.status === 'stopped' || p.status === 'paused') {
+              actionHtml = `<span class="badge" style="background: rgba(230,126,34,0.2); color: #e67e22; font-size: 11px;">Stopped</span>`;
+            } else if (p.status === 'rejected') {
+              actionHtml = `<span class="badge" style="background: rgba(255,75,75,0.2); color: var(--error); font-size: 11px;">Refunded</span>`;
+            }
+
             tr.innerHTML = `
               <td><strong>${p.channel_title || p.channel_link}</strong>${rejMsgHtml}</td>
               <td><span class="text-green"><strong>₹${spentInr.toFixed(2)}</strong></span> / ₹${totPrice.toFixed(2)} INR</td>
               <td><span class="text-cyan"><strong>${p.current_joins || 0}</strong></span> / ${p.target_joins || 0} Joins</td>
               <td><span style="color:${color}; font-weight:bold; text-transform:uppercase;">${statusText}</span></td>
+              <td>${actionHtml}</td>
             `;
             tbody.appendChild(tr);
           });
         } else {
-          tbody.innerHTML = `<tr><td colspan="4" class="text-muted" style="text-align: center;">No promotion campaigns yet.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="5" class="text-muted" style="text-align: center;">No promotion campaigns yet.</td></tr>`;
         }
       } catch (err) {}
+    }
+
+    async function stopMyPromotion(promoId) {
+      if (!confirm(`Are you sure you want to stop Promotion #${promoId}? Any unspent budget will be refunded to your wallet, and promotional posts will be removed.`)) return;
+      try {
+        const res = await apiCall('/api/promotions/stop', 'POST', { promotion_id: promoId }, userToken);
+        alert(res.message || 'Promotion stopped successfully and unspent amount refunded to wallet!');
+        await refreshWalletBalance();
+        loadMyPromotions();
+      } catch (err) {
+        alert(err.message || 'Failed to stop promotion');
+      }
     }
 
     async function deleteMyChannel(channelId) {

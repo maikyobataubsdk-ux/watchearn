@@ -2,6 +2,7 @@ from __future__ import annotations
 import hmac
 import hashlib
 import json
+import asyncio
 import secrets
 import time
 import uuid
@@ -26,7 +27,7 @@ from db import (
     update_withdrawal_status, get_top_earners, get_global_stats,
     get_referral_stats, get_settings, get_setting, update_settings, get_ad_codes, update_ad_codes,
     hash_password, create_promotion, get_user_promotions, get_all_promotions,
-    update_promotion_status, connect_channel, update_connected_channel_status,
+    update_promotion_status, stop_promotion, connect_channel, update_connected_channel_status,
     get_user_connected_channels, get_all_connected_channels,
     delete_connected_channel, admin_delete_connected_channel,
     get_campaign, record_rewarded_intent,
@@ -278,6 +279,11 @@ class AdminPromotionStatusRequest(BaseModel):
     reason: Optional[str] = ""
 
 
+class StopPromotionRequest(BaseModel):
+    promotion_id: Optional[int] = None
+    promotionId: Optional[int] = None
+
+
 class AdminChannelStatusRequest(BaseModel):
     channel_id: Optional[str] = None
     channelId: Optional[str] = None
@@ -439,6 +445,36 @@ async def async_fetch_tg_channel_info(channel_username: str, channel_id: str) ->
     except Exception:
         pass
     return None
+
+
+async def delete_promo_rotation_messages(promo_id: int, active_rotations: list[dict]) -> None:
+    """Deletes promotion messages from all rotated channels when a promotion is stopped."""
+    import bot as bot_module
+    from config import BOT_TOKEN
+
+    for rot in active_rotations:
+        chat_arg = int(rot["channel_id"]) if str(rot["channel_id"]).lstrip("-").isdigit() else rot["channel_id"]
+        msg_id = rot["message_id"]
+
+        # Attempt deletion via bot_module.bot if initialized
+        deleted = False
+        if bot_module.bot is not None:
+            try:
+                await bot_module.bot.delete_message(chat_id=chat_arg, message_id=msg_id)
+                deleted = True
+            except Exception:
+                pass
+
+        # Fallback to direct HTTP API if bot object was not initialized
+        if not deleted and BOT_TOKEN and BOT_TOKEN != "PASTE_BOT_TOKEN_HERE":
+            try:
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    await client.post(
+                        f"https://api.telegram.org/bot{BOT_TOKEN}/deleteMessage",
+                        json={"chat_id": chat_arg, "message_id": msg_id}
+                    )
+            except Exception:
+                pass
 
 
 async def verify_channel_for_connect(channel_username: str, channel_id: str, user_telegram_id: Optional[int]) -> dict:
@@ -1048,6 +1084,35 @@ async def user_promotions(user: dict = Depends(get_current_user)) -> dict:
     return {"ok": True, "promotions": promos}
 
 
+@app.post("/api/promotions/stop")
+async def user_stop_promotion(body: StopPromotionRequest, user: dict = Depends(get_current_user)) -> dict:
+    p_id = body.promotion_id or body.promotionId
+    if not p_id:
+        raise HTTPException(status_code=400, detail="promotion_id is required.")
+
+    res = stop_promotion(p_id, user_id=user["id"])
+    if not res.get("ok"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Failed to stop promotion."))
+
+    # Clean up Telegram channel posts
+    active_rotations = res.get("active_rotations") or []
+    if active_rotations:
+        asyncio.create_task(delete_promo_rotation_messages(p_id, active_rotations))
+
+    refund_val = res.get("refund_inr", 0.0)
+    spent_val = res.get("spent_inr", 0.0)
+    msg = f"Promotion #{p_id} stopped successfully. Spent: ₹{spent_val:.2f}, Refunded: ₹{refund_val:.2f} credited to your wallet."
+
+    return {
+        "ok": True,
+        "message": msg,
+        "promotion_id": p_id,
+        "new_status": "stopped",
+        "refund_inr": refund_val,
+        "spent_inr": spent_val
+    }
+
+
 @app.post("/api/channels/connect")
 async def user_connect_channel(body: ConnectChannelRequest, user: dict = Depends(get_current_user)) -> dict:
     check_maintenance("earnings")
@@ -1569,6 +1634,18 @@ async def admin_update_promotion_status(body: AdminPromotionStatusRequest, reque
         status = "rejected"
 
     rej_reason = body.rejection_reason or body.rejectionReason or body.reason or ""
+
+    if status == "stopped":
+        res = stop_promotion(p_id)
+        if not res.get("ok"):
+            raise HTTPException(status_code=400, detail=res.get("error", "Failed to stop promotion."))
+        active_rotations = res.get("active_rotations") or []
+        if active_rotations:
+            asyncio.create_task(delete_promo_rotation_messages(p_id, active_rotations))
+        refund_val = res.get("refund_inr", 0.0)
+        spent_val = res.get("spent_inr", 0.0)
+        msg = f"Promotion #{p_id} stopped. Spent: ₹{spent_val:.2f}, Refunded: ₹{refund_val:.2f} to user wallet."
+        return {"ok": True, "message": msg, "new_status": "stopped", "refund_inr": refund_val, "spent_inr": spent_val}
 
     res = update_promotion_status(p_id, status, rejection_reason=rej_reason)
     if not res.get("ok"):

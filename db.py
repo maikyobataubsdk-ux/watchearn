@@ -1613,6 +1613,96 @@ def mark_promo_rotation_deleted(rotation_id: int) -> None:
         conn.execute("UPDATE promo_rotations SET status='deleted' WHERE id=?", (rotation_id,))
 
 
+def get_active_promo_rotations_for_promo(promotion_id: int) -> list[dict]:
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM promo_rotations WHERE promotion_id=? AND status='active'",
+            (promotion_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def mark_promo_rotations_deleted_for_promo(promotion_id: int) -> None:
+    with db() as conn:
+        conn.execute("UPDATE promo_rotations SET status='deleted' WHERE promotion_id=?", (promotion_id,))
+
+
+def stop_promotion(promo_id: int, user_id: int | None = None) -> dict:
+    with db() as conn:
+        p = conn.execute("SELECT * FROM promotions WHERE id=?", (promo_id,)).fetchone()
+        if not p:
+            return {"ok": False, "error": "Promotion campaign not found"}
+
+        if user_id is not None and p["user_id"] != user_id:
+            return {"ok": False, "error": "You do not have permission to stop this promotion"}
+
+        old_status = p["status"]
+        if old_status in ("stopped", "paused"):
+            return {"ok": False, "error": "Promotion is already stopped"}
+        if old_status in ("rejected", "completed"):
+            return {"ok": False, "error": f"Cannot stop promotion with status '{old_status}'"}
+
+        tot_price = p["total_price_inr"] if (p["total_price_inr"] and p["total_price_inr"] > 0) else (p["price_inr"] or 0.0)
+        target = p["target_joins"] or 1
+        curr_joins = p["current_joins"] or 0
+        if target > 0:
+            spent_inr = round((tot_price * min(curr_joins, target)) / target, 2)
+        else:
+            spent_inr = 0.0
+
+        refund_inr = max(0.0, round(tot_price - spent_inr, 2))
+        refund_paise = int(round(refund_inr * 100))
+
+        # Update status to stopped
+        conn.execute("UPDATE promotions SET status='stopped' WHERE id=?", (promo_id,))
+
+        # Credit unspent refund paise to user's wallet if any
+        owner_user = conn.execute("SELECT telegram_id, id FROM users WHERE id=?", (p["user_id"],)).fetchone()
+        if owner_user and refund_paise > 0:
+            tg_id = owner_user["telegram_id"] or owner_user["id"]
+            now = utcnow()
+            order_id = f"REFUND-STOP-{promo_id}-{uuid.uuid4().hex[:6].upper()}"
+            desc = f"Refund for Stopped Promotion #{promo_id} (Spent: ₹{spent_inr:.2f}, Refunded: ₹{refund_inr:.2f})"
+            conn.execute(
+                """
+                INSERT INTO wallet_transactions (telegram_id, type, amount_paise, utr, order_id, description, created_at)
+                VALUES (?, 'refund', ?, 'PROMO_STOP_REFUND', ?, ?, ?)
+                """,
+                (tg_id, refund_paise, order_id, desc, now),
+            )
+            conn.execute(
+                """
+                INSERT INTO wallets (telegram_id, balance_paise, created_at, updated_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(telegram_id) DO UPDATE SET balance_paise = balance_paise + excluded.balance_paise, updated_at = excluded.updated_at
+                """,
+                (tg_id, refund_paise, now, now),
+            )
+
+        # Get active rotations to be cleaned up
+        active_rotations = [
+            dict(r) for r in conn.execute(
+                "SELECT * FROM promo_rotations WHERE promotion_id=? AND status='active'",
+                (promo_id,)
+            ).fetchall()
+        ]
+
+        # Mark rotations as deleted
+        conn.execute("UPDATE promo_rotations SET status='deleted' WHERE promotion_id=?", (promo_id,))
+
+        return {
+            "ok": True,
+            "promotion_id": promo_id,
+            "new_status": "stopped",
+            "total_price_inr": tot_price,
+            "spent_inr": spent_inr,
+            "refund_inr": refund_inr,
+            "current_joins": curr_joins,
+            "target_joins": target,
+            "active_rotations": active_rotations,
+        }
+
+
 # Discount Coupon Management Functions
 def create_coupon(
     code: str,
