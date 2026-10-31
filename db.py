@@ -823,13 +823,19 @@ def get_all_promotions() -> list[dict]:
 
 
 def update_promotion_status(promo_id: int, status: str, rejection_reason: str = "") -> dict:
+    clean_status = str(status).strip().lower()
+    if clean_status in ("stop", "pause", "paused"):
+        clean_status = "stopped"
+    elif clean_status in ("resume", "approve"):
+        clean_status = "active"
+
     with db() as conn:
         p = conn.execute("SELECT * FROM promotions WHERE id=?", (promo_id,)).fetchone()
         if not p:
             return {"ok": False, "error": "Promotion campaign not found"}
 
         old_status = p["status"]
-        conn.execute("UPDATE promotions SET status=?, rejection_reason=? WHERE id=?", (status, rejection_reason, promo_id))
+        conn.execute("UPDATE promotions SET status=?, rejection_reason=? WHERE id=?", (clean_status, rejection_reason, promo_id))
 
         # If rejected and previously not rejected, refund user's wallet
         if status == "rejected" and old_status != "rejected":

@@ -929,6 +929,58 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         self.assertEqual(config_res.json()["supportTelegram"], "EarnProgramSupport")
         self.assertEqual(config_res.json()["supportUrl"], "https://t.me/EarnProgramSupport")
 
+    def test_admin_stop_and_resume_promotion(self):
+        admin_login_res = self.client.post("/api/admin/login", json={
+            "username": "rajpapa",
+            "password": "28@RajPapa"
+        })
+        self.assertEqual(admin_login_res.status_code, 200)
+        admin_token = admin_login_res.json()["adminToken"]
+
+        # Create user and active promotion
+        user = db.create_user("stop_tester@test.com", "stop_tester", "password123")
+        promo = db.create_promotion(
+            user_id=user["id"],
+            channel_url="https://t.me/stop_test_channel",
+            channel_id="@stop_test_channel",
+            channel_title="Stop Test Channel",
+            price_inr=100.0,
+            target_joins=200,
+            transaction_ref="TXN_STOP_TEST_1",
+            ad_message="Test message for stop promo",
+            status="active"
+        )
+        promo_id = promo["id"]
+
+        # Verify promo appears in active rotation
+        active_promos = db.get_active_promotions_for_rotation()
+        self.assertTrue(any(p["id"] == promo_id for p in active_promos))
+
+        # Admin stops promotion
+        stop_res = self.client.post("/api/admin/promotions/stop", json={"promotion_id": promo_id}, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(stop_res.status_code, 200)
+        self.assertTrue(stop_res.json()["ok"])
+        self.assertEqual(stop_res.json()["new_status"], "stopped")
+
+        # Verify promotion is no longer in active rotation
+        active_promos = db.get_active_promotions_for_rotation()
+        self.assertFalse(any(p["id"] == promo_id for p in active_promos))
+
+        # Verify promo status in db
+        promos = db.get_all_promotions()
+        p_db = next(p for p in promos if p["id"] == promo_id)
+        self.assertEqual(p_db["status"], "stopped")
+
+        # Admin resumes promotion
+        resume_res = self.client.post("/api/admin/promotions/resume", json={"promotion_id": promo_id}, headers={"X-Admin-Token": admin_token})
+        self.assertEqual(resume_res.status_code, 200)
+        self.assertTrue(resume_res.json()["ok"])
+        self.assertEqual(resume_res.json()["new_status"], "active")
+
+        # Verify promo is back in active rotation
+        active_promos = db.get_active_promotions_for_rotation()
+        self.assertTrue(any(p["id"] == promo_id for p in active_promos))
+
 
 if __name__ == "__main__":
     unittest.main()
