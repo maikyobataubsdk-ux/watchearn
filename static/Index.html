@@ -878,7 +878,7 @@
               <button type="button" id="promoResetBtn" class="btn btn-outline hidden" onclick="resetPromoChannelSearch()" style="border-color: rgba(255, 77, 77, 0.5); color: #ff6b6b;" title="Cancel / Change Channel"><i class="fa-solid fa-arrow-left"></i> Back</button>
             </div>
             <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
-              ⚠️ <span style="color: var(--gold); font-weight: bold;">Bot Admin jaruri hai:</span> Channel me bot ko pehle Administrator banayein taaki members sahi se track ho sakein.
+              ⚠️ <span style="color: var(--gold); font-weight: bold;">Bot Admin Required:</span> Please make the bot an Administrator in the channel first so members can be tracked accurately.
             </div>
           </div>
 
@@ -1034,10 +1034,10 @@
           <div class="glass" style="padding: 20px; margin-bottom: 20px; border-left: 4px solid var(--neon-green);">
             <h4 style="color: var(--neon-green); margin-bottom: 8px;"><i class="fa-solid fa-circle-info"></i> Connection Setup Requirements</h4>
             <ol style="margin-left: 20px; font-size: 13px; color: var(--text-muted); line-height: 1.8;">
-              <li>Aap sirf wahi Telegram channel add kar sakte hai jo aap <strong>own (creator/admin)</strong> karte hain.</li>
-              <li>Bot (e.g. <code>@EarnProgramapp</code>) ko channel me <strong>Admin with permissions</strong> ke sath add hona chahiye.</li>
-              <li>Channel me <strong>Minimum 100 members</strong> hona required hai.</li>
-              <li>Sabhi requirements poori hone par channel link neeche enter karke <strong>"Connect & Verify Admin"</strong> par click karein.</li>
+              <li>You can only add Telegram channels that you <strong>own (creator/admin)</strong>.</li>
+              <li>The bot (e.g. <code>@EarnProgramapp</code>) must be added as an <strong>Admin with permissions</strong> in your channel.</li>
+              <li>The channel must have a <strong>minimum of 100 members</strong>.</li>
+              <li>Once all requirements are met, enter your channel link below and click <strong>"Connect & Verify Admin"</strong>.</li>
             </ol>
           </div>
 
@@ -1342,6 +1342,7 @@
                     <th>ID</th>
                     <th>User</th>
                     <th>Channel Link</th>
+                    <th>Image</th>
                     <th>Budget</th>
                     <th>Txn Ref</th>
                     <th>Ad Message</th>
@@ -1349,7 +1350,7 @@
                   </tr>
                 </thead>
                 <tbody id="adminPromotionsTableBody">
-                  <tr><td colspan="7" class="text-muted">Loading promotion requests...</td></tr>
+                  <tr><td colspan="8" class="text-muted">Loading promotion requests...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -1788,6 +1789,23 @@
           <i class="fa-solid fa-floppy-disk"></i> Apply Custom Rate
         </button>
       </form>
+    </div>
+  </div>
+
+  <!-- Promotional Image Viewer Modal Window -->
+  <div id="promoImageViewerModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.88); backdrop-filter: blur(10px); z-index: 1500; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div class="glass" style="max-width: 650px; width: 100%; padding: 25px; position: relative; text-align: center;">
+      <button onclick="closePromoImageViewerModal()" style="position: absolute; top: 15px; right: 20px; background: transparent; border: none; color: #fff; font-size: 24px; cursor: pointer;">&times;</button>
+      <h3 style="color: var(--neon-cyan); margin-bottom: 15px; font-size: 18px;"><i class="fa-solid fa-image"></i> Promotional Banner Image</h3>
+      <div style="margin-bottom: 15px; max-height: 70vh; overflow: auto; display: flex; justify-content: center; align-items: center; background: rgba(0,0,0,0.5); border-radius: 8px; padding: 10px;">
+        <img id="promoImageViewerImg" src="" alt="Promotional Image" style="max-width: 100%; max-height: 60vh; border-radius: 6px; object-fit: contain; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
+        <a id="promoImageViewerDirectLink" href="#" target="_blank" class="btn btn-cyan" style="font-size: 13px; text-decoration: none;">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i> Open in New Tab
+        </a>
+        <button class="btn btn-secondary" onclick="closePromoImageViewerModal()" style="font-size: 13px;">Close</button>
+      </div>
     </div>
   </div>
 
@@ -2914,7 +2932,7 @@
 
             let rejMsgHtml = '';
             if (p.status === 'rejected') {
-              const msg = p.rejection_reason || 'Promotion reject kar diya gaya hai.';
+              const msg = p.rejection_reason || 'Promotion has been rejected.';
               rejMsgHtml = `<div style="font-size: 11px; color: var(--error); margin-top: 4px; font-weight: 600;"><i class="fa-solid fa-circle-xmark"></i> ${msg}</div>`;
             }
 
@@ -3204,7 +3222,7 @@
             } else if (st === 'active' || st === 'approved') {
               actionHtml = `
                 <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
-                  <button class="btn btn-warning" style="padding: 4px 10px; font-size: 12px; background:#e67e22; border:none; color:#fff;" onclick="stopPromotion(${p.id})" title="Band Karein / Stop Promotion"><i class="fa-solid fa-stop"></i> Stop (Band Karein)</button>
+                  <button class="btn btn-warning" style="padding: 4px 10px; font-size: 12px; background:#e67e22; border:none; color:#fff;" onclick="stopPromotion(${p.id})" title="Stop Promotion"><i class="fa-solid fa-stop"></i> Stop</button>
                   <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="rejectPromotion(${p.id})" title="Reject & Refund"><i class="fa-solid fa-xmark"></i> Reject</button>
                 </div>
               `;
@@ -3219,10 +3237,22 @@
               actionHtml = `<span style="font-weight:bold; color:${badgeColor}">${st.toUpperCase()}</span>${p.rejection_reason ? `<div style="font-size:10px; color:var(--error);">${p.rejection_reason}</div>` : ''}`;
             }
 
+            let imgHtml = '<span class="text-muted" style="font-size: 11px;">No Image</span>';
+            if (p.image_url) {
+              const safeImgUrl = p.image_url.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+              imgHtml = `
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <img src="${safeImgUrl}" alt="Promo Banner" style="width:40px; height:40px; object-fit:cover; border-radius:4px; border:1px solid rgba(0,229,255,0.4); cursor:pointer;" onclick="viewPromoImage('${safeImgUrl}')" title="Click to view full image">
+                  <button class="btn btn-outline" style="padding:2px 6px; font-size:10px; border-color:var(--neon-cyan); color:var(--neon-cyan);" onclick="viewPromoImage('${safeImgUrl}')" title="View Promotional Image"><i class="fa-solid fa-eye"></i> View</button>
+                </div>
+              `;
+            }
+
             tr.innerHTML = `
               <td>#${p.id}</td>
               <td><strong>${p.username}</strong></td>
               <td><a href="${p.channel_url || p.channel_link}" target="_blank" style="color:var(--neon-cyan);">${p.channel_title || p.channel_link}</a></td>
+              <td>${imgHtml}</td>
               <td>₹${budgetDisplay} INR<div style="font-size:11px;" class="text-cyan">${joinsDisplay}</div></td>
               <td><code>${p.transaction_ref || p.payment_txn_ref}</code></td>
               <td><div style="max-width:200px; font-size:12px;" class="text-muted">${p.ad_message || '-'}</div></td>
@@ -3233,7 +3263,7 @@
             promoTbody.appendChild(tr);
           });
         } else {
-          promoTbody.innerHTML = `<tr><td colspan="7" class="text-muted">No pending promotion requests.</td></tr>`;
+          promoTbody.innerHTML = `<tr><td colspan="8" class="text-muted">No pending promotion requests.</td></tr>`;
         }
         document.getElementById('admPendingPromos').textContent = pendingCount;
 
@@ -3449,6 +3479,23 @@
       }
     }
 
+    function viewPromoImage(imageUrl) {
+      if (!imageUrl) return;
+      const modal = document.getElementById('promoImageViewerModal');
+      const img = document.getElementById('promoImageViewerImg');
+      const directLink = document.getElementById('promoImageViewerDirectLink');
+      if (img) img.src = imageUrl;
+      if (directLink) directLink.href = imageUrl;
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closePromoImageViewerModal() {
+      const modal = document.getElementById('promoImageViewerModal');
+      const img = document.getElementById('promoImageViewerImg');
+      if (modal) modal.classList.add('hidden');
+      if (img) img.src = '';
+    }
+
     async function approvePromotion(promoId) {
       try {
         const res = await apiCall('/api/admin/promotions/approve', 'POST', { promotionId: promoId });
@@ -3460,10 +3507,10 @@
     }
 
     async function stopPromotion(promoId) {
-      if (!confirm(`Are you sure you want to stop/band Promotion #${promoId}? The promotion will be paused and removed from active rotation.`)) return;
+      if (!confirm(`Are you sure you want to stop Promotion #${promoId}? The promotion will be paused and removed from active rotation.`)) return;
       try {
         const res = await apiCall('/api/admin/promotions/stop', 'POST', { promotionId: promoId });
-        alert(res.message || 'Promotion stopped/band kar diya gaya!');
+        alert(res.message || 'Promotion stopped successfully!');
         loadAdminDashboardData();
       } catch (err) {
         alert(err.message);

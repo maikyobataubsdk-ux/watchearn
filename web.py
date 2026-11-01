@@ -520,7 +520,7 @@ async def verify_telegram_channel_for_promotion(channel_username: str, channel_i
                 err_desc = chat_data.get("description", "Channel not found")
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Valid channel nahi mila. Kripya sahi channel link ya username enter karein. ({err_desc})"
+                    detail=f"Valid channel not found. Please enter a valid channel link or username. ({err_desc})"
                 )
 
             chat = chat_data["result"]
@@ -549,7 +549,7 @@ async def verify_telegram_channel_for_promotion(channel_username: str, channel_i
             if bot_status not in ("administrator", "creator"):
                 raise HTTPException(
                     status_code=400,
-                    detail="Bot is channel me admin nahi hai! Promotion me users ko sahi se track karne ke liye pehle bot ko channel me admin banayein."
+                    detail="Bot is not an administrator in this channel! To properly track users in promotions, please add the bot as administrator first."
                 )
 
             return {
@@ -577,7 +577,7 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
     if not user_telegram_id:
         raise HTTPException(
             status_code=400,
-            detail="Aapka Telegram account connected nahi hai. Kripya Telegram account se login karein."
+            detail="Your Telegram account is not connected. Please login with your Telegram account."
         )
 
     chat_ref = f"@{channel_username}" if channel_username else channel_id
@@ -603,7 +603,7 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
                 err_desc = chat_data.get("description", "")
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Channel nahi mila. Kripya sahi channel link ya @username enter karein. ({err_desc})"
+                    detail=f"Channel not found. Please enter a valid channel link or @username. ({err_desc})"
                 )
             chat = chat_data["result"]
             real_chat_id = str(chat["id"])
@@ -620,7 +620,7 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
             if bot_status not in ("administrator", "creator"):
                 raise HTTPException(
                     status_code=400,
-                    detail="Bot is channel me admin nahi hai. Kripya pehle bot ko channel me admin banayein."
+                    detail="Bot is not an administrator in this channel. Please add the bot as an administrator first."
                 )
 
             # 4. Verify User is Owner/Admin in Channel
@@ -633,7 +633,7 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
             if user_status not in ("creator", "administrator"):
                 raise HTTPException(
                     status_code=400,
-                    detail="Aap sirf wahi channel add kar sakte hai jo aap own karte hai (creator/admin)."
+                    detail="You can only add channels that you own (creator/admin)."
                 )
 
             # 5. Verify Member Count >= 100
@@ -646,7 +646,7 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
             if members_count < 100:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Minimum member 100 required. Aapke channel me sirf {members_count} members hain."
+                    detail=f"Minimum 100 members required. Your channel has only {members_count} members."
                 )
 
             return {
@@ -1418,7 +1418,7 @@ async def complete_user_task(body: CompleteTaskRequest, user: dict = Depends(get
         if not user_tg_id:
             raise HTTPException(
                 status_code=400,
-                detail="Aapka Telegram account connected nahi hai. Channel task verify karne ke liye Telegram se login karein."
+                detail="Your Telegram account is not connected. Please login with Telegram to verify channel tasks."
             )
 
         # Parse chat reference
@@ -1445,7 +1445,7 @@ async def complete_user_task(body: CompleteTaskRequest, user: dict = Depends(get
                         status = chat_data.get("result", {}).get("status", "")
                         is_member = status in ("creator", "administrator", "member") or (status == "restricted" and bool(chat_data.get("result", {}).get("is_member", False)))
                         if not is_member:
-                            raise HTTPException(status_code=400, detail="Aapne abhi tak yeh channel/group join nahi kiya hai. Pehle join karein fir claim karein.")
+                            raise HTTPException(status_code=400, detail="You have not joined this channel/group yet. Please join first and then claim the reward.")
             except HTTPException:
                 raise
             except Exception:
