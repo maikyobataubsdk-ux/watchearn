@@ -1213,6 +1213,57 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         self.assertIn("40 paise", res.text)
         self.assertNotIn("blazeculturebot", res.text.lower())
 
+    def test_27_maintenance_mode_admin_panel_exempt(self):
+        # Register a user to test user endpoint under maintenance
+        user_res = self.client.post("/api/auth/register", json={
+            "email": "maint_test_user@example.com",
+            "username": "maint_test_user",
+            "password": "password123"
+        })
+        self.assertEqual(user_res.status_code, 200)
+        user_token = user_res.json()["token"]
+
+        # 1. Admin logs in
+        login_res = self.client.post("/api/admin/login", json={"username": "rajpapa", "password": "28@RajPapa"})
+        self.assertEqual(login_res.status_code, 200)
+        admin_token = login_res.json()["adminToken"]
+        headers = {"X-Admin-Token": admin_token}
+
+        try:
+            # 2. Turn on full maintenance mode
+            maint_res = self.client.post("/api/admin/maintenance", json={
+                "maintenanceFull": "1",
+                "maintenanceWatch": "0",
+                "maintenancePromote": "0",
+                "maintenanceEarnings": "0",
+                "maintenanceWithdraw": "0"
+            }, headers=headers)
+            self.assertEqual(maint_res.status_code, 200)
+
+            # 3. Check public API endpoint is blocked (returns 503)
+            user_res = self.client.post("/api/user/watch-ad", headers={"Authorization": f"Bearer {user_token}"})
+            self.assertEqual(user_res.status_code, 503)
+
+            # 4. Check admin panel endpoints are NOT blocked and fully accessible
+            admin_stats_res = self.client.get("/api/admin/stats", headers=headers)
+            self.assertEqual(admin_stats_res.status_code, 200)
+
+            # 5. Check admin routes are accessible
+            admin_html = self.client.get("/admin")
+            self.assertEqual(admin_html.status_code, 200)
+            raj_html = self.client.get("/raj")
+            self.assertEqual(raj_html.status_code, 200)
+        finally:
+            # 6. Revert maintenance mode back to disabled
+            revert_res = self.client.post("/api/admin/maintenance", json={
+                "maintenanceFull": "0",
+                "maintenanceWatch": "0",
+                "maintenancePromote": "0",
+                "maintenanceEarnings": "0",
+                "maintenanceWithdraw": "0"
+            }, headers=headers)
+            self.assertEqual(revert_res.status_code, 200)
+
 
 if __name__ == "__main__":
     unittest.main()

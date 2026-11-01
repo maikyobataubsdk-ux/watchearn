@@ -1930,27 +1930,32 @@
 
     // SPA Navigation Router
     function nav(page) {
-      // Maintenance check for specific section
-      if (siteConfig && siteConfig.maintenance) {
-        if (siteConfig.maintenance.full) {
-          document.getElementById('fullSiteMaintenanceOverlay')?.classList.remove('hidden');
-          return;
-        }
-        if (page === 'watch' && siteConfig.maintenance.watch) {
-          alert('Watch Ads section is currently on maintenance.');
-          return;
-        }
-        if (page === 'promote' && siteConfig.maintenance.promote) {
-          alert('Channel Promotion section is currently on maintenance.');
-          return;
-        }
-        if (page === 'channels' && siteConfig.maintenance.earnings) {
-          alert('Earnings section is currently on maintenance.');
-          return;
-        }
-        if (page === 'withdraw' && siteConfig.maintenance.withdraw) {
-          alert('Withdrawal section is currently on maintenance.');
-          return;
+      // If navigating to admin panel, always allow and hide the maintenance overlay
+      if (page === 'admin' || window.location.pathname.startsWith('/raj') || window.location.pathname.startsWith('/admin')) {
+        document.getElementById('fullSiteMaintenanceOverlay')?.classList.add('hidden');
+      } else {
+        // Maintenance check for specific section
+        if (siteConfig && siteConfig.maintenance) {
+          if (siteConfig.maintenance.full) {
+            document.getElementById('fullSiteMaintenanceOverlay')?.classList.remove('hidden');
+            return;
+          }
+          if (page === 'watch' && siteConfig.maintenance.watch) {
+            alert('Watch Ads section is currently on maintenance.');
+            return;
+          }
+          if (page === 'promote' && siteConfig.maintenance.promote) {
+            alert('Channel Promotion section is currently on maintenance.');
+            return;
+          }
+          if (page === 'channels' && siteConfig.maintenance.earnings) {
+            alert('Earnings section is currently on maintenance.');
+            return;
+          }
+          if (page === 'tasks' && siteConfig.maintenance.tasks) {
+            alert('Tasks section is currently on maintenance.');
+            return;
+          }
         }
       }
 
@@ -2206,8 +2211,11 @@
       try {
         const config = await apiCall('/api/config');
         siteConfig = config;
-        if (config.maintenance && config.maintenance.full) {
+        const isAdminPath = window.location.pathname.startsWith('/raj') || window.location.pathname.startsWith('/admin') || (!document.getElementById('pageAdmin')?.classList.contains('hidden'));
+        if (config.maintenance && config.maintenance.full && !isAdminPath) {
           document.getElementById('fullSiteMaintenanceOverlay')?.classList.remove('hidden');
+        } else if (isAdminPath) {
+          document.getElementById('fullSiteMaintenanceOverlay')?.classList.add('hidden');
         }
         if (config.adCodes && config.adCodes.banner) {
           document.getElementById('homepageBannerSlot').innerHTML = config.adCodes.banner;
@@ -3833,7 +3841,8 @@
           maintenanceWithdraw: withdraw
         });
         alert(res.message || 'Maintenance settings updated!');
-        loadPublicAdCodes(); // Refresh siteConfig
+        await loadPublicAdCodes(); // Refresh siteConfig
+        document.getElementById('fullSiteMaintenanceOverlay')?.classList.add('hidden');
       } catch (err) {
         alert(err.message || 'Failed to save maintenance settings.');
       }
