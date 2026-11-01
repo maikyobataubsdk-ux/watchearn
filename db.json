@@ -1,16 +1,49 @@
 {
-  "updated_at": "2026-11-01T08:36:36+00:00",
+  "updated_at": "2026-11-01T13:33:29+00:00",
   "users": [
     {
       "id": 1,
-      "email": "tg_672952754@telegram.org",
-      "username": "user_672952754",
+      "email": "tg_177974792@telegram.org",
+      "username": "user_177974792",
       "balance_coins": 0.0,
       "total_earned_coins": 0.0,
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-11-01T08:36:34+00:00"
+      "created_at": "2026-11-01T13:26:06+00:00"
+    },
+    {
+      "id": 2,
+      "email": "tg_730211759@telegram.org",
+      "username": "user_730211759",
+      "balance_coins": 0.0,
+      "total_earned_coins": 0.0,
+      "total_ads_watched": 0,
+      "is_premium": 0,
+      "is_banned": 0,
+      "created_at": "2026-11-01T13:26:50+00:00"
+    },
+    {
+      "id": 3,
+      "email": "tg_245780136@telegram.org",
+      "username": "user_245780136",
+      "balance_coins": 0.0,
+      "total_earned_coins": 0.0,
+      "total_ads_watched": 0,
+      "is_premium": 0,
+      "is_banned": 0,
+      "created_at": "2026-11-01T13:27:46+00:00"
+    },
+    {
+      "id": 4,
+      "email": "tg_172439844@telegram.org",
+      "username": "user_172439844",
+      "balance_coins": 0.0,
+      "total_earned_coins": 0.0,
+      "total_ads_watched": 0,
+      "is_premium": 0,
+      "is_banned": 0,
+      "created_at": "2026-11-01T13:33:26+00:00"
     }
   ],
   "withdrawals": [],
@@ -28,7 +61,7 @@
     "payment_upi_id": "earnprogram@upi",
     "payment_qr_url": "/static/payment_qr.jpg",
     "cost_per_2_joins_inr": "1.0",
-    "payout_per_2_joins_inr": "0.50",
+    "payout_per_2_joins_inr": "0.80",
     "bot_start_quote": "welcome to earn program! watch simple ads, earn coins, promote telegram channels & generate daily income easily.",
     "bot_tutorial_url": "https://t.me/earnprogramsupport",
     "bot_help_url": "https://t.me/earnprogramsupport",

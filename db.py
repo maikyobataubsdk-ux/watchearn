@@ -372,7 +372,7 @@ def init_db() -> None:
             "payment_upi_id": "earnprogram@upi",
             "payment_qr_url": "/static/payment_qr.jpg",
             "cost_per_2_joins_inr": "1.0",
-            "payout_per_2_joins_inr": "0.50",
+            "payout_per_2_joins_inr": "0.80",
             "bot_start_quote": "welcome to earn program! watch simple ads, earn coins, promote telegram channels & generate daily income easily.",
             "bot_tutorial_url": "https://t.me/earnprogramsupport",
             "bot_help_url": "https://t.me/earnprogramsupport",
@@ -988,8 +988,8 @@ def get_promo_invite_link(invite_link: str) -> dict | None:
 
 def record_channel_join_event_with_source(promotion_id: int, source_channel_id: str, user_id: int) -> dict:
     settings = get_settings()
-    payout_per_2_joins = float(settings.get("payout_per_2_joins_inr", "0.50"))
-    payout_per_join = payout_per_2_joins / 2.0  # 0.25 INR per user join
+    payout_per_2_joins = float(settings.get("payout_per_2_joins_inr", "0.80"))
+    payout_per_join = payout_per_2_joins / 2.0  # 0.40 INR (40 paise) per user join (80% share)
 
     clean_id = str(source_channel_id).strip()
     username_part = clean_id.split("t.me/")[-1].lstrip("@").strip("/")
@@ -1042,8 +1042,8 @@ def record_channel_join_event_with_source(promotion_id: int, source_channel_id: 
 
 def record_channel_join_event(channel_id: str, user_id: int) -> dict:
     settings = get_settings()
-    payout_per_2_joins = float(settings.get("payout_per_2_joins_inr", "0.50"))
-    payout_per_join = payout_per_2_joins / 2.0  # 0.25 INR per user join
+    payout_per_2_joins = float(settings.get("payout_per_2_joins_inr", "0.80"))
+    payout_per_join = payout_per_2_joins / 2.0  # 0.40 INR (40 paise) per user join (80% share)
 
     clean_id = str(channel_id)
     username_part = clean_id.split("t.me/")[-1].lstrip("@").strip("/")

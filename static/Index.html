@@ -591,7 +591,7 @@
           <div class="glass" style="padding: 24px; text-align: center;">
             <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(168,85,247,0.15); color: var(--purple); display: grid; place-items: center; margin: 0 auto 15px; font-size: 22px; font-weight: 800;">3</div>
             <h3 style="margin-bottom: 10px;">Connect & Earn Revenue</h3>
-            <p class="text-muted">Channel owners connect their channel with full bot admin powers. When 2 users join via ad campaigns, earn <strong>₹0.50 INR</strong> split automatically!</p>
+            <p class="text-muted">Channel owners connect their channel with full bot admin powers. When users join via ad campaigns, earn <strong>₹0.40 INR (40 paise) per join</strong> credited automatically!</p>
           </div>
         </div>
       </div>
@@ -1029,7 +1029,7 @@
       <div style="max-width: 850px; margin: 0 auto;">
         <div class="glass" style="padding: 30px; margin-bottom: 25px;">
           <h2 style="font-size: 24px; margin-bottom: 8px;"><i class="fa-solid fa-network-wired text-green"></i> Connect Your Telegram Channel & Earn</h2>
-          <p class="text-muted" style="margin-bottom: 20px; font-size: 14px;">Allow Earn Program ads to run on your Telegram channel and earn <strong>₹0.50 INR for every 2 user joins</strong> automatically tracked!</p>
+          <p class="text-muted" style="margin-bottom: 20px; font-size: 14px;">Allow Earn Program ads to run on your Telegram channel and earn <strong>₹0.40 INR (40 paise) for every user join</strong> automatically tracked!</p>
 
           <div class="glass" style="padding: 20px; margin-bottom: 20px; border-left: 4px solid var(--neon-green);">
             <h4 style="color: var(--neon-green); margin-bottom: 8px;"><i class="fa-solid fa-circle-info"></i> Connection Setup Requirements</h4>
@@ -2625,50 +2625,58 @@
       if (type === 'tos') {
         title.textContent = '📜 Terms & Conditions';
         body.innerHTML = `
-          <p><strong>1. Acceptance of Terms</strong><br>By accessing or using Blazeculture, you agree to comply with all terms and conditions outlined herein. If you disagree with any part, please discontinue platform usage.</p>
+          <p><strong>1. Acceptance of Terms</strong><br>By accessing or using Earn Program (including our web application, Telegram Mini App, and bot @EarnProgramapp), you agree to comply with and be bound by all terms and conditions set forth herein. If you do not agree to these terms, please immediately discontinue platform usage.</p>
           <br>
-          <p><strong>2. User Accounts & Fair Play</strong><br>Users are allowed one account per individual and device. Using VPNs, proxy services, multi-account automation, or bots to fake ad views or channel joins will result in permanent account termination and forfeiture of wallet funds.</p>
+          <p><strong>2. User Accounts & Fair Play</strong><br>Each user is permitted one account per person and device. Any use of proxy services, automated bots, multi-accounting, click manipulation, or fraudulent behavior to simulate ad views or channel joins will result in immediate permanent suspension and forfeiture of all accumulated rewards and balances.</p>
           <br>
-          <p><strong>3. Channel Promotions & 20% Category Surcharge</strong><br>Promoters can run general or category-specific campaigns. Category-specific promotions incur a 20% surcharge added to base budget and are deducted directly from user wallet balance. Promotions run in 5-channel batches with 3-hour post lifetime auto-deletions if targets remain unfulfilled.</p>
+          <p><strong>3. Channel Promotions & Broadcast Campaigns</strong><br>Advertisers may launch channel promotion campaigns across the network. All submitted promotional banners and channel materials must comply with ethical advertising standards. Campaigns run in automated channel rotations and user joins are tracked via secure bot-generated links.</p>
           <br>
-          <p><strong>4. Official Support</strong><br>For questions or assistance regarding payments, promotions, or payouts, contact official support at <a href="https://t.me/EarnProgramSupport" target="_blank" style="color:var(--neon-green); text-decoration:none;"><strong>EarnProgramSupport</strong></a>.</p>
+          <p><strong>4. Channel Owner Revenue & Earnings</strong><br>Channel owners who connect their Telegram channels with bot administrator privileges earn revenue for every verified user join originating from their audience. Payouts are credited directly to your platform balance and can be withdrawn according to minimum withdrawal thresholds.</p>
+          <br>
+          <p><strong>5. Official Support</strong><br>For assistance regarding campaigns, withdrawals, or account matters, contact official customer support at <a href="https://t.me/EarnProgramSupport" target="_blank" style="color:var(--neon-green); text-decoration:none;"><strong>EarnProgramSupport</strong></a> or our official bot <a href="https://t.me/EarnProgramapp" target="_blank" style="color:var(--neon-cyan); text-decoration:none;"><strong>@EarnProgramapp</strong></a>.</p>
         `;
       } else if (type === 'privacy') {
         title.textContent = '🔒 Privacy Policy';
         body.innerHTML = `
-          <p><strong>1. Information Collection</strong><br>We collect minimal required profile data (Telegram User ID, username, name, IP address, wallet transaction logs) necessary to provide service, record ad views, and process wallet deposits and payouts.</p>
+          <p><strong>1. Data Collection & Transparency</strong><br>We collect minimal essential information necessary to maintain account security and track earnings, including your Telegram user ID, display username, first name, transaction reference numbers, and IP address for fraud detection.</p>
           <br>
-          <p><strong>2. Usage & Data Security</strong><br>Your information is used strictly to deliver services, calculate referral bonuses, and secure transactions. We do NOT sell, rent, or disclose personal information to external commercial third parties.</p>
+          <p><strong>2. Information Usage & Protection</strong><br>All collected data is utilized exclusively for service delivery, user verification, anti-fraud auditing, and payout distribution. We adhere to strict data confidentiality standards and will never sell, lease, or share personal user data with external commercial brokers.</p>
           <br>
-          <p><strong>3. Wallet Security</strong><br>All financial balances and payments are encrypted and logged with cryptographic transaction reference hashes.</p>
+          <p><strong>3. Transaction & Wallet Security</strong><br>Financial transactions and wallet balances are secured with encrypted logging. Payment verification hashes and UTR numbers are maintained in a protected database environment.</p>
+          <br>
+          <p><strong>4. User Data Control</strong><br>Users may contact support at <a href="https://t.me/EarnProgramSupport" target="_blank" style="color:var(--neon-green); text-decoration:none;"><strong>EarnProgramSupport</strong></a> to review or request deletion of their profile records upon account closure.</p>
         `;
       } else if (type === 'refund') {
         title.textContent = '💳 Refund & Cancellation Policy';
         body.innerHTML = `
-          <p><strong>1. Wallet Money Additions</strong><br>Wallet deposits made via UPI / YOUPI PG are non-refundable once credited. Funds in your wallet can be used anytime for channel promotion campaigns or PTC tasks.</p>
+          <p><strong>1. Wallet Additions & Deposits</strong><br>All wallet deposits made via UPI or integrated payment gateways are credited as promotional credits. Once credited, wallet funds are non-refundable to external payment sources, but remain available in your wallet indefinitely for promotions and tasks.</p>
           <br>
-          <p><strong>2. Promotion Campaign Refunds</strong><br>If a promotion campaign cannot be delivered or is rejected by administration, the full amount will be credited back to your Blazeculture wallet balance instantly.</p>
+          <p><strong>2. Unfulfilled Promotion Refunds</strong><br>If a promotion campaign is manually stopped or cannot be fulfilled, the unspent budget proportional to remaining unfulfilled joins is automatically refunded back to your platform wallet balance instantly.</p>
           <br>
-          <p><strong>3. Support Queries</strong><br>For deposit dispute resolution, please contact support at <a href="https://t.me/EarnProgramSupport" target="_blank" style="color:var(--neon-green); text-decoration:none;"><strong>EarnProgramSupport</strong></a> with transaction UTR numbers.</p>
+          <p><strong>3. Administrative Rejections</strong><br>If a promotion campaign is rejected by platform moderation due to policy violations, 100% of the campaign budget is immediately credited back to the user's wallet.</p>
+          <br>
+          <p><strong>4. Payment Resolution & Inquiries</strong><br>For any deposit verification discrepancies, contact our team at <a href="https://t.me/EarnProgramSupport" target="_blank" style="color:var(--neon-green); text-decoration:none;"><strong>EarnProgramSupport</strong></a> with your transaction UTR or order ID for expedited support.</p>
         `;
       } else if (type === 'disclaimer') {
         title.textContent = '⚖️ Earnings & Channel Promotion Disclaimer';
         body.innerHTML = `
-          <p><strong>1. Revenue & Earnings Disclaimer</strong><br>Ad viewing coin earnings and channel owner revenue splits depend on active user engagement and genuine channel joins. Historical earnings do not guarantee future yields.</p>
+          <p><strong>1. Earning Potential & Engagement</strong><br>Rewards earned through watching ads, completing sponsor tasks, or connecting Telegram channels are variable and depend on real user activity, network demand, and advertising partner budgets. Past earnings and displayed rates are not guarantees of future income.</p>
           <br>
-          <p><strong>2. Channel Growth Results</strong><br>Target join estimates are based on campaign budget. Actual subscriber retention and engagement depend on channel content quality and audience appeal.</p>
+          <p><strong>2. Promotion Results & Subscriber Engagement</strong><br>Join delivery figures are guaranteed based on your campaign budget. However, long-term subscriber engagement, channel message views, and retention are influenced by channel content quality and audience interest.</p>
+          <br>
+          <p><strong>3. Independent Platform Operation</strong><br>Earn Program is an independent advertising service and is not affiliated with or endorsed by Telegram FZ-LLC.</p>
         `;
       } else if (type === 'dmca') {
         title.textContent = '🛡️ DMCA & Copyright Policy';
         body.innerHTML = `
-          <p><strong>1. Copyright Compliance</strong><br>Blazeculture respects intellectual property rights. Users and channel owners are prohibited from promoting copyrighted or infringing materials.</p>
+          <p><strong>1. Intellectual Property Protection</strong><br>Earn Program respects intellectual property rights. Promoters and channel owners are strictly forbidden from advertising infringing, counterfeit, or copyrighted content without explicit permission from copyright holders.</p>
           <br>
-          <p><strong>2. Takedown Requests</strong><br>To submit a copyright violation complaint, notify us at <a href="https://t.me/EarnProgramSupport" target="_blank" style="color:var(--neon-green); text-decoration:none;"><strong>EarnProgramSupport</strong></a> with proof of ownership and channel link. Incomplete notices will be removed within 24 hours.</p>
+          <p><strong>2. Takedown Notices</strong><br>If you believe content hosted or advertised on our platform infringes your copyright, please report it to <a href="https://t.me/EarnProgramSupport" target="_blank" style="color:var(--neon-green); text-decoration:none;"><strong>EarnProgramSupport</strong></a> with appropriate ownership verification. Infringing materials will be removed within 24 hours.</p>
         `;
       } else if (type === 'about') {
-        title.textContent = 'ℹ️ About Blazeculture Ecosystem';
+        title.textContent = 'ℹ️ About Earn Program Ecosystem';
         body.innerHTML = `
-          <p><strong>Blazeculture</strong> is a high-paying PTC ad platform and Telegram channel promotion ecosystem. Our automated platform allows users to earn coins watching ads, promotes channels across connected partner networks with category targeting, and shares revenue with channel owners on user joins.</p>
+          <p><strong>Earn Program</strong> is an ad-watching and Telegram channel growth platform. Our automated infrastructure enables users to earn coins by watching ads, connects channel owners to monetize their communities, and delivers verified real members for promotional campaigns.</p>
         `;
       }
       modal.classList.remove('hidden');

@@ -202,13 +202,13 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         # Approve channel for revenue testing
         db.update_connected_channel_status("https://t.me/myownerchannel", "approved")
 
-        # Simulate 2 joins on channel - should credit 0.50 INR (0.625 coins @ 80 INR/$ = 100 coins)
+        # Simulate 2 joins on channel - should credit 0.80 INR (0.40 INR per join) (1.0 coins @ 80 INR/$ = 100 coins)
         user_b_before = db.get_user_by_username("userB")["balance_coins"]
         db.record_channel_join_event("https://t.me/myownerchannel", 1001)
         db.record_channel_join_event("https://t.me/myownerchannel", 1002)
 
         user_b_after = db.get_user_by_username("userB")["balance_coins"]
-        self.assertAlmostEqual(user_b_after - user_b_before, 0.625)
+        self.assertAlmostEqual(user_b_after - user_b_before, 1.0)
 
     def test_08_withdrawal_flow(self):
         user_a = db.get_user_by_username("userA")
@@ -658,6 +658,20 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
                 self.assertTrue(res.json()["ok"])
                 self.assertEqual(res.json()["channel"]["channel_title"], "Valid Big Channel")
 
+            # Case F: Private channel link connect where bot is not admin -> prompts to add bot as admin
+            mock_private_bot_not_admin = AsyncMock()
+            mock_private_bot_not_admin.get.side_effect = [
+                # 1. getMe
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": 12345, "is_bot": True}}),
+                # 2. getChat fails because bot not added in private channel
+                AsyncMock(json=lambda: {"ok": False, "description": "Bad Request: chat not found"}),
+            ]
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client_cls.return_value.__aenter__.return_value = mock_private_bot_not_admin
+                res = self.client.post("/api/channels/connect", json={"channel_link": "https://t.me/+AbCdEfGh123"}, headers={"Authorization": f"Bearer {tg_token}"})
+                self.assertEqual(res.status_code, 400)
+                self.assertIn("Bot is not an administrator in this channel", res.json()["detail"])
+
     def test_17_admin_add_funds_and_channel_deletion(self):
         login_c = self.client.post("/api/auth/login", json={"login": "userC", "password": "password123"}).json()
         token_c = login_c["token"]
@@ -864,9 +878,9 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         self.assertEqual(promo_after["current_joins"], 1)
         self.assertEqual(promo_after["spent_inr"], 0.50)
 
-        # Verify owner received coin earnings
+        # Verify owner received coin earnings (0.40 INR = 0.50 coins @ 80 INR/$ = 100 coins)
         owner_bal_after = db.get_user_by_id(user_c["id"])["balance_coins"]
-        self.assertAlmostEqual(owner_bal_after - owner_bal_before, 0.3125)
+        self.assertAlmostEqual(owner_bal_after - owner_bal_before, 0.50)
 
         # Verify owner also received paise in wallet
         owner_tg = user_c.get("telegram_id") or user_c["id"]
@@ -1186,6 +1200,18 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
                 self.assertEqual(res_sub.status_code, 200)
                 self.assertTrue(res_sub.json()["ok"])
                 self.assertEqual(res_sub.json()["promotion"]["channel_title"], "Super Cool Channel")
+
+    def test_26_legal_policies_and_branding(self):
+        res = self.client.get("/")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("Earn Program", res.text)
+        self.assertIn("Terms of Service", res.text)
+        self.assertIn("Privacy Policy", res.text)
+        self.assertIn("Refund Policy", res.text)
+        self.assertIn("Earnings Disclaimer", res.text)
+        self.assertIn("@EarnProgramapp", res.text)
+        self.assertIn("40 paise", res.text)
+        self.assertNotIn("blazeculturebot", res.text.lower())
 
 
 if __name__ == "__main__":

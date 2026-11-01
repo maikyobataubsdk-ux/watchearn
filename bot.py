@@ -1148,7 +1148,7 @@ async def main() -> None:
         raise RuntimeError("Could not read bot username. Check BOT_TOKEN.")
     dp = Dispatcher()
     dp.include_router(router)
-    print(f"Blazeculture Bot @{bot_username} is polling...")
+    print(f"Earn Program Bot @{bot_username} is polling...")
     # Start 3-hour 5-channel rotation background loop task
     asyncio.create_task(rotation_background_loop())
     try:

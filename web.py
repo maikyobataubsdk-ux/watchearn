@@ -329,7 +329,7 @@ class AdminSettingsRequest(BaseModel):
     min_withdrawal_usd: Optional[float] = 5.0
     min_withdrawal_inr: Optional[float] = 400.0
     referral_commission_pct: Optional[float] = 15.0
-    payment_upi_id: Optional[str] = "blazeculture@upi"
+    payment_upi_id: Optional[str] = "earnprogram@upi"
     payment_qr_url: Optional[str] = "/static/payment_qr.jpg"
 
 
@@ -392,6 +392,11 @@ def normalize_telegram_channel(input_str: str) -> tuple[str, str, str]:
         parts = [p for p in path.split("/") if p]
         if not parts:
             return "", "", ""
+        if parts[0] == "joinchat" and len(parts) > 1:
+            target = parts[1].strip()
+            invite_hash = target if target.startswith("+") else f"+{target}"
+            clean_url = f"https://t.me/{invite_hash}"
+            return clean_url, invite_hash, ""
         target = parts[0].strip()
     else:
         target = s.lstrip("@").split("?")[0].split("/")[0].strip()
@@ -400,9 +405,10 @@ def normalize_telegram_channel(input_str: str) -> tuple[str, str, str]:
         return "", "", ""
 
     if target.startswith("+") or target.startswith("joinchat"):
-        code = target if target.startswith("+") else target.replace("joinchat/", "")
-        clean_url = f"https://t.me/{code}"
-        channel_id = code
+        code = target if target.startswith("+") else target.replace("joinchat", "").lstrip("/")
+        invite_hash = code if code.startswith("+") else f"+{code}"
+        clean_url = f"https://t.me/{invite_hash}"
+        channel_id = invite_hash
         channel_username = ""
         return clean_url, channel_id, channel_username
 
@@ -518,6 +524,11 @@ async def verify_telegram_channel_for_promotion(channel_username: str, channel_i
             chat_data = chat_res.json()
             if not chat_data.get("ok"):
                 err_desc = chat_data.get("description", "Channel not found")
+                if chat_ref.startswith("+"):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Bot is not an administrator in this channel! Please add the bot as an administrator in the channel first, then try again."
+                    )
                 raise HTTPException(
                     status_code=400,
                     detail=f"Valid channel not found. Please enter a valid channel link or username. ({err_desc})"
@@ -601,6 +612,12 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
             chat_data = chat_res.json()
             if not chat_data.get("ok"):
                 err_desc = chat_data.get("description", "")
+                # If private link or bot not in chat yet
+                if chat_ref.startswith("+") or "chat not found" in err_desc.lower():
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Bot is not an administrator in this channel. Please add the bot as an administrator in your channel first, then try connecting again."
+                    )
                 raise HTTPException(
                     status_code=400,
                     detail=f"Channel not found. Please enter a valid channel link or @username. ({err_desc})"
@@ -1008,7 +1025,7 @@ async def get_payment_qr_public() -> dict:
     settings = get_settings()
     return {
         "ok": True,
-        "upi_id": settings.get("payment_upi_id", "blazeculture@upi"),
+        "upi_id": settings.get("payment_upi_id", "earnprogram@upi"),
         "qr_image_url": settings.get("payment_qr_url", "/static/payment_qr.jpg"),
     }
 
@@ -1636,7 +1653,7 @@ async def admin_get_payment_qr(_: bool = Depends(require_admin)) -> dict:
 
 @app.post("/api/admin/payment-qr")
 async def admin_save_payment_qr(body: AdminPaymentSettingsRequest, _: bool = Depends(require_admin)) -> dict:
-    upi = body.upi_id or body.paymentUpiId or "blazeculture@upi"
+    upi = body.upi_id or body.paymentUpiId or "earnprogram@upi"
     qr = body.qr_image_url or body.paymentQrUrl or "/static/payment_qr.jpg"
     update_settings({"payment_upi_id": upi, "payment_qr_url": qr})
     return {"ok": True, "message": "Payment QR code & UPI ID updated successfully!"}
@@ -1936,7 +1953,7 @@ async def admin_save_settings(body: AdminSettingsRequest, _: bool = Depends(requ
         "min_withdrawal_usd": body.min_withdrawal_usd or 5.0,
         "min_withdrawal_inr": body.min_withdrawal_inr or 400.0,
         "referral_commission_pct": body.referral_commission_pct or 15.0,
-        "payment_upi_id": body.payment_upi_id or "blazeculture@upi",
+        "payment_upi_id": body.payment_upi_id or "earnprogram@upi",
         "payment_qr_url": body.payment_qr_url or "/static/payment_qr.jpg",
     })
     return {"ok": True, "message": "Earn Program system settings updated successfully!"}
