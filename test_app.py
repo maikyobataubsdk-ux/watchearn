@@ -570,7 +570,7 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
                 "channel_link": "@testchannel"
             }, headers={"Authorization": f"Bearer {token_b}"})
             self.assertEqual(fail_no_tg.status_code, 400)
-            self.assertIn("Telegram account connected nahi hai", fail_no_tg.json()["detail"])
+            self.assertIn("Your Telegram account is not connected", fail_no_tg.json()["detail"])
 
             # Login as user with telegram_id
             tg_res = self.client.post("/api/auth/telegram-mini-app", json={
@@ -594,7 +594,7 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
                 mock_client_cls.return_value.__aenter__.return_value = mock_bot_not_admin
                 res = self.client.post("/api/channels/connect", json={"channel_link": "@mychan"}, headers={"Authorization": f"Bearer {tg_token}"})
                 self.assertEqual(res.status_code, 400)
-                self.assertIn("Bot is channel me admin nahi hai", res.json()["detail"])
+                self.assertIn("Bot is not an administrator in this channel", res.json()["detail"])
 
             # Case C: User not owner/admin in channel
             mock_user_not_owner = AsyncMock()
@@ -613,7 +613,7 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
                 mock_client_cls.return_value.__aenter__.return_value = mock_user_not_owner
                 res = self.client.post("/api/channels/connect", json={"channel_link": "@mychan"}, headers={"Authorization": f"Bearer {tg_token}"})
                 self.assertEqual(res.status_code, 400)
-                self.assertIn("Aap sirf wahi channel add kar sakte hai jo aap own karte hai", res.json()["detail"])
+                self.assertIn("You can only add channels that you own", res.json()["detail"])
 
             # Case D: Channel members < 100
             mock_low_members = AsyncMock()
@@ -634,7 +634,7 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
                 mock_client_cls.return_value.__aenter__.return_value = mock_low_members
                 res = self.client.post("/api/channels/connect", json={"channel_link": "@mychan"}, headers={"Authorization": f"Bearer {tg_token}"})
                 self.assertEqual(res.status_code, 400)
-                self.assertIn("Minimum member 100 required", res.json()["detail"])
+                self.assertIn("Minimum 100 members required", res.json()["detail"])
 
             # Case E: Valid channel with >= 100 members, bot admin, user creator
             mock_valid = AsyncMock()
@@ -1110,7 +1110,7 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
                     "channel_link": "https://t.me/invalchannel999"
                 }, headers={"Authorization": f"Bearer {token}"})
                 self.assertEqual(res_analyze.status_code, 400)
-                self.assertIn("Valid channel nahi mila", res_analyze.json()["detail"])
+                self.assertIn("Valid channel not found", res_analyze.json()["detail"])
 
             # Case 2: Bot is NOT admin in channel
             mock_bot_not_admin = AsyncMock()
@@ -1126,7 +1126,7 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
                     "channel_link": "https://t.me/targetpromochannel"
                 }, headers={"Authorization": f"Bearer {token}"})
                 self.assertEqual(res_analyze.status_code, 400)
-                self.assertIn("Bot is channel me admin nahi hai", res_analyze.json()["detail"])
+                self.assertIn("Bot is not an administrator in this channel", res_analyze.json()["detail"])
 
             # Case 3: Valid channel with bot as administrator
             mock_valid = AsyncMock()
@@ -1166,7 +1166,7 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
                     "ad_message": "Join us!"
                 }, headers={"Authorization": f"Bearer {token}"})
                 self.assertEqual(res_sub.status_code, 400)
-                self.assertIn("Bot is channel me admin nahi hai", res_sub.json()["detail"])
+                self.assertIn("Bot is not an administrator in this channel", res_sub.json()["detail"])
 
             # Case 5: Submit promotion succeeds when bot is admin
             mock_submit_valid = AsyncMock()

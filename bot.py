@@ -707,7 +707,7 @@ async def help_sub_watch_callback(callback: CallbackQuery) -> None:
         "1️⃣ Tap <b>Earn Program</b> button to open the Mini App.\n"
         "2️⃣ Go to the <b>Watch</b> tab from bottom menu.\n"
         "3️⃣ Tap <b>Start Viewing Ad</b> and wait for the 20-second timer.\n"
-        "4️⃣ Once the timer finishes, tap <b>Claim Reward</b> to get ₹0.80 paise instantly!\n"
+        "4️⃣ Once the timer finishes, tap <b>Claim Reward</b> to get ₹0.80 instantly!\n"
         "5️⃣ Complete daily ad views to maximize your daily earnings!"
     )
     await callback.answer()

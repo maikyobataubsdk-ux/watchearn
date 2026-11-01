@@ -878,7 +878,7 @@
               <button type="button" id="promoResetBtn" class="btn btn-outline hidden" onclick="resetPromoChannelSearch()" style="border-color: rgba(255, 77, 77, 0.5); color: #ff6b6b;" title="Cancel / Change Channel"><i class="fa-solid fa-arrow-left"></i> Back</button>
             </div>
             <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
-              ⚠️ <span style="color: var(--gold); font-weight: bold;">Bot Admin jaruri hai:</span> Channel me bot ko pehle Administrator banayein taaki members sahi se track ho sakein.
+              ⚠️ <span style="color: var(--gold); font-weight: bold;">Bot Admin Required:</span> Make the bot an Administrator in your channel first so members can be tracked accurately.
             </div>
           </div>
 
@@ -1034,10 +1034,10 @@
           <div class="glass" style="padding: 20px; margin-bottom: 20px; border-left: 4px solid var(--neon-green);">
             <h4 style="color: var(--neon-green); margin-bottom: 8px;"><i class="fa-solid fa-circle-info"></i> Connection Setup Requirements</h4>
             <ol style="margin-left: 20px; font-size: 13px; color: var(--text-muted); line-height: 1.8;">
-              <li>Aap sirf wahi Telegram channel add kar sakte hai jo aap <strong>own (creator/admin)</strong> karte hain.</li>
-              <li>Bot (e.g. <code>@EarnProgramapp</code>) ko channel me <strong>Admin with permissions</strong> ke sath add hona chahiye.</li>
-              <li>Channel me <strong>Minimum 100 members</strong> hona required hai.</li>
-              <li>Sabhi requirements poori hone par channel link neeche enter karke <strong>"Connect & Verify Admin"</strong> par click karein.</li>
+              <li>You can only add Telegram channels that you <strong>own (creator/administrator)</strong>.</li>
+              <li>The bot (e.g. <code>@EarnProgramapp</code>) must be added as an <strong>Admin with permissions</strong> in your channel.</li>
+              <li>Your channel must have a <strong>minimum of 100 members</strong>.</li>
+              <li>Once all requirements are met, enter your channel link below and click <strong>"Connect & Verify Admin"</strong>.</li>
             </ol>
           </div>
 
@@ -1342,6 +1342,7 @@
                     <th>ID</th>
                     <th>User</th>
                     <th>Channel Link</th>
+                    <th>Image</th>
                     <th>Budget</th>
                     <th>Txn Ref</th>
                     <th>Ad Message</th>
@@ -1349,7 +1350,7 @@
                   </tr>
                 </thead>
                 <tbody id="adminPromotionsTableBody">
-                  <tr><td colspan="7" class="text-muted">Loading promotion requests...</td></tr>
+                  <tr><td colspan="8" class="text-muted">Loading promotion requests...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -1770,6 +1771,21 @@
     <p style="color: var(--text-muted); max-width: 450px; font-size: 15px;">We are currently performing essential platform upgrades to improve your experience. Please check back shortly!</p>
   </div>
 
+  <!-- Admin Promotional Image Preview Modal -->
+  <div id="adminImagePreviewModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.88); backdrop-filter: blur(10px); z-index: 1500; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div class="glass" style="max-width: 650px; width: 100%; padding: 25px; position: relative; border-color: rgba(0,229,255,0.4); text-align: center;">
+      <button onclick="closeAdminImageModal()" style="position: absolute; top: 15px; right: 20px; background: transparent; border: none; color: #fff; font-size: 24px; cursor: pointer;">&times;</button>
+      <h3 id="adminImageModalTitle" style="color: var(--neon-cyan); margin-bottom: 15px; font-size: 18px; text-align: left;"><i class="fa-solid fa-image"></i> Promotion Image</h3>
+      <div style="background: rgba(0,0,0,0.4); border-radius: 8px; padding: 10px; margin-bottom: 18px; max-height: 65vh; overflow: auto; display: flex; align-items: center; justify-content: center;">
+        <img id="adminImageModalImg" src="" alt="Promotional Content" style="max-width: 100%; max-height: 60vh; object-fit: contain; border-radius: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.6);">
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <a id="adminImageModalOpenLink" href="#" target="_blank" class="btn btn-outline" style="color: var(--neon-cyan); border-color: rgba(0,229,255,0.5);"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open Full Image</a>
+        <button type="button" class="btn btn-secondary" onclick="closeAdminImageModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Admin Custom Member Rate Modal -->
   <div id="adminCustomRateModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 20px;">
     <div class="glass" style="max-width: 450px; width: 100%; padding: 30px; position: relative;">
@@ -1852,31 +1868,31 @@
         paymentDetails: "Payment ID / UPI / Wallet Address"
       },
       hi: {
-        dashboard: "डैशबोर्ड",
-        heroBadge: "अर्न प्रोग्राम",
-        heroTitle: "विज्ञापन देखें और अपने टेलीग्राम चैनल का प्रमोशन कराएं",
-        heroDesc: "सबसे ज्यादा कमाई कराने वाला पीटीसी ऐप! सरल विज्ञापन देखकर कॉइन कमाएं या अपने चैनल का ऑटोमेटेड प्रमोशन कराएं।",
-        startWatchingBtn: "विज्ञापन देखना शुरू करें",
-        howItWorksTitle: "अर्न प्रोग्राम कैसे काम करता है",
-        leaderboardTitle: "शीर्ष कमाई करने वाले लीडरबोर्ड",
-        dashboardTitle: "यूजर डैशबोर्ड",
-        watchAdsNow: "विज्ञापन देखें",
-        currentBalance: "वर्तमान बैलेंस",
-        adsWatchedToday: "आज की प्रगति",
-        totalAdsWatched: "कुल कमाई",
-        referralTitle: "रेफरल लिंक और 15% लाइफटाइम कमीशन",
-        referralDesc: "दोस्तों के साथ अपना लिंक शेयर करें। उनके द्वारा कमाए गए हर कॉइन पर 15% कमीशन पाएं!",
-        withdrawalHistory: "निकासी इतिहास",
-        adAreaTitle: "अर्न प्रोग्राम विज्ञापन हब",
-        watchAdHeadline: "पुरस्कार पाने के लिए पूरा विज्ञापन देखें",
-        watchAdInstruction: "टाइमर खत्म होने तक टैब बंद न करें। पुरस्कार अपने आप जोड़ दिया जाएगा।",
-        startAdBtn: "विज्ञापन देखना शुरू करें",
-        claimRewardBtn: "पुरस्कार दावा करें (+2.0 कॉइन्स)",
-        withdrawHeading: "कैश निकासी का अनुरोध करें",
-        withdrawSub: "न्यूनतम भुगतान: $5.00 / ₹400 (500 कॉइन्स)।",
-        payoutMethod: "भुगतान विधि चुनें",
-        withdrawalAmount: "राशि ($ USD)",
-        paymentDetails: "पेमेंट आईडी / UPI / वॉलेट एड्रेस"
+        dashboard: "Dashboard",
+        heroBadge: "Earn Program",
+        heroTitle: "Watch Simple Ads & Promote Your Telegram Channels Instantly",
+        heroDesc: "The highest-paying PTC Mini App platform! Earn coins by viewing quick ads or promote your Telegram channel paid with automated multi-channel bot broadcasts and real-time revenue share.",
+        startWatchingBtn: "Start Watching Ads",
+        howItWorksTitle: "How Earn Program Works",
+        leaderboardTitle: "Top Earners Leaderboard",
+        dashboardTitle: "User Dashboard",
+        watchAdsNow: "Watch Ads",
+        currentBalance: "Current Balance",
+        adsWatchedToday: "Daily Ads Progress",
+        totalAdsWatched: "Lifetime Earned",
+        referralTitle: "Referral Link & 15% Lifetime Commission",
+        referralDesc: "Share your unique referral link with friends. You will earn 15% commission on all ad view coins they earn forever!",
+        withdrawalHistory: "Withdrawal History",
+        adAreaTitle: "Earn Program High-Paying Ad Hub",
+        watchAdHeadline: "Watch Full Ad to Earn Reward",
+        watchAdInstruction: "Do not close or switch tab until timer finishes. Reward will be added automatically.",
+        startAdBtn: "Start Viewing Ad",
+        claimRewardBtn: "Claim Reward (+2.0 Coins)",
+        withdrawHeading: "Request Cash Withdrawal",
+        withdrawSub: "Minimum payout: $5.00 / ₹400 (500 Coins).",
+        payoutMethod: "Select Payment Method",
+        withdrawalAmount: "Amount ($ USD)",
+        paymentDetails: "Payment ID / UPI / Wallet Address"
       }
     };
 
@@ -2914,7 +2930,7 @@
 
             let rejMsgHtml = '';
             if (p.status === 'rejected') {
-              const msg = p.rejection_reason || 'Promotion reject kar diya gaya hai.';
+              const msg = p.rejection_reason || 'Promotion has been rejected.';
               rejMsgHtml = `<div style="font-size: 11px; color: var(--error); margin-top: 4px; font-weight: 600;"><i class="fa-solid fa-circle-xmark"></i> ${msg}</div>`;
             }
 
@@ -3204,7 +3220,7 @@
             } else if (st === 'active' || st === 'approved') {
               actionHtml = `
                 <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
-                  <button class="btn btn-warning" style="padding: 4px 10px; font-size: 12px; background:#e67e22; border:none; color:#fff;" onclick="stopPromotion(${p.id})" title="Band Karein / Stop Promotion"><i class="fa-solid fa-stop"></i> Stop (Band Karein)</button>
+                  <button class="btn btn-warning" style="padding: 4px 10px; font-size: 12px; background:#e67e22; border:none; color:#fff;" onclick="stopPromotion(${p.id})" title="Stop Promotion"><i class="fa-solid fa-stop"></i> Stop</button>
                   <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px;" onclick="rejectPromotion(${p.id})" title="Reject & Refund"><i class="fa-solid fa-xmark"></i> Reject</button>
                 </div>
               `;
@@ -3219,10 +3235,22 @@
               actionHtml = `<span style="font-weight:bold; color:${badgeColor}">${st.toUpperCase()}</span>${p.rejection_reason ? `<div style="font-size:10px; color:var(--error);">${p.rejection_reason}</div>` : ''}`;
             }
 
+            let imgHtml = '<span class="text-muted" style="font-size:12px;">No Image</span>';
+            if (p.image_url) {
+              const safeImgUrl = encodeURI(p.image_url);
+              imgHtml = `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <img src="${safeImgUrl}" alt="Promo" style="width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(0, 229, 255, 0.4); cursor: pointer;" onclick="openAdminImageModal('${safeImgUrl}', 'Promotion #${p.id} Image')">
+                  <button type="button" class="btn btn-outline" style="padding: 2px 7px; font-size: 11px; color: var(--neon-cyan); border-color: rgba(0,229,255,0.4);" onclick="openAdminImageModal('${safeImgUrl}', 'Promotion #${p.id} Image')"><i class="fa-solid fa-eye"></i> View</button>
+                </div>
+              `;
+            }
+
             tr.innerHTML = `
               <td>#${p.id}</td>
               <td><strong>${p.username}</strong></td>
               <td><a href="${p.channel_url || p.channel_link}" target="_blank" style="color:var(--neon-cyan);">${p.channel_title || p.channel_link}</a></td>
+              <td>${imgHtml}</td>
               <td>₹${budgetDisplay} INR<div style="font-size:11px;" class="text-cyan">${joinsDisplay}</div></td>
               <td><code>${p.transaction_ref || p.payment_txn_ref}</code></td>
               <td><div style="max-width:200px; font-size:12px;" class="text-muted">${p.ad_message || '-'}</div></td>
@@ -3233,7 +3261,7 @@
             promoTbody.appendChild(tr);
           });
         } else {
-          promoTbody.innerHTML = `<tr><td colspan="7" class="text-muted">No pending promotion requests.</td></tr>`;
+          promoTbody.innerHTML = `<tr><td colspan="8" class="text-muted">No pending promotion requests.</td></tr>`;
         }
         document.getElementById('admPendingPromos').textContent = pendingCount;
 
@@ -3391,6 +3419,24 @@
       });
     }
 
+    function openAdminImageModal(imageUrl, title) {
+      const modal = document.getElementById('adminImagePreviewModal');
+      const img = document.getElementById('adminImageModalImg');
+      const titleEl = document.getElementById('adminImageModalTitle');
+      const linkEl = document.getElementById('adminImageModalOpenLink');
+      if (img) img.src = imageUrl;
+      if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-image"></i> ${title || 'Promotion Image'}`;
+      if (linkEl) linkEl.href = imageUrl;
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeAdminImageModal() {
+      const modal = document.getElementById('adminImagePreviewModal');
+      const img = document.getElementById('adminImageModalImg');
+      if (img) img.src = '';
+      if (modal) modal.classList.add('hidden');
+    }
+
     function openAdminAddFundsModal(userId, username) {
       document.getElementById('adminAddFundsUserIdVal').value = userId;
       document.getElementById('adminAddFundsTargetUserText').textContent = `${username} (#${userId})`;
@@ -3460,10 +3506,10 @@
     }
 
     async function stopPromotion(promoId) {
-      if (!confirm(`Are you sure you want to stop/band Promotion #${promoId}? The promotion will be paused and removed from active rotation.`)) return;
+      if (!confirm(`Are you sure you want to stop Promotion #${promoId}? The promotion will be paused and removed from active rotation.`)) return;
       try {
         const res = await apiCall('/api/admin/promotions/stop', 'POST', { promotionId: promoId });
-        alert(res.message || 'Promotion stopped/band kar diya gaya!');
+        alert(res.message || 'Promotion stopped successfully!');
         loadAdminDashboardData();
       } catch (err) {
         alert(err.message);
