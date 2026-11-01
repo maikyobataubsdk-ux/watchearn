@@ -875,17 +875,27 @@
             <div style="display: flex; gap: 10px;">
               <input type="text" id="promoChannelLink" class="glass-input" placeholder="https://t.me/yourchannel or @yourchannel">
               <button class="btn btn-cyan" onclick="analyzePromoChannel()"><i class="fa-solid fa-magnifying-glass"></i> Analyze</button>
+              <button type="button" id="promoResetBtn" class="btn btn-outline hidden" onclick="resetPromoChannelSearch()" style="border-color: rgba(255, 77, 77, 0.5); color: #ff6b6b;" title="Cancel / Change Channel"><i class="fa-solid fa-arrow-left"></i> Back</button>
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+              ⚠️ <span style="color: var(--gold); font-weight: bold;">Bot Admin jaruri hai:</span> Channel me bot ko pehle Administrator banayein taaki members sahi se track ho sakein.
             </div>
           </div>
 
           <!-- Channel Analysis Output -->
-          <div id="promoAnalysisCard" class="glass hidden" style="padding: 20px; margin-bottom: 25px; border-color: rgba(0,229,255,0.3);">
-            <h4 style="color: var(--neon-cyan); margin-bottom: 10px;"><i class="fa-solid fa-circle-check"></i> Channel Analysis Complete</h4>
+          <div id="promoAnalysisCard" class="glass hidden" style="padding: 20px; margin-bottom: 25px; border-color: rgba(0,229,255,0.3); position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">
+              <h4 style="color: var(--neon-cyan); margin: 0;"><i class="fa-solid fa-circle-check"></i> Channel Verified & Details</h4>
+              <button type="button" class="btn btn-sm" onclick="resetPromoChannelSearch()" style="background: rgba(255, 77, 77, 0.2); border: 1px solid rgba(255, 77, 77, 0.4); color: #ff6b6b; font-size: 11px; padding: 4px 10px; cursor: pointer; border-radius: 6px;">
+                <i class="fa-solid fa-xmark"></i> Cut / Change Channel
+              </button>
+            </div>
             <div style="font-size: 14px; line-height: 1.8;">
-              <div><strong>Title:</strong> <span id="pTitle">-</span></div>
-              <div><strong>Username:</strong> <span id="pUsername">-</span></div>
-              <div><strong>Total Members:</strong> <span id="pMembers" class="text-green">0</span></div>
-              <div><strong>Bot Full Admin Power:</strong> <span id="pBotAdminStatus" class="text-gold">Checking...</span></div>
+              <div><strong>Channel Name:</strong> <span id="pTitle" style="color: #fff; font-weight: bold;">-</span></div>
+              <div><strong>Username / Handle:</strong> <span id="pUsername" class="text-cyan">-</span></div>
+              <div><strong>Subscribers / Members:</strong> <span id="pMembers" class="text-green">0</span></div>
+              <div><strong>Channel Info:</strong> <span id="pDescription" class="text-muted">-</span></div>
+              <div><strong>Bot Tracking Status:</strong> <span id="pBotAdminStatus" class="text-gold">Checking...</span></div>
             </div>
           </div>
 
@@ -1613,7 +1623,7 @@
         <a href="#" onclick="openLegalModal('privacy'); return false;" style="color: var(--neon-cyan); text-decoration: none;">Privacy Policy</a> |
         <a href="#" onclick="openLegalModal('refund'); return false;" style="color: var(--neon-cyan); text-decoration: none;">Refund Policy</a> |
         <a href="#" onclick="openLegalModal('disclaimer'); return false;" style="color: var(--neon-cyan); text-decoration: none;">Earnings Disclaimer</a> |
-        <a href="https://t.me/EarnProgramSupport" target="_blank" style="color: var(--neon-green); text-decoration: none;"><i class="fa-brands fa-telegram"></i> Support (EarnProgramSupport)</a>
+        <a href="https://t.me/EarnProgramSupport" target="_blank" style="color: var(--neon-green); text-decoration: none;"><i class="fa-brands fa-telegram"></i> Support</a>
       </div>
     </footer>
 
@@ -2657,6 +2667,29 @@
       await updatePromoPricePreview();
     }
 
+    function resetPromoChannelSearch() {
+      const input = document.getElementById('promoChannelLink');
+      if (input) input.value = '';
+
+      currentAnalyzedChannel = null;
+      appliedPromoCoupon = null;
+      appliedPromoDiscountInr = 0.0;
+
+      const couponInput = document.getElementById('promoCouponInput');
+      if (couponInput) couponInput.value = '';
+      const couponStatus = document.getElementById('promoCouponStatusMsg');
+      if (couponStatus) couponStatus.textContent = '';
+
+      const analysisCard = document.getElementById('promoAnalysisCard');
+      if (analysisCard) analysisCard.classList.add('hidden');
+
+      const step2 = document.getElementById('promoStep2Area');
+      if (step2) step2.classList.add('hidden');
+
+      const resetBtn = document.getElementById('promoResetBtn');
+      if (resetBtn) resetBtn.classList.add('hidden');
+    }
+
     async function analyzePromoChannel() {
       const link = document.getElementById('promoChannelLink').value.trim();
       if (!link) return alert('Please enter a channel link or username!');
@@ -2667,12 +2700,23 @@
 
         document.getElementById('promoAnalysisCard').classList.remove('hidden');
         document.getElementById('promoStep2Area').classList.remove('hidden');
+        const resetBtn = document.getElementById('promoResetBtn');
+        if (resetBtn) resetBtn.classList.remove('hidden');
 
-        document.getElementById('pTitle').textContent = res.title;
-        document.getElementById('pUsername').textContent = res.username;
-        document.getElementById('pMembers').textContent = res.members_count;
-        document.getElementById('pBotAdminStatus').textContent = res.bot_is_admin ? 'YES (Full Powers Enabled)' : 'NO (Please Add Bot as Admin)';
-        document.getElementById('pBotAdminStatus').style.color = res.bot_is_admin ? 'var(--neon-green)' : 'var(--error)';
+        document.getElementById('pTitle').textContent = res.title || 'Channel';
+        document.getElementById('pUsername').textContent = res.username || res.channel_id;
+        document.getElementById('pMembers').textContent = res.members_count || 'Active Telegram Channel';
+        const pDesc = document.getElementById('pDescription');
+        if (pDesc) pDesc.textContent = res.description || 'Channel verified for promotion.';
+
+        const botAdminEl = document.getElementById('pBotAdminStatus');
+        if (res.bot_is_admin) {
+          botAdminEl.textContent = '✅ ACTIVE (Bot is Admin - Tracking Enabled)';
+          botAdminEl.style.color = 'var(--neon-green)';
+        } else {
+          botAdminEl.textContent = '❌ Bot is NOT Admin (Tracking Unavailable)';
+          botAdminEl.style.color = 'var(--error)';
+        }
 
         await updatePromoPricePreview();
       } catch (err) {
@@ -2785,8 +2829,8 @@
 
           const res = await apiCall('/api/promotions/submit', 'POST', payload, userToken);
           alert(res.message || 'Promotion submitted successfully!');
+          resetPromoChannelSearch();
           refreshWalletBalance();
-          await updatePromoPricePreview();
           loadMyPromotions();
         } catch (err) {
           alert(err.message || 'Failed to submit promotion.');

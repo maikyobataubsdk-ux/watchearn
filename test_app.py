@@ -1083,6 +1083,110 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
         )
         self.assertEqual(forbidden_stop.status_code, 400)
 
+    def test_promotion_valid_channel_and_bot_admin_verification(self):
+        """Test that promotion analyze and submit require a valid channel where bot is admin."""
+        from unittest.mock import patch, AsyncMock
+
+        # Create user and give wallet funds
+        tg_id = 88776655
+        user_res = self.client.post("/api/auth/telegram-mini-app", json={
+            "telegram_id": tg_id,
+            "username": "promo_tester_user"
+        })
+        token = user_res.json()["token"]
+        user_id = user_res.json()["user"]["id"]
+        db.admin_credit_user_wallet(user_id, 500.0, "Promotion test balance")
+
+        with patch.dict("os.environ", {"TESTING": "0"}), patch("config.BOT_TOKEN", "123456789:ABCDEFG"):
+            # Case 1: Channel not found / invalid channel
+            mock_not_found = AsyncMock()
+            mock_not_found.get.side_effect = [
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": 12345, "is_bot": True}}),
+                AsyncMock(json=lambda: {"ok": False, "description": "Chat not found"}),
+            ]
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client_cls.return_value.__aenter__.return_value = mock_not_found
+                res_analyze = self.client.post("/api/promotions/analyze", json={
+                    "channel_link": "https://t.me/invalchannel999"
+                }, headers={"Authorization": f"Bearer {token}"})
+                self.assertEqual(res_analyze.status_code, 400)
+                self.assertIn("Valid channel nahi mila", res_analyze.json()["detail"])
+
+            # Case 2: Bot is NOT admin in channel
+            mock_bot_not_admin = AsyncMock()
+            mock_bot_not_admin.get.side_effect = [
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": 12345, "is_bot": True}}),
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": -100998877, "title": "Target Promo Channel", "username": "targetpromochannel"}}),
+                AsyncMock(json=lambda: {"ok": True, "result": 1500}), # member count
+                AsyncMock(json=lambda: {"ok": True, "result": {"status": "member"}}), # bot is regular member, not admin
+            ]
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client_cls.return_value.__aenter__.return_value = mock_bot_not_admin
+                res_analyze = self.client.post("/api/promotions/analyze", json={
+                    "channel_link": "https://t.me/targetpromochannel"
+                }, headers={"Authorization": f"Bearer {token}"})
+                self.assertEqual(res_analyze.status_code, 400)
+                self.assertIn("Bot is channel me admin nahi hai", res_analyze.json()["detail"])
+
+            # Case 3: Valid channel with bot as administrator
+            mock_valid = AsyncMock()
+            mock_valid.get.side_effect = [
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": 12345, "is_bot": True}}),
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": -100998877, "title": "Super Cool Channel", "username": "supercoolchannel", "description": "Awesome tech channel"}}),
+                AsyncMock(json=lambda: {"ok": True, "result": 2400}), # member count
+                AsyncMock(json=lambda: {"ok": True, "result": {"status": "administrator"}}), # bot is admin
+            ]
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client_cls.return_value.__aenter__.return_value = mock_valid
+                res_analyze = self.client.post("/api/promotions/analyze", json={
+                    "channel_link": "https://t.me/supercoolchannel"
+                }, headers={"Authorization": f"Bearer {token}"})
+                self.assertEqual(res_analyze.status_code, 200)
+                data = res_analyze.json()
+                self.assertTrue(data["ok"])
+                self.assertEqual(data["title"], "Super Cool Channel")
+                self.assertEqual(data["username"], "@supercoolchannel")
+                self.assertEqual(data["members_count"], "2,400 Subscribers")
+                self.assertEqual(data["description"], "Awesome tech channel")
+                self.assertTrue(data["bot_is_admin"])
+
+            # Case 4: Submit promotion fails if bot is not admin
+            mock_submit_not_admin = AsyncMock()
+            mock_submit_not_admin.get.side_effect = [
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": 12345, "is_bot": True}}),
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": -100998877, "title": "Target Promo Channel", "username": "targetpromochannel"}}),
+                AsyncMock(json=lambda: {"ok": True, "result": 1500}),
+                AsyncMock(json=lambda: {"ok": True, "result": {"status": "left"}}),
+            ]
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client_cls.return_value.__aenter__.return_value = mock_submit_not_admin
+                res_sub = self.client.post("/api/promotions/submit", json={
+                    "channel_link": "https://t.me/targetpromochannel",
+                    "budget_inr": 100.0,
+                    "ad_message": "Join us!"
+                }, headers={"Authorization": f"Bearer {token}"})
+                self.assertEqual(res_sub.status_code, 400)
+                self.assertIn("Bot is channel me admin nahi hai", res_sub.json()["detail"])
+
+            # Case 5: Submit promotion succeeds when bot is admin
+            mock_submit_valid = AsyncMock()
+            mock_submit_valid.get.side_effect = [
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": 12345, "is_bot": True}}),
+                AsyncMock(json=lambda: {"ok": True, "result": {"id": -100998877, "title": "Super Cool Channel", "username": "supercoolchannel"}}),
+                AsyncMock(json=lambda: {"ok": True, "result": 2400}),
+                AsyncMock(json=lambda: {"ok": True, "result": {"status": "administrator"}}),
+            ]
+            with patch("httpx.AsyncClient") as mock_client_cls:
+                mock_client_cls.return_value.__aenter__.return_value = mock_submit_valid
+                res_sub = self.client.post("/api/promotions/submit", json={
+                    "channel_link": "https://t.me/supercoolchannel",
+                    "budget_inr": 100.0,
+                    "ad_message": "Join our channel!"
+                }, headers={"Authorization": f"Bearer {token}"})
+                self.assertEqual(res_sub.status_code, 200)
+                self.assertTrue(res_sub.json()["ok"])
+                self.assertEqual(res_sub.json()["promotion"]["channel_title"], "Super Cool Channel")
+
 
 if __name__ == "__main__":
     unittest.main()

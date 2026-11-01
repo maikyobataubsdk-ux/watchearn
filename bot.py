@@ -664,7 +664,7 @@ async def support_callback(callback: CallbackQuery) -> None:
     await callback.answer()
     if callback.message:
         await callback.message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="💬 Contact Support (EarnProgramSupport)", url="https://t.me/EarnProgramSupport")]
+            [InlineKeyboardButton(text="💬 Support", url="https://t.me/EarnProgramSupport")]
         ]))
 
 
