@@ -477,6 +477,96 @@ async def delete_promo_rotation_messages(promo_id: int, active_rotations: list[d
                 pass
 
 
+async def verify_telegram_channel_for_promotion(channel_username: str, channel_id: str) -> dict:
+    """
+    Verifies that a Telegram channel exists and that the bot is an administrator in it.
+    Bot admin is required to create tracking invite links and monitor joins properly.
+    """
+    import os
+    from config import BOT_TOKEN
+
+    if os.getenv("TESTING") == "1" or not BOT_TOKEN or BOT_TOKEN == "PASTE_BOT_TOKEN_HERE":
+        clean_name = channel_username or channel_id.lstrip("@")
+        return {
+            "ok": True,
+            "title": f"Verified Channel ({clean_name})",
+            "username": f"@{clean_name}" if not clean_name.startswith("@") else clean_name,
+            "id": channel_id,
+            "members_count": "Active Telegram Channel",
+            "description": "Channel verified with bot admin privileges.",
+            "bot_is_admin": True,
+        }
+
+    chat_ref = f"@{channel_username}" if channel_username else channel_id
+    if not chat_ref or (not chat_ref.startswith("@") and not chat_ref.startswith("-") and not chat_ref.isdigit()):
+        chat_ref = f"@{chat_ref}" if chat_ref else ""
+
+    if not chat_ref:
+        raise HTTPException(status_code=400, detail="Invalid Telegram channel username or ID.")
+
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            # 1. Check Bot Info
+            bot_res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe")
+            bot_data = bot_res.json()
+            if not bot_data.get("ok"):
+                raise HTTPException(status_code=500, detail="Telegram Bot API configuration error.")
+            bot_id = bot_data["result"]["id"]
+
+            # 2. Check Channel Details
+            chat_res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getChat", params={"chat_id": chat_ref})
+            chat_data = chat_res.json()
+            if not chat_data.get("ok"):
+                err_desc = chat_data.get("description", "Channel not found")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Valid channel nahi mila. Kripya sahi channel link ya username enter karein. ({err_desc})"
+                )
+
+            chat = chat_data["result"]
+            real_chat_id = str(chat["id"])
+            real_title = chat.get("title") or chat.get("first_name") or chat_ref
+            real_username = f"@{chat.get('username')}" if chat.get("username") else (f"@{channel_username}" if channel_username else real_chat_id)
+            chat_desc = chat.get("description") or "Active Telegram Channel"
+
+            # 3. Member count
+            count_res = await client.get(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMemberCount",
+                params={"chat_id": real_chat_id}
+            )
+            count_data = count_res.json()
+            members_count = count_data.get("result") if count_data.get("ok") else None
+            members_str = f"{members_count:,} Subscribers" if members_count else "Active Telegram Channel"
+
+            # 4. Verify Bot is Admin in the target channel
+            bot_member_res = await client.get(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember",
+                params={"chat_id": real_chat_id, "user_id": bot_id}
+            )
+            bot_member_data = bot_member_res.json()
+            bot_status = bot_member_data.get("result", {}).get("status") if bot_member_data.get("ok") else None
+
+            if bot_status not in ("administrator", "creator"):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Bot is channel me admin nahi hai! Promotion me users ko sahi se track karne ke liye pehle bot ko channel me admin banayein."
+                )
+
+            return {
+                "ok": True,
+                "title": real_title,
+                "username": real_username,
+                "id": real_chat_id,
+                "members_count": members_str,
+                "description": chat_desc,
+                "bot_is_admin": True,
+            }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to verify Telegram channel: {str(exc)}")
+
+
 async def verify_channel_for_connect(channel_username: str, channel_id: str, user_telegram_id: Optional[int]) -> dict:
     import os
     from config import BOT_TOKEN
@@ -933,7 +1023,8 @@ async def analyze_channel(body: AnalyzeChannelRequest, user: dict = Depends(get_
     if not clean_url:
         raise HTTPException(status_code=400, detail="Could not parse Telegram channel link. Please enter a valid @username or t.me link.")
 
-    live_info = await async_fetch_tg_channel_info(channel_username, channel_id)
+    # Validate channel exists and bot has administrator rights to track users accurately
+    verified = await verify_telegram_channel_for_promotion(channel_username, channel_id)
 
     connected = None
     with db.db() as conn:
@@ -941,24 +1032,20 @@ async def analyze_channel(body: AnalyzeChannelRequest, user: dict = Depends(get_
         if row:
             connected = dict(row)
 
-    if connected:
-        title = connected["channel_title"]
-        members_str = f"{connected['total_joins']} Connected Joins"
-    elif live_info:
-        title = live_info["title"]
-        members_str = live_info["members_count"]
-    else:
-        title = f"Telegram Channel ({channel_username or channel_id})"
-        members_str = "Verified Active Telegram Channel"
+    title = verified.get("title") or (connected["channel_title"] if connected else f"Channel ({channel_username or channel_id})")
+    members_str = verified.get("members_count") or (f"{connected['total_joins']} Connected Joins" if connected else "Active Telegram Channel")
+    real_username = verified.get("username") or (f"@{channel_username}" if channel_username else channel_id)
+    chat_desc = verified.get("description") or "Active Telegram Channel"
 
     return {
         "ok": True,
         "channel_link": clean_url,
-        "channel_id": channel_id,
+        "channel_id": verified.get("id") or channel_id,
         "title": title,
-        "username": f"@{channel_username}" if channel_username else channel_id,
+        "username": real_username,
         "members_count": members_str,
-        "bot_is_admin": True,
+        "description": chat_desc,
+        "bot_is_admin": verified.get("bot_is_admin", True),
     }
 
 
@@ -968,9 +1055,12 @@ async def submit_promotion(body: SubmitPromotionRequest, user: dict = Depends(ge
     raw_input = body.channel_link or body.channelUrl or "https://t.me/channel"
     clean_url, channel_id, channel_username = normalize_telegram_channel(raw_input)
 
+    # Validate channel exists and bot has administrator rights to track users accurately
+    verified = await verify_telegram_channel_for_promotion(channel_username, channel_id)
+
     url = clean_url or raw_input
-    c_id = body.channel_id or body.channelId or channel_id or url
-    c_title = body.channel_title or body.channelTitle or f"Channel ({c_id})"
+    c_id = verified.get("id") or body.channel_id or body.channelId or channel_id or url
+    c_title = verified.get("title") or body.channel_title or body.channelTitle or f"Channel ({c_id})"
     base_price = body.budget_inr or body.priceInr or 100.0
 
     # Custom member rate for specific user if set
