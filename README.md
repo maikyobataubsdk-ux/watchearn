@@ -21,7 +21,7 @@ Features a dark glassmorphism UI, dual Hindi + English language toggle, 20-secon
    - **Scan & Pay QR**: Users scan admin QR code to pay promotion budget via UPI/Paytm.
    - **Multi-Channel Broadcast**: Upon admin approval, the bot broadcasts promotion posts across all connected partner channels where the bot is admin.
 4. **Channel Owner Revenue Sharing**:
-   - Channel owners connect their Telegram channel by adding `@BlazecultureBot` as admin.
+   - Channel owners connect their Telegram channel by adding `@EarnProgramapp` as admin.
    - Real-time `ChatMemberUpdated` tracking records joins and leaves.
    - **Revenue Split**: Every 2 users joining via ad campaigns deducts ₹1.00 INR from promoter budget and credits **₹0.50 INR** directly to the channel owner's wallet.
 5. **Telegram Bot (`bot.py`)**:
@@ -44,7 +44,7 @@ The master admin panel is accessible via your browser:
 
 1. Open your browser and navigate to `https://yourdomain.com/raj`.
 2. Login using **Username**: `rajpapa` and **Password**: `28@RajPapa`.
-3. **Payment QR Settings**: Enter your UPI ID (e.g. `blazeculture@upi`) and QR Code URL (e.g. `/static/logo.png` or hosted image link) and click **Save Payment Config**.
+3. **Payment QR Settings**: Enter your UPI ID (e.g. `earnprogram@upi`) and QR Code URL (e.g. `/static/logo.png` or hosted image link) and click **Save Payment Config**.
 4. **Ad Network Script Manager**: Paste your high-paying network scripts into the corresponding textareas:
    - **Full-Page Interstitial Script** (Adsterra / HilltopAds Interstitial code)
    - **Popunder Script** (Adsterra / HilltopAds / Monetag Popunder code)
