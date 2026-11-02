@@ -1792,6 +1792,35 @@
     </div>
   </div>
 
+  <!-- Admin User Profile Modal Window -->
+  <div id="adminUserProfileModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.88); backdrop-filter: blur(10px); z-index: 1600; display: flex; align-items: center; justify-content: center; padding: 20px;">
+    <div class="glass" style="max-width: 500px; width: 100%; padding: 30px; position: relative;">
+      <button onclick="closeAdminUserProfileModal()" style="position: absolute; top: 15px; right: 20px; background: transparent; border: none; color: #fff; font-size: 24px; cursor: pointer;">&times;</button>
+      <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+        <div id="admModalUserAvatar" style="width: 55px; height: 55px; border-radius: 50%; background: linear-gradient(135deg, var(--neon-cyan), var(--neon-green)); color: #000; font-size: 22px; font-weight: 800; display: flex; align-items: center; justify-content: center;">U</div>
+        <div>
+          <h3 id="admModalUserName" style="color: #fff; font-size: 18px; margin: 0;">User Name</h3>
+          <span id="admModalUserStatusBadge" class="badge" style="margin-top: 4px; font-size: 11px;">Active</span>
+        </div>
+      </div>
+
+      <div style="background: rgba(18,24,38,0.7); border-radius: 10px; border: 1px solid var(--card-border); padding: 15px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+        <div><span class="text-muted">User ID:</span> <strong id="admModalUserId">-</strong></div>
+        <div><span class="text-muted">Telegram ID:</span> <strong id="admModalUserTgId">-</strong></div>
+        <div style="grid-column: 1 / -1;"><span class="text-muted">Email:</span> <strong id="admModalUserEmail">-</strong></div>
+        <div><span class="text-muted">Coin Balance:</span> <strong id="admModalUserCoins" class="text-green">-</strong></div>
+        <div><span class="text-muted">Ads Watched:</span> <strong id="admModalUserAds">-</strong></div>
+        <div><span class="text-muted">Total Earned:</span> <strong id="admModalUserTotalEarned">-</strong></div>
+        <div><span class="text-muted">Role:</span> <strong id="admModalUserRole">-</strong></div>
+        <div style="grid-column: 1 / -1;"><span class="text-muted">Joined:</span> <strong id="admModalUserCreated">-</strong></div>
+      </div>
+
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
+        <button class="btn btn-secondary" onclick="closeAdminUserProfileModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Promotional Image Viewer Modal Window -->
   <div id="promoImageViewerModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.88); backdrop-filter: blur(10px); z-index: 1500; display: flex; align-items: center; justify-content: center; padding: 20px;">
     <div class="glass" style="max-width: 650px; width: 100%; padding: 25px; position: relative; text-align: center;">
@@ -2959,12 +2988,12 @@
             const isStoppable = (p.status === 'active' || p.status === 'approved' || p.status === 'pending' || p.status === 'pending_approval');
             if (isStoppable) {
               actionHtml = `
-                <button class="btn btn-warning" style="padding: 4px 10px; font-size: 12px; background: #e67e22; border: none; color: #fff;" onclick="stopMyPromotion(${p.id})">
-                  <i class="fa-solid fa-stop"></i> Stop
+                <button class="btn btn-danger" style="padding: 4px 10px; font-size: 12px; border: none; color: #fff;" onclick="closeMyPromotion(${p.id})">
+                  <i class="fa-solid fa-xmark"></i> Close
                 </button>
               `;
             } else if (p.status === 'stopped' || p.status === 'paused') {
-              actionHtml = `<span class="badge" style="background: rgba(230,126,34,0.2); color: #e67e22; font-size: 11px;">Stopped</span>`;
+              actionHtml = `<span class="badge" style="background: rgba(230,126,34,0.2); color: #e67e22; font-size: 11px;">Closed</span>`;
             } else if (p.status === 'rejected') {
               actionHtml = `<span class="badge" style="background: rgba(255,75,75,0.2); color: var(--error); font-size: 11px;">Refunded</span>`;
             }
@@ -2984,15 +3013,15 @@
       } catch (err) {}
     }
 
-    async function stopMyPromotion(promoId) {
-      if (!confirm(`Are you sure you want to stop Promotion #${promoId}? Any unspent budget will be refunded to your wallet, and promotional posts will be removed.`)) return;
+    async function closeMyPromotion(promoId) {
+      if (!confirm(`Are you sure you want to close Promotion #${promoId}? Any unspent budget will be refunded to your wallet, and promotional posts will be removed.`)) return;
       try {
         const res = await apiCall('/api/promotions/stop', 'POST', { promotion_id: promoId }, userToken);
-        alert(res.message || 'Promotion stopped successfully and unspent amount refunded to wallet!');
+        alert(res.message || 'Promotion closed successfully and unspent amount refunded to wallet!');
         await refreshWalletBalance();
         loadMyPromotions();
       } catch (err) {
-        alert(err.message || 'Failed to stop promotion');
+        alert(err.message || 'Failed to close promotion');
       }
     }
 
@@ -3264,10 +3293,15 @@
               `;
             }
 
+            const promoJoinUrl = p.channel_url || p.channel_link || (p.channel_id && p.channel_id.startsWith('@') ? `https://t.me/${p.channel_id.replace('@', '')}` : (p.channel_id && p.channel_id.startsWith('+') ? `https://t.me/${p.channel_id}` : '#'));
             tr.innerHTML = `
               <td>#${p.id}</td>
               <td><strong>${p.username}</strong></td>
-              <td><a href="${p.channel_url || p.channel_link}" target="_blank" style="color:var(--neon-cyan);">${p.channel_title || p.channel_link}</a></td>
+              <td>
+                <a href="${promoJoinUrl}" target="_blank" class="btn btn-outline" style="font-size:11px; padding:3px 8px; border-color:var(--neon-cyan); color:var(--neon-cyan); text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i> ${p.channel_title || 'Join Channel'}
+                </a>
+              </td>
               <td>${imgHtml}</td>
               <td>₹${budgetDisplay} INR<div style="font-size:11px;" class="text-cyan">${joinsDisplay}</div></td>
               <td><code>${p.transaction_ref || p.payment_txn_ref}</code></td>
@@ -3296,16 +3330,33 @@
               if (st === 'rejected') stColor = 'var(--error)';
               if (st === 'banned') stColor = 'var(--purple)';
 
+              let chUrl = '#';
+              if (c.channel_username && !c.channel_username.startsWith('-')) {
+                const uclean = c.channel_username.replace('@', '');
+                chUrl = `https://t.me/${uclean}`;
+              } else if (c.channel_id) {
+                if (c.channel_id.startsWith('@')) {
+                  chUrl = `https://t.me/${c.channel_id.replace('@', '')}`;
+                } else if (c.channel_id.startsWith('+') || c.channel_id.startsWith('https://')) {
+                  chUrl = c.channel_id.startsWith('https://') ? c.channel_id : `https://t.me/${c.channel_id}`;
+                }
+              }
+
               tr.innerHTML = `
                 <td>#${c.id}</td>
                 <td><strong>${c.channel_title}</strong></td>
-                <td><code>${c.channel_id}</code></td>
+                <td>
+                  <a href="${chUrl}" target="_blank" class="btn btn-outline" style="font-size:11px; padding:3px 8px; border-color:var(--neon-green); color:var(--neon-green); text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> ${c.channel_id}
+                  </a>
+                </td>
                 <td>${c.category || 'General'}</td>
                 <td><span style="color:${stColor}; font-weight:bold; font-size:12px;">${st.toUpperCase()}</span></td>
                 <td>${c.owner_username || 'User #' + c.owner_user_id}</td>
                 <td>${c.total_joins} joins / ${c.total_lefts || 0} left</td>
                 <td>
-                  <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                  <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
+                    <a href="${chUrl}" target="_blank" class="btn btn-cyan" style="padding: 3px 8px; font-size: 11px; text-decoration:none;"><i class="fa-solid fa-link"></i> Join</a>
                     ${st !== 'approved' ? `<button class="btn btn-primary" style="padding: 3px 8px; font-size: 11px;" onclick="adminChangeChannelStatus('${c.channel_id}', 'approved')"><i class="fa-solid fa-check"></i> Approve</button>` : ''}
                     ${st === 'pending_approval' ? `<button class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" onclick="adminChangeChannelStatus('${c.channel_id}', 'rejected')"><i class="fa-solid fa-ban"></i> Reject</button>` : ''}
                     ${st === 'banned' ? `<button class="btn btn-cyan" style="padding: 3px 8px; font-size: 11px;" onclick="adminChangeChannelStatus('${c.channel_id}', 'approved')"><i class="fa-solid fa-unlock"></i> Unban</button>` : `<button class="btn btn-purple" style="padding: 3px 8px; font-size: 11px;" onclick="adminChangeChannelStatus('${c.channel_id}', 'banned')"><i class="fa-solid fa-lock"></i> Ban</button>`}
@@ -3342,7 +3393,7 @@
           tr.setAttribute('data-search', `${u.id} ${u.username} ${u.email} ${u.telegram_id || ''}`.toLowerCase());
           tr.innerHTML = `
             <td>#${u.id}</td>
-            <td><strong>${u.username}</strong><br><span style="font-size:10px;" class="text-muted">${u.email}</span></td>
+            <td><strong style="cursor: pointer; color: var(--neon-cyan); text-decoration: underline;" onclick="openAdminUserProfileModal(${JSON.stringify(u).replace(/"/g, '&quot;')})" title="Click to view full user profile">${u.username}</strong><br><span style="font-size:10px;" class="text-muted">${u.email}</span></td>
             <td><code>${u.telegram_id || '-'}</code></td>
             <td>
               <input type="number" value="${u.balance_coins}" style="width: 80px;" class="glass-input" onchange="updateUserBalance(${u.id}, this.value)">
@@ -3565,6 +3616,43 @@
       } catch (err) {
         alert(err.message);
       }
+    }
+
+    function openAdminUserProfileModal(u) {
+      if (!u) return;
+      document.getElementById('admModalUserName').textContent = u.username || 'User';
+      document.getElementById('admModalUserId').textContent = `#${u.id}`;
+      document.getElementById('admModalUserTgId').textContent = u.telegram_id || '-';
+      document.getElementById('admModalUserEmail').textContent = u.email || '-';
+      document.getElementById('admModalUserCoins').textContent = `${(u.balance_coins || 0).toFixed(1)} coins`;
+      document.getElementById('admModalUserAds').textContent = `${u.total_ads_watched || 0} ads`;
+      document.getElementById('admModalUserTotalEarned').textContent = `${(u.total_earned_coins || 0).toFixed(1)} coins`;
+      document.getElementById('admModalUserRole').innerHTML = u.is_premium ? '<span style="color:var(--purple); font-weight:bold;">👑 Premium VIP</span>' : 'Regular User';
+      document.getElementById('admModalUserCreated').textContent = u.created_at || '-';
+
+      const statusBadge = document.getElementById('admModalUserStatusBadge');
+      if (statusBadge) {
+        if (u.is_banned) {
+          statusBadge.textContent = 'BANNED';
+          statusBadge.style.background = 'rgba(255,75,75,0.2)';
+          statusBadge.style.color = 'var(--error)';
+        } else {
+          statusBadge.textContent = 'ACTIVE';
+          statusBadge.style.background = 'rgba(0,255,136,0.2)';
+          statusBadge.style.color = 'var(--neon-green)';
+        }
+      }
+
+      const avatar = document.getElementById('admModalUserAvatar');
+      if (avatar) {
+        avatar.textContent = ((u.username || 'U').substring(0, 2)).toUpperCase();
+      }
+
+      document.getElementById('adminUserProfileModal')?.classList.remove('hidden');
+    }
+
+    function closeAdminUserProfileModal() {
+      document.getElementById('adminUserProfileModal')?.classList.add('hidden');
     }
 
     function openAdminRemoveFundsModal(userId, username) {

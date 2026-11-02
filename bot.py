@@ -26,6 +26,7 @@ from db import (
     get_active_promo_rotations_due_for_deletion, mark_promo_rotation_deleted,
     record_promo_invite_link, get_promo_invite_link, record_channel_join_event_with_source,
     add_force_sub_channel, remove_force_sub_channel, get_all_force_sub_channels, toggle_force_sub_channel,
+    record_bot_admin_channel,
 )
 
 router = Router()
@@ -198,6 +199,13 @@ async def show_campaign_flow(message: Message, token: str, user_id: int) -> None
 @router.message(CommandStart())
 async def start_handler(message: Message) -> None:
     user_id = message.from_user.id if message.from_user else 0
+    if is_user_banned(user_id):
+        await message.answer(
+            "🚫 <b>You Are Banned</b>\n\nYour account has been suspended by the administrator. Please contact support below if you believe this is an error.",
+            reply_markup=banned_user_keyboard()
+        )
+        return
+
     first_name = escape(message.from_user.first_name) if message.from_user and message.from_user.first_name else "User"
 
     parts = (message.text or "").split(maxsplit=1)
@@ -285,6 +293,10 @@ async def admin_command_handler(message: Message) -> None:
 
 @router.message(Command("promote"))
 async def promote_cmd_handler(message: Message) -> None:
+    user_id = message.from_user.id if message.from_user else 0
+    if is_user_banned(user_id):
+        await message.answer("🚫 <b>You Are Banned</b>\n\nYour account has been suspended by administrator.", reply_markup=banned_user_keyboard())
+        return
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🚀 Launch Promotion Portal", web_app=WebAppInfo(url=WEBAPP_URL))]
     ])
@@ -301,6 +313,10 @@ async def promote_cmd_handler(message: Message) -> None:
 
 @router.message(Command("mychannels"))
 async def mychannels_cmd_handler(message: Message) -> None:
+    user_id = message.from_user.id if message.from_user else 0
+    if is_user_banned(user_id):
+        await message.answer("🚫 <b>You Are Banned</b>\n\nYour account has been suspended by administrator.", reply_markup=banned_user_keyboard())
+        return
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📺 Open Channel Earnings Hub", web_app=WebAppInfo(url=WEBAPP_URL))]
     ])
@@ -1088,6 +1104,36 @@ async def rotation_background_loop() -> None:
         except Exception:
             pass
         await asyncio.sleep(60)  # Check every 60 seconds
+
+
+# Track when bot is added or removed as administrator in public/private channels
+@router.my_chat_member()
+async def my_chat_member_handler(event: ChatMemberUpdated) -> None:
+    chat = event.chat
+    new_status = event.new_chat_member.status
+    is_admin = new_status in ("administrator", "creator")
+
+    chat_id = str(chat.id)
+    title = chat.title or chat.full_name or chat_id
+    username = chat.username or ""
+    invite_link = getattr(event, "invite_link", None)
+    inv_str = getattr(invite_link, "invite_link", "") if invite_link else ""
+
+    member_count = 0
+    if is_admin and bot is not None:
+        try:
+            member_count = await bot.get_chat_member_count(chat_id=chat.id)
+        except Exception:
+            pass
+
+    record_bot_admin_channel(
+        channel_id=chat_id,
+        channel_title=title,
+        channel_username=username,
+        invite_link=inv_str,
+        is_admin=is_admin,
+        member_count=member_count,
+    )
 
 
 # Real-time ChatMemberUpdated Handler for Join/Left & Earning Analytics

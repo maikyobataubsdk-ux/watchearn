@@ -504,6 +504,13 @@ async def verify_telegram_channel_for_promotion(channel_username: str, channel_i
         }
 
     chat_ref = f"@{channel_username}" if channel_username else channel_id
+
+    # Check tracked bot admin channels first (vital for private invite links where chat_ref is +hash)
+    from db import get_bot_admin_channel
+    tracked = get_bot_admin_channel(chat_ref) or get_bot_admin_channel(channel_id)
+    if tracked and tracked.get("is_admin"):
+        chat_ref = tracked["channel_id"]
+
     if not chat_ref or (not chat_ref.startswith("@") and not chat_ref.startswith("-") and not chat_ref.isdigit()):
         chat_ref = f"@{chat_ref}" if chat_ref else ""
 
@@ -592,6 +599,13 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
         )
 
     chat_ref = f"@{channel_username}" if channel_username else channel_id
+
+    # Check tracked bot admin channels first (vital for private invite links where chat_ref is +hash)
+    from db import get_bot_admin_channel
+    tracked = get_bot_admin_channel(chat_ref) or get_bot_admin_channel(channel_id)
+    if tracked and tracked.get("is_admin"):
+        chat_ref = tracked["channel_id"]
+
     if not chat_ref or (not chat_ref.startswith("@") and not chat_ref.startswith("-") and not chat_ref.isdigit()):
         chat_ref = f"@{chat_ref}" if chat_ref else ""
 
