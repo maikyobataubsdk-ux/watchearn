@@ -1264,6 +1264,91 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
             }, headers=headers)
             self.assertEqual(revert_res.status_code, 200)
 
+    def test_28_private_channel_connect_and_verification(self):
+        import db
+        from unittest.mock import patch, AsyncMock
+        import web
+
+        # Register user with telegram account
+        reg_res = self.client.post("/api/auth/register", json={
+            "email": "private_chan_user@example.com",
+            "username": "private_chan_user",
+            "password": "password123"
+        })
+        self.assertEqual(reg_res.status_code, 200)
+        token = reg_res.json()["token"]
+
+        user = db.get_user_by_email("private_chan_user@example.com")
+        tg_id = 998877661
+        with db.db() as conn:
+            conn.execute("UPDATE users SET telegram_id=? WHERE id=?", (tg_id, user["id"]))
+
+        # 1. Test db.get_bot_admin_channel parsing of private invite links
+        db.record_bot_admin_channel(
+            channel_id="-100987654321",
+            channel_title="Private VIP Trading",
+            channel_username="",
+            invite_link="https://t.me/+TestInviteHash123",
+            is_admin=True,
+            member_count=250
+        )
+
+        matched = db.get_bot_admin_channel("+TestInviteHash123")
+        self.assertIsNotNone(matched)
+        self.assertEqual(matched["channel_id"], "-100987654321")
+
+        matched_url = db.get_bot_admin_channel("https://t.me/+TestInviteHash123")
+        self.assertIsNotNone(matched_url)
+        self.assertEqual(matched_url["channel_id"], "-100987654321")
+
+        matched_joinchat = db.get_bot_admin_channel("https://t.me/joinchat/TestInviteHash123")
+        self.assertIsNotNone(matched_joinchat)
+        self.assertEqual(matched_joinchat["channel_id"], "-100987654321")
+
+        # 2. Test connect channel endpoint with private invite link
+        res_connect = self.client.post("/api/channels/connect", json={
+            "channel_link": "https://t.me/+TestInviteHash123",
+            "category": "Crypto & Finance"
+        }, headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(res_connect.status_code, 200)
+        data = res_connect.json()
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["channel"]["channel_id"], "-100987654321")
+
+        # 3. Test verification with live-mocked Telegram API
+        class MockResponse:
+            def __init__(self, data):
+                self._data = data
+            def json(self):
+                return self._data
+
+        async def mock_get(url, params=None):
+            params = params or {}
+            if "getMe" in url:
+                return MockResponse({"ok": True, "result": {"id": 123456, "is_bot": True, "username": "EarnProgramBot"}})
+            if "getChatMemberCount" in url:
+                return MockResponse({"ok": True, "result": 250})
+            if "getChatMember" in url:
+                uid = params.get("user_id")
+                if uid == 123456 or str(uid) == "123456":
+                    return MockResponse({"ok": True, "result": {"status": "administrator"}})
+                if uid == tg_id or str(uid) == str(tg_id):
+                    return MockResponse({"ok": True, "result": {"status": "creator"}})
+                return MockResponse({"ok": True, "result": {"status": "member"}})
+            if "getChat" in url:
+                chat_id = str(params.get("chat_id", ""))
+                return MockResponse({"ok": True, "result": {"id": -100987654321, "title": "Private VIP Trading", "type": "channel"}})
+            return MockResponse({"ok": False})
+
+        with patch("config.BOT_TOKEN", "123456:FAKE_TOKEN_FOR_TEST"), \
+             patch.dict("os.environ", {"TESTING": "0"}), \
+             patch("httpx.AsyncClient.get", side_effect=mock_get):
+            import asyncio
+            verified = asyncio.run(web.verify_channel_for_connect("", "+TestInviteHash123", tg_id))
+            self.assertTrue(verified["ok"])
+            self.assertEqual(verified["id"], "-100987654321")
+            self.assertEqual(verified["members_count"], 250)
+
 
 if __name__ == "__main__":
     unittest.main()

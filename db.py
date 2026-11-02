@@ -1892,12 +1892,51 @@ def record_bot_admin_channel(channel_id: str, channel_title: str, channel_userna
 def get_bot_admin_channel(identifier: str) -> dict | None:
     clean = str(identifier).strip()
     clean_no_at = clean.lstrip("@")
+
+    # Extract invite hash if it's a URL or formatted invite code
+    invite_hash = clean
+    if "t.me/" in invite_hash:
+        invite_hash = invite_hash.split("t.me/")[-1].split("?")[0].strip("/")
+    if "joinchat/" in invite_hash:
+        invite_hash = invite_hash.split("joinchat/")[-1].strip("/")
+    invite_hash_clean = invite_hash.lstrip("+").strip()
+
     with db() as conn:
         row = conn.execute(
             """
             SELECT * FROM bot_admin_channels
-            WHERE channel_id = ? OR channel_username = ? OR channel_username = ? OR invite_link LIKE ?
+            WHERE channel_id = ?
+               OR channel_username = ?
+               OR channel_username = ?
+               OR invite_link = ?
+               OR invite_link LIKE ?
+               OR (invite_link != '' AND ? != '' AND invite_link LIKE ?)
+               OR (invite_link != '' AND ? != '' AND invite_link LIKE ?)
+            ORDER BY is_admin DESC, updated_at DESC
+            LIMIT 1
             """,
-            (clean, clean, clean_no_at, f"%{clean}%"),
+            (
+                clean,
+                clean,
+                clean_no_at,
+                clean,
+                f"%{clean}%",
+                invite_hash,
+                f"%{invite_hash}%",
+                invite_hash_clean,
+                f"%{invite_hash_clean}%"
+            ),
         ).fetchone()
         return dict(row) if row else None
+
+
+def get_active_bot_admin_channels() -> list[dict]:
+    with db() as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM bot_admin_channels
+            WHERE is_admin = 1
+            ORDER BY updated_at DESC
+            """
+        ).fetchall()
+        return [dict(r) for r in rows]

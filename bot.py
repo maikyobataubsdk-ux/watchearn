@@ -1126,6 +1126,18 @@ async def my_chat_member_handler(event: ChatMemberUpdated) -> None:
         except Exception:
             pass
 
+        # If invite link was not in event, try to export/fetch channel's invite link
+        if not inv_str:
+            try:
+                inv_str = await bot.export_chat_invite_link(chat_id=chat.id)
+            except Exception:
+                try:
+                    created_link = await bot.create_chat_invite_link(chat_id=chat.id, name="Admin Link Tracker")
+                    if created_link and created_link.invite_link:
+                        inv_str = created_link.invite_link
+                except Exception:
+                    pass
+
     record_bot_admin_channel(
         channel_id=chat_id,
         channel_title=title,
