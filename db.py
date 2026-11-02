@@ -293,6 +293,16 @@ def init_db() -> None:
                 is_active INTEGER DEFAULT 1,
                 created_at TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS bot_admin_channels (
+                channel_id TEXT PRIMARY KEY,
+                channel_title TEXT NOT NULL,
+                channel_username TEXT DEFAULT '',
+                invite_link TEXT DEFAULT '',
+                is_admin INTEGER DEFAULT 1,
+                member_count INTEGER DEFAULT 0,
+                updated_at TEXT NOT NULL
+            );
             """
         )
 
@@ -1857,3 +1867,37 @@ def toggle_force_sub_channel(channel_id: str) -> dict:
         new_val = 0 if row["is_active"] else 1
         conn.execute("UPDATE force_sub_channels SET is_active=? WHERE channel_id=?", (new_val, clean_id))
         return {"ok": True, "is_active": new_val}
+
+
+# Bot Admin Channels Tracker (for recognizing private and public channels where bot is added as admin)
+def record_bot_admin_channel(channel_id: str, channel_title: str, channel_username: str = "", invite_link: str = "", is_admin: bool = True, member_count: int = 0) -> None:
+    clean_id = str(channel_id).strip()
+    with db() as conn:
+        conn.execute(
+            """
+            INSERT INTO bot_admin_channels (channel_id, channel_title, channel_username, invite_link, is_admin, member_count, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(channel_id) DO UPDATE SET
+                channel_title = excluded.channel_title,
+                channel_username = excluded.channel_username,
+                invite_link = CASE WHEN excluded.invite_link != '' THEN excluded.invite_link ELSE bot_admin_channels.invite_link END,
+                is_admin = excluded.is_admin,
+                member_count = CASE WHEN excluded.member_count > 0 THEN excluded.member_count ELSE bot_admin_channels.member_count END,
+                updated_at = excluded.updated_at
+            """,
+            (clean_id, channel_title, channel_username, invite_link, 1 if is_admin else 0, member_count, utcnow()),
+        )
+
+
+def get_bot_admin_channel(identifier: str) -> dict | None:
+    clean = str(identifier).strip()
+    clean_no_at = clean.lstrip("@")
+    with db() as conn:
+        row = conn.execute(
+            """
+            SELECT * FROM bot_admin_channels
+            WHERE channel_id = ? OR channel_username = ? OR channel_username = ? OR invite_link LIKE ?
+            """,
+            (clean, clean, clean_no_at, f"%{clean}%"),
+        ).fetchone()
+        return dict(row) if row else None

@@ -1,49 +1,27 @@
 {
-  "updated_at": "2026-11-01T13:33:29+00:00",
+  "updated_at": "2026-11-02T01:35:22+00:00",
   "users": [
     {
       "id": 1,
-      "email": "tg_177974792@telegram.org",
-      "username": "user_177974792",
+      "email": "tg_420261668@telegram.org",
+      "username": "user_420261668",
       "balance_coins": 0.0,
       "total_earned_coins": 0.0,
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-11-01T13:26:06+00:00"
+      "created_at": "2026-11-02T01:33:10+00:00"
     },
     {
       "id": 2,
-      "email": "tg_730211759@telegram.org",
-      "username": "user_730211759",
+      "email": "tg_895532193@telegram.org",
+      "username": "user_895532193",
       "balance_coins": 0.0,
       "total_earned_coins": 0.0,
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-11-01T13:26:50+00:00"
-    },
-    {
-      "id": 3,
-      "email": "tg_245780136@telegram.org",
-      "username": "user_245780136",
-      "balance_coins": 0.0,
-      "total_earned_coins": 0.0,
-      "total_ads_watched": 0,
-      "is_premium": 0,
-      "is_banned": 0,
-      "created_at": "2026-11-01T13:27:46+00:00"
-    },
-    {
-      "id": 4,
-      "email": "tg_172439844@telegram.org",
-      "username": "user_172439844",
-      "balance_coins": 0.0,
-      "total_earned_coins": 0.0,
-      "total_ads_watched": 0,
-      "is_premium": 0,
-      "is_banned": 0,
-      "created_at": "2026-11-01T13:33:26+00:00"
+      "created_at": "2026-11-02T01:35:18+00:00"
     }
   ],
   "withdrawals": [],
@@ -73,7 +51,8 @@
     "maintenance_watch": "0",
     "maintenance_promote": "0",
     "maintenance_earnings": "0",
-    "maintenance_withdraw": "0"
+    "maintenance_withdraw": "0",
+    "admin_sessions": "dc896fdc169ad847501840ffb505e5e03220f26395005d99"
   },
   "ad_codes": {
     "interstitial": "<!-- Adsterra / HilltopAds / Monetag Interstitial Script Placeholder -->\n<script type=\"text/javascript\">\n  // Paste your High-Paying Interstitial Script here\n  console.log('Adsterra / HilltopAds Interstitial Loaded');\n</script>",
