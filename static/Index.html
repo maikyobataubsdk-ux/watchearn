@@ -1037,14 +1037,14 @@
               <li>You can only add Telegram channels that you <strong>own (creator/admin)</strong>.</li>
               <li>The bot (e.g. <code>@EarnProgramapp</code>) must be added as an <strong>Admin with permissions</strong> in your channel.</li>
               <li>The channel must have a <strong>minimum of 100 members</strong>.</li>
-              <li>Once all requirements are met, enter your channel link below and click <strong>"Connect & Verify Admin"</strong>.</li>
+              <li>Once all requirements are met, enter your channel link below (public link, private invite link <code>https://t.me/+...</code>, or channel ID <code>-100...</code>) and click <strong>"Connect & Verify Admin"</strong>.</li>
             </ol>
           </div>
 
           <form onsubmit="handleConnectChannel(event)" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
             <div>
-              <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Channel Link or @Username</label>
-              <input type="text" id="connectChannelLinkInput" class="glass-input" placeholder="https://t.me/yourchannel or @yourchannel" required>
+              <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Channel Link, Invite Link, or Channel ID</label>
+              <input type="text" id="connectChannelLinkInput" class="glass-input" placeholder="https://t.me/+invite, @username, or -100..." required>
             </div>
 
             <div>
