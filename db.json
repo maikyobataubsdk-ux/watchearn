@@ -658,9 +658,9 @@
     "target_invite_mode": "request"
   },
   "ad_codes": {
-    "interstitial": "<!-- Adsterra / HilltopAds / Monetag Interstitial Script Placeholder -->\n<script type=\"text/javascript\">\n  // Paste your High-Paying Interstitial Script here\n  console.log('Adsterra / HilltopAds Interstitial Loaded');\n</script>",
-    "popunder": "<!-- Adsterra / HilltopAds / Monetag Popunder Script Placeholder -->\n<script type=\"text/javascript\">\n  // Paste your High-Paying Popunder Script here\n  console.log('Adsterra / HilltopAds Popunder Loaded');\n</script>",
-    "banner": "<div style=\"background: rgba(0,255,136,0.1); border: 1px dashed #00ff88; color: #00ff88; padding: 15px; text-align: center; border-radius: 10px;\"><strong>Earn Program High-Paying Banner Ad Slot</strong><br/>Paste your Adsterra / HilltopAds Banner Code here</div>",
-    "direct_link": "https://www.google.com"
+    "interstitial": "<script data-cfasync=\"false\" async type=\"text/javascript\" src=\"//kp.delugedkeens.com/s5w2hv4XgHOiXV2n/160356\"></script>",
+    "popunder": "<script data-cfasync=\"false\" async type=\"text/javascript\" src=\"//le.scarreddeponer.com/rDW1972G9j7x4/160355\"></script>",
+    "banner": "<script data-cfasync=\"false\" async type=\"text/javascript\" src=\"//kp.delugedkeens.com/s5w2hv4XgHOiXV2n/160356\"></script>",
+    "direct_link": "https://tq.gentlywarrant.com/iHwent5Php6qgc/160357"
   }
 }
