@@ -824,6 +824,10 @@
             <i class="fa-solid fa-play"></i> <span data-i18n="startAdBtn">Start Viewing Ad</span>
           </button>
 
+          <a id="openSmartlinkBtn" href="https://tq.gentlywarrant.com/iHwent5Php6qgc/160357" target="_blank" rel="noopener noreferrer" class="btn btn-purple hidden" onclick="handleSmartlinkClick(event)">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Open Sponsor Link</span>
+          </a>
+
           <button class="btn btn-primary hidden" id="claimRewardBtn" onclick="submitClaimReward()">
             <i class="fa-solid fa-gift"></i> <span data-i18n="claimRewardBtn">Claim Reward (+2.0 Coins)</span>
           </button>
@@ -1556,8 +1560,13 @@
               </div>
 
               <div style="margin-bottom: 15px;">
-                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Banner Ad HTML/JS Code</label>
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Banner / Shuffle Box Ad HTML/JS Code</label>
                 <textarea id="admBannerCode" class="glass-input" rows="3" style="font-family: monospace; font-size: 12px;"></textarea>
+              </div>
+
+              <div style="margin-bottom: 15px;">
+                <label style="font-size: 12px; color: var(--text-muted); font-weight: bold;">Smartlink / Direct Link URL</label>
+                <input type="text" id="admDirectLinkCode" class="glass-input" style="font-family: monospace; font-size: 12px;" placeholder="https://..." />
               </div>
 
               <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save High-Paying Ad Codes</button>
@@ -2248,12 +2257,14 @@
           document.getElementById('fullSiteMaintenanceOverlay')?.classList.add('hidden');
         }
         if (config.adCodes && config.adCodes.banner) {
-          document.getElementById('homepageBannerSlot').innerHTML = config.adCodes.banner;
+          const slot = document.getElementById('homepageBannerSlot');
+          if (slot) executeHtmlWithScripts(slot, config.adCodes.banner);
         }
         if (config.adCodes && config.adCodes.popunder) {
           const div = document.createElement('div');
-          div.innerHTML = config.adCodes.popunder;
+          div.style.display = 'none';
           document.body.appendChild(div);
+          executeHtmlWithScripts(div, config.adCodes.popunder);
         }
       } catch (e) {}
     }
@@ -2542,11 +2553,42 @@
       alert('Referral link copied to clipboard!');
     }
 
+    // Helper function to safely execute HTML with embedded external/inline scripts
+    function executeHtmlWithScripts(container, htmlContent) {
+      container.innerHTML = htmlContent;
+      const scripts = container.querySelectorAll('script');
+      scripts.forEach(oldScript => {
+        const newScript = document.createElement('script');
+        Array.from(oldScript.attributes).forEach(attr => {
+          newScript.setAttribute(attr.name, attr.value);
+        });
+        if (oldScript.src) {
+          newScript.src = oldScript.src;
+        } else {
+          newScript.textContent = oldScript.textContent;
+        }
+        oldScript.parentNode.replaceChild(newScript, oldScript);
+      });
+    }
+
+    function handleSmartlinkClick(e) {
+      if (e) e.preventDefault();
+      const smartlinkUrl = (currentAdSession && currentAdSession.adCodes && currentAdSession.adCodes.direct_link)
+        || (siteConfig && siteConfig.adCodes && siteConfig.adCodes.direct_link)
+        || 'https://tq.gentlywarrant.com/iHwent5Php6qgc/160357';
+      if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openLink === 'function') {
+        window.Telegram.WebApp.openLink(smartlinkUrl);
+      } else {
+        window.open(smartlinkUrl, '_blank');
+      }
+    }
+
     // Watch Ad Interactive Engine
     function resetAdWatchArea() {
       if (adTimerInterval) clearInterval(adTimerInterval);
       document.getElementById('startWatchAdBtn').classList.remove('hidden');
       document.getElementById('claimRewardBtn').classList.add('hidden');
+      document.getElementById('openSmartlinkBtn')?.classList.add('hidden');
       document.getElementById('adTimerSection').classList.add('hidden');
       document.getElementById('adPlaceholderText').classList.remove('hidden');
       document.getElementById('dynamicAdInjectSlot').innerHTML = '';
@@ -2572,15 +2614,38 @@
         document.getElementById('adPlaceholderText').classList.add('hidden');
         document.getElementById('adTimerSection').classList.remove('hidden');
 
+        // 1. Render Shuffle Box Script / Ad into dynamic slot
         const adSlot = document.getElementById('dynamicAdInjectSlot');
-        adSlot.innerHTML = res.adCodes.interstitial || res.adCodes.banner || '<div class="text-green">Ad Playing...</div>';
+        const defaultShuffleBox = '<script data-cfasync="false" async type="text/javascript" src="//kp.delugedkeens.com/s5w2hv4XgHOiXV2n/160356"><' + '/script>';
+        const shuffleBoxCode = (res.adCodes && (res.adCodes.interstitial || res.adCodes.banner)) || defaultShuffleBox;
+        executeHtmlWithScripts(adSlot, shuffleBoxCode);
 
-        const scripts = adSlot.querySelectorAll('script');
-        scripts.forEach(s => {
-          const newScript = document.createElement('script');
-          newScript.textContent = s.textContent;
-          document.body.appendChild(newScript);
-        });
+        // 2. Trigger Pop-up Script
+        const defaultPopup = '<script data-cfasync="false" async type="text/javascript" src="//le.scarreddeponer.com/rDW1972G9j7x4/160355"><' + '/script>';
+        const popupCode = (res.adCodes && res.adCodes.popunder) || defaultPopup;
+        if (popupCode) {
+          const popupHolder = document.createElement('div');
+          popupHolder.style.display = 'none';
+          document.body.appendChild(popupHolder);
+          executeHtmlWithScripts(popupHolder, popupCode);
+        }
+
+        // 3. Trigger Smartlink
+        const smartlinkUrl = (res.adCodes && res.adCodes.direct_link) || 'https://tq.gentlywarrant.com/iHwent5Php6qgc/160357';
+        const smartlinkBtn = document.getElementById('openSmartlinkBtn');
+        if (smartlinkBtn) {
+          smartlinkBtn.href = smartlinkUrl;
+          smartlinkBtn.classList.remove('hidden');
+        }
+        try {
+          if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openLink === 'function') {
+            window.Telegram.WebApp.openLink(smartlinkUrl);
+          } else {
+            window.open(smartlinkUrl, '_blank');
+          }
+        } catch (e) {
+          console.warn('Direct popup blocked or unavailable, button ready for user:', e);
+        }
 
         startAdTimer(res.timerSeconds);
       } catch (err) {
@@ -3382,6 +3447,8 @@
           document.getElementById('admInterstitialCode').value = adCodeRes.adCodes.interstitial || '';
           document.getElementById('admPopunderCode').value = adCodeRes.adCodes.popunder || '';
           document.getElementById('admBannerCode').value = adCodeRes.adCodes.banner || '';
+          const directInput = document.getElementById('admDirectLinkCode');
+          if (directInput) directInput.value = adCodeRes.adCodes.direct_link || '';
         }
 
         // Load Users Table with VIP Premium Toggle & Add Funds
@@ -3701,8 +3768,9 @@
         const interstitial = document.getElementById('admInterstitialCode').value;
         const popunder = document.getElementById('admPopunderCode').value;
         const banner = document.getElementById('admBannerCode').value;
+        const direct_link = document.getElementById('admDirectLinkCode')?.value || '';
 
-        await apiCall('/api/admin/ad-codes', 'POST', { interstitial, popunder, banner });
+        await apiCall('/api/admin/ad-codes', 'POST', { interstitial, popunder, banner, direct_link });
         alert('High-paying ad codes saved successfully!');
       } catch (err) {
         alert(err.message);
