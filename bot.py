@@ -26,7 +26,7 @@ from db import (
     get_active_promo_rotations_due_for_deletion, mark_promo_rotation_deleted,
     record_promo_invite_link, get_promo_invite_link, record_channel_join_event_with_source,
     add_force_sub_channel, remove_force_sub_channel, get_all_force_sub_channels, toggle_force_sub_channel,
-    record_bot_admin_channel,
+    record_bot_admin_channel, update_connected_channel_status,
 )
 
 router = Router()
@@ -884,6 +884,46 @@ async def admin_status_callback(callback: CallbackQuery) -> None:
         )
 
 
+@router.callback_query(F.data.startswith("adm_appr_ch:"))
+async def admin_approve_channel_callback(callback: CallbackQuery) -> None:
+    user_id = callback.from_user.id if callback.from_user else 0
+    if not is_admin(user_id):
+        await callback.answer("⚠️ Access restricted to master admin.", show_alert=True)
+        return
+
+    channel_id = callback.data.split(":", 1)[1]
+    res = update_connected_channel_status(channel_id, "approved")
+
+    await callback.answer("✅ Channel Approved!", show_alert=True)
+    if callback.message:
+        old_text = callback.message.text or callback.message.caption or ""
+        status_line = "\n\n✅ <b>STATUS: APPROVED by Master Admin</b>"
+        try:
+            await callback.message.edit_text(f"{old_text}{status_line}")
+        except Exception:
+            pass
+
+
+@router.callback_query(F.data.startswith("adm_rej_ch:"))
+async def admin_reject_channel_callback(callback: CallbackQuery) -> None:
+    user_id = callback.from_user.id if callback.from_user else 0
+    if not is_admin(user_id):
+        await callback.answer("⚠️ Access restricted to master admin.", show_alert=True)
+        return
+
+    channel_id = callback.data.split(":", 1)[1]
+    res = update_connected_channel_status(channel_id, "rejected")
+
+    await callback.answer("❌ Channel Rejected!", show_alert=True)
+    if callback.message:
+        old_text = callback.message.text or callback.message.caption or ""
+        status_line = "\n\n❌ <b>STATUS: REJECTED by Master Admin</b>"
+        try:
+            await callback.message.edit_text(f"{old_text}{status_line}")
+        except Exception:
+            pass
+
+
 @router.callback_query(F.data == "btn_tutorial")
 async def tutorial_callback(callback: CallbackQuery) -> None:
     text = (
@@ -1146,6 +1186,37 @@ async def my_chat_member_handler(event: ChatMemberUpdated) -> None:
         is_admin=is_admin,
         member_count=member_count,
     )
+
+    # If bot was added as administrator and channel has 100+ members (even if private),
+    # send approval message to Master Admin
+    if is_admin and member_count >= 100 and bot is not None and ADMIN_USER_ID > 0:
+        added_by = event.from_user
+        added_by_name = escape(added_by.full_name) if added_by else "User"
+        added_by_user = f"@{added_by.username}" if (added_by and added_by.username) else f"ID: {added_by.id if added_by else '-'}"
+        is_private = not username
+
+        approval_text = (
+            f"🔔 <b>New Channel Admin Promotion Request</b>\n\n"
+            f"📢 <b>Channel:</b> {escape(title)}\n"
+            f"🆔 <b>ID:</b> <code>{chat_id}</code>\n"
+            f"👥 <b>Subscribers:</b> <b>{member_count:,}</b> (100+ Verified)\n"
+            f"🔒 <b>Type:</b> {'Private Channel' if is_private else 'Public Channel'}\n"
+            f"👤 <b>Added By:</b> {added_by_name} (<code>{added_by_user}</code>)\n"
+        )
+        if inv_str:
+            approval_text += f"🔗 <b>Invite Link:</b> <code>{escape(inv_str)}</code>\n"
+
+        approval_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✅ Approve Channel", callback_data=f"adm_appr_ch:{chat_id}"),
+                InlineKeyboardButton(text="❌ Reject Channel", callback_data=f"adm_rej_ch:{chat_id}")
+            ]
+        ])
+
+        try:
+            await bot.send_message(chat_id=ADMIN_USER_ID, text=approval_text, reply_markup=approval_kb)
+        except Exception:
+            pass
 
 
 # Real-time ChatMemberUpdated Handler for Join/Left & Earning Analytics

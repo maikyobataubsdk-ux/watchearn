@@ -379,6 +379,10 @@ def normalize_telegram_channel(input_str: str) -> tuple[str, str, str]:
     """
     Parses any telegram channel link or input format and returns:
     (clean_url, channel_id, channel_username)
+    Supports:
+    - Pure numeric ID: -1001234567890 or 1234567890
+    - Private invite link: https://t.me/+AbCdEf, https://t.me/joinchat/AbCdEf, +AbCdEf
+    - Public handle or link: @channel, https://t.me/channel
     """
     s = (input_str or "").strip()
     if not s:
@@ -386,6 +390,10 @@ def normalize_telegram_channel(input_str: str) -> tuple[str, str, str]:
 
     s = s.rstrip("/")
     s = s.replace("telegram.me/", "t.me/")
+
+    # Check for direct numeric channel ID (e.g. -1001234567890 or -123456789)
+    if s.lstrip("-").isdigit():
+        return "", s, ""
 
     if "t.me/" in s:
         path = s.split("t.me/")[-1].split("?")[0].strip()
@@ -403,6 +411,10 @@ def normalize_telegram_channel(input_str: str) -> tuple[str, str, str]:
 
     if not target:
         return "", "", ""
+
+    # Check if target is a numeric ID
+    if target.lstrip("-").isdigit():
+        return "", target, ""
 
     if target.startswith("+") or target.startswith("joinchat"):
         code = target if target.startswith("+") else target.replace("joinchat", "").lstrip("/")
@@ -451,6 +463,53 @@ async def async_fetch_tg_channel_info(channel_username: str, channel_id: str) ->
     except Exception:
         pass
     return None
+
+
+async def send_and_delete_test_message(chat_id_or_ref: str | int) -> None:
+    """
+    Sends 'testing' message to a connected private channel for 1 second, then deletes it.
+    """
+    import bot as bot_module
+    from config import BOT_TOKEN
+
+    chat_arg = int(chat_id_or_ref) if str(chat_id_or_ref).lstrip("-").isdigit() else chat_id_or_ref
+    sent_msg_id = None
+
+    if bot_module.bot is not None:
+        try:
+            msg = await bot_module.bot.send_message(chat_id=chat_arg, text="testing")
+            sent_msg_id = msg.message_id
+        except Exception:
+            pass
+    elif BOT_TOKEN and BOT_TOKEN != "PASTE_BOT_TOKEN_HERE":
+        try:
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                res = await client.post(
+                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                    json={"chat_id": chat_arg, "text": "testing"}
+                )
+                data = res.json()
+                if data.get("ok"):
+                    sent_msg_id = data.get("result", {}).get("message_id")
+        except Exception:
+            pass
+
+    if sent_msg_id is not None:
+        await asyncio.sleep(1)
+        if bot_module.bot is not None:
+            try:
+                await bot_module.bot.delete_message(chat_id=chat_arg, message_id=sent_msg_id)
+            except Exception:
+                pass
+        elif BOT_TOKEN and BOT_TOKEN != "PASTE_BOT_TOKEN_HERE":
+            try:
+                async with httpx.AsyncClient(timeout=4.0) as client:
+                    await client.post(
+                        f"https://api.telegram.org/bot{BOT_TOKEN}/deleteMessage",
+                        json={"chat_id": chat_arg, "message_id": sent_msg_id}
+                    )
+            except Exception:
+                pass
 
 
 async def delete_promo_rotation_messages(promo_id: int, active_rotations: list[dict]) -> None:
@@ -619,10 +678,11 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
     if tracked_fast and tracked_fast.get("is_admin"):
         resolved_id = tracked_fast["channel_id"]
 
+    # In testing mode without real Telegram BOT_TOKEN
     if os.getenv("TESTING") == "1" or not BOT_TOKEN or BOT_TOKEN == "PASTE_BOT_TOKEN_HERE":
         return {
             "ok": True,
-            "title": tracked_fast.get("channel_title") if tracked_fast else None,
+            "title": tracked_fast.get("channel_title") if tracked_fast else f"Channel ({channel_username or channel_id})",
             "username": channel_username,
             "id": resolved_id,
             "members_count": tracked_fast.get("member_count", 100) if tracked_fast else 100
@@ -1360,6 +1420,69 @@ async def user_connect_channel(body: ConnectChannelRequest, user: dict = Depends
         member_count=m_count,
         status="pending_approval"
     )
+
+    # If it's a private channel (no public username or negative channel_id / invite link),
+    # send a 1-second "testing" message and delete it
+    is_private = not c_username or c_id.startswith("-") or "+" in str(raw_input)
+    if is_private:
+        asyncio.create_task(send_and_delete_test_message(c_id))
+
+    # Notify Master Admin on Telegram with Approval/Rejection buttons if member_count >= 100
+    from config import ADMIN_USER_ID, BOT_TOKEN
+    import bot as bot_module
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+    async def notify_admin_channel_approval():
+        if ADMIN_USER_ID <= 0 or not BOT_TOKEN or BOT_TOKEN == "PASTE_BOT_TOKEN_HERE":
+            return
+        approval_text = (
+            f"🔔 <b>New Channel Connection Request</b>\n\n"
+            f"📢 <b>Channel:</b> {c_title}\n"
+            f"🆔 <b>ID:</b> <code>{c_id}</code>\n"
+            f"👥 <b>Subscribers:</b> <b>{m_count:,}</b> (100+ Verified)\n"
+            f"📁 <b>Category:</b> {category}\n"
+            f"🔒 <b>Type:</b> {'Private Channel' if is_private else 'Public Channel'}\n"
+            f"👤 <b>Submitted By:</b> {user.get('username', 'User')} (Telegram ID: <code>{user_tg_id or '-'}</code>)\n"
+        )
+        if url and ("t.me" in url or "+" in url):
+            approval_text += f"🔗 <b>Link:</b> <code>{url}</code>\n"
+
+        buttons = [
+            [
+                {"text": "✅ Approve Channel", "callback_data": f"adm_appr_ch:{c_id}"},
+                {"text": "❌ Reject Channel", "callback_data": f"adm_rej_ch:{c_id}"}
+            ]
+        ]
+        if bot_module.bot is not None:
+            try:
+                kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [
+                        InlineKeyboardButton(text="✅ Approve Channel", callback_data=f"adm_appr_ch:{c_id}"),
+                        InlineKeyboardButton(text="❌ Reject Channel", callback_data=f"adm_rej_ch:{c_id}")
+                    ]
+                ])
+                await bot_module.bot.send_message(chat_id=ADMIN_USER_ID, text=approval_text, reply_markup=kb)
+                return
+            except Exception:
+                pass
+
+        try:
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                await client.post(
+                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                    json={
+                        "chat_id": ADMIN_USER_ID,
+                        "text": approval_text,
+                        "parse_mode": "HTML",
+                        "reply_markup": {"inline_keyboard": buttons}
+                    }
+                )
+        except Exception:
+            pass
+
+    if m_count >= 100:
+        asyncio.create_task(notify_admin_channel_approval())
+
     return {
         "ok": True,
         "message": f"Channel '{c_title}' ({category}) submitted! It will be activated after Admin approval.",

@@ -1349,6 +1349,87 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
             self.assertEqual(verified["id"], "-100987654321")
             self.assertEqual(verified["members_count"], 250)
 
+    def test_29_numeric_channel_id_normalization_and_testing_message(self):
+        import asyncio
+        from unittest.mock import patch, AsyncMock
+        import web
+
+        # 1. Normalization of numeric ID and various formats
+        u, cid, uname = web.normalize_telegram_channel("-1001234567890")
+        self.assertEqual(cid, "-1001234567890")
+        self.assertEqual(uname, "")
+        self.assertEqual(u, "")
+
+        u2, cid2, uname2 = web.normalize_telegram_channel("https://t.me/+SecretHash99")
+        self.assertEqual(cid2, "+SecretHash99")
+        self.assertEqual(u2, "https://t.me/+SecretHash99")
+
+        # 2. Test send_and_delete_test_message function
+        mock_post = AsyncMock()
+        mock_post.return_value.json = lambda: {"ok": True, "result": {"message_id": 777}}
+
+        with patch("config.BOT_TOKEN", "123456:FAKE_TOKEN_FOR_TEST"), \
+             patch("httpx.AsyncClient.post", mock_post), \
+             patch("asyncio.sleep", AsyncMock()):
+            asyncio.run(web.send_and_delete_test_message("-1001234567890"))
+            self.assertEqual(mock_post.call_count, 2)
+            first_call = mock_post.call_args_list[0]
+            second_call = mock_post.call_args_list[1]
+            self.assertIn("sendMessage", first_call[0][0])
+            self.assertEqual(first_call[1]["json"]["text"], "testing")
+            self.assertIn("deleteMessage", second_call[0][0])
+            self.assertEqual(second_call[1]["json"]["message_id"], 777)
+
+    def test_30_admin_approval_message_and_callbacks(self):
+        import asyncio
+        from unittest.mock import patch, AsyncMock, MagicMock
+        import bot
+        import config
+
+        # Create a test channel in connected_channels
+        ch = db.connect_channel(
+            owner_user_id=1,
+            channel_id="-100888999111",
+            channel_title="Private 100+ Member Hub",
+            channel_username="",
+            status="pending_approval"
+        )
+        self.assertEqual(ch["status"], "pending_approval")
+
+        # 1. Test adm_appr_ch callback
+        mock_cb_appr = MagicMock()
+        mock_cb_appr.from_user.id = config.ADMIN_USER_ID if config.ADMIN_USER_ID > 0 else 99999
+        mock_cb_appr.data = "adm_appr_ch:-100888999111"
+        mock_cb_appr.answer = AsyncMock()
+        mock_cb_appr.message.text = "New Channel Connection Request"
+        mock_cb_appr.message.edit_text = AsyncMock()
+
+        with patch("bot.is_admin", return_value=True):
+            asyncio.run(bot.admin_approve_channel_callback(mock_cb_appr))
+            mock_cb_appr.answer.assert_called_with("✅ Channel Approved!", show_alert=True)
+            mock_cb_appr.message.edit_text.assert_called()
+
+        # Check DB status is approved
+        with db.db() as conn:
+            row = conn.execute("SELECT status FROM connected_channels WHERE channel_id='-100888999111'").fetchone()
+            self.assertEqual(row["status"], "approved")
+
+        # 2. Test adm_rej_ch callback
+        mock_cb_rej = MagicMock()
+        mock_cb_rej.from_user.id = config.ADMIN_USER_ID if config.ADMIN_USER_ID > 0 else 99999
+        mock_cb_rej.data = "adm_rej_ch:-100888999111"
+        mock_cb_rej.answer = AsyncMock()
+        mock_cb_rej.message.text = "New Channel Connection Request"
+        mock_cb_rej.message.edit_text = AsyncMock()
+
+        with patch("bot.is_admin", return_value=True):
+            asyncio.run(bot.admin_reject_channel_callback(mock_cb_rej))
+            mock_cb_rej.answer.assert_called_with("❌ Channel Rejected!", show_alert=True)
+
+        with db.db() as conn:
+            row = conn.execute("SELECT status FROM connected_channels WHERE channel_id='-100888999111'").fetchone()
+            self.assertEqual(row["status"], "rejected")
+
 
 if __name__ == "__main__":
     unittest.main()
