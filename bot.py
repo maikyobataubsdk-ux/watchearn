@@ -29,6 +29,7 @@ from db import (
     record_bot_admin_channel, update_connected_channel_status,
     approve_channel_connection_request, reject_channel_connection_request,
     get_channel_connection_request_by_chat_id,
+    get_channel_verification_token, mark_channel_verification_token_used,
 )
 
 router = Router()
@@ -1197,6 +1198,25 @@ async def channel_post_handler(message: Message) -> None:
         is_admin=is_admin,
         member_count=member_count,
     )
+
+    # Check for verification token in message text or caption
+    content = (message.text or message.caption or "").strip()
+    if content and "verify_" in content:
+        import re
+        tokens = re.findall(r"verify_[a-f0-9]{12}", content)
+        for tok in tokens:
+            tok_row = get_channel_verification_token(tok)
+            if tok_row:
+                mark_channel_verification_token_used(tok, chat_id)
+                if inv_str:
+                    record_bot_admin_channel(
+                        channel_id=chat_id,
+                        channel_title=title,
+                        channel_username=username,
+                        invite_link=inv_str,
+                        is_admin=is_admin,
+                        member_count=member_count,
+                    )
 
 
 # Optional fallback: Track forwarded channel messages sent to the bot in private chat
