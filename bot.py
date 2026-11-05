@@ -27,6 +27,8 @@ from db import (
     record_promo_invite_link, get_promo_invite_link, record_channel_join_event_with_source,
     add_force_sub_channel, remove_force_sub_channel, get_all_force_sub_channels, toggle_force_sub_channel,
     record_bot_admin_channel, update_connected_channel_status,
+    approve_channel_connection_request, reject_channel_connection_request,
+    get_channel_connection_request_by_chat_id,
 )
 
 router = Router()
@@ -893,6 +895,9 @@ async def admin_approve_channel_callback(callback: CallbackQuery) -> None:
 
     channel_id = callback.data.split(":", 1)[1]
     res = update_connected_channel_status(channel_id, "approved")
+    pending_req = get_channel_connection_request_by_chat_id(channel_id, "pending_approval")
+    if pending_req:
+        approve_channel_connection_request(pending_req["id"], approved_by=f"telegram:{user_id}")
 
     await callback.answer("✅ Channel Approved!", show_alert=True)
     if callback.message:
@@ -913,6 +918,9 @@ async def admin_reject_channel_callback(callback: CallbackQuery) -> None:
 
     channel_id = callback.data.split(":", 1)[1]
     res = update_connected_channel_status(channel_id, "rejected")
+    pending_req = get_channel_connection_request_by_chat_id(channel_id, "pending_approval")
+    if pending_req:
+        reject_channel_connection_request(pending_req["id"], rejection_reason="Rejected by Master Admin", rejected_by=f"telegram:{user_id}")
 
     await callback.answer("❌ Channel Rejected!", show_alert=True)
     if callback.message:
@@ -1144,6 +1152,106 @@ async def rotation_background_loop() -> None:
         except Exception:
             pass
         await asyncio.sleep(60)  # Check every 60 seconds
+
+
+# Track channel posts to auto-discover channels where the bot was already an administrator
+@router.channel_post()
+async def channel_post_handler(message: Message) -> None:
+    chat = message.chat
+    chat_id = str(chat.id)
+    title = chat.title or chat_id
+    username = chat.username or ""
+
+    is_admin = False
+    member_count = 0
+    inv_str = ""
+
+    if bot is not None:
+        try:
+            me = await bot.get_me()
+            cm = await bot.get_chat_member(chat_id=chat.id, user_id=me.id)
+            is_admin = cm.status in ("administrator", "creator")
+        except Exception:
+            is_admin = False
+
+        if is_admin:
+            try:
+                member_count = await bot.get_chat_member_count(chat_id=chat.id)
+            except Exception:
+                pass
+            try:
+                inv_str = await bot.export_chat_invite_link(chat_id=chat.id)
+            except Exception:
+                try:
+                    created_link = await bot.create_chat_invite_link(chat_id=chat.id, name="Admin Link Tracker")
+                    if created_link and created_link.invite_link:
+                        inv_str = created_link.invite_link
+                except Exception:
+                    pass
+
+    record_bot_admin_channel(
+        channel_id=chat_id,
+        channel_title=title,
+        channel_username=username,
+        invite_link=inv_str,
+        is_admin=is_admin,
+        member_count=member_count,
+    )
+
+
+# Optional fallback: Track forwarded channel messages sent to the bot in private chat
+@router.message(F.forward_from_chat)
+async def forwarded_channel_message_handler(message: Message) -> None:
+    fwd_chat = message.forward_from_chat
+    if not fwd_chat or fwd_chat.type != "channel":
+        return
+
+    chat_id = str(fwd_chat.id)
+    title = fwd_chat.title or chat_id
+    username = fwd_chat.username or ""
+
+    is_admin = False
+    member_count = 0
+    inv_str = ""
+
+    if bot is not None:
+        try:
+            me = await bot.get_me()
+            cm = await bot.get_chat_member(chat_id=fwd_chat.id, user_id=me.id)
+            is_admin = cm.status in ("administrator", "creator")
+        except Exception:
+            is_admin = False
+
+        if is_admin:
+            try:
+                member_count = await bot.get_chat_member_count(chat_id=fwd_chat.id)
+            except Exception:
+                pass
+            try:
+                inv_str = await bot.export_chat_invite_link(chat_id=fwd_chat.id)
+            except Exception:
+                try:
+                    created_link = await bot.create_chat_invite_link(chat_id=fwd_chat.id, name="Admin Link Tracker")
+                    if created_link and created_link.invite_link:
+                        inv_str = created_link.invite_link
+                except Exception:
+                    pass
+
+    record_bot_admin_channel(
+        channel_id=chat_id,
+        channel_title=title,
+        channel_username=username,
+        invite_link=inv_str,
+        is_admin=is_admin,
+        member_count=member_count,
+    )
+
+    if is_admin:
+        await message.reply(
+            f"✅ Channel <b>{escape(title)}</b> (ID: <code>{chat_id}</code>) identified successfully!\n"
+            f"Subscribers: <b>{member_count:,}</b>\n\n"
+            f"You can now connect this channel in the Mini App by entering <code>{chat_id}</code> or your invite link."
+        )
 
 
 # Track when bot is added or removed as administrator in public/private channels

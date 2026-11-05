@@ -303,6 +303,28 @@ def init_db() -> None:
                 member_count INTEGER DEFAULT 0,
                 updated_at TEXT NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS channel_connection_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                telegram_chat_id TEXT NOT NULL,
+                channel_title TEXT NOT NULL,
+                channel_type TEXT NOT NULL,
+                channel_category TEXT NOT NULL,
+                member_count INTEGER NOT NULL,
+                bot_admin_status TEXT NOT NULL,
+                user_admin_status TEXT NOT NULL,
+                approval_status TEXT NOT NULL DEFAULT 'pending_approval',
+                rejection_reason TEXT DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                approved_at TEXT,
+                approved_by TEXT,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_chan_req_status ON channel_connection_requests (approval_status);
+            CREATE INDEX IF NOT EXISTS idx_chan_req_chat_user ON channel_connection_requests (telegram_chat_id, user_id);
             """
         )
 
@@ -976,6 +998,163 @@ def get_all_connected_channels() -> list[dict]:
             """
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+# Channel Connection Approval Requests CRUD
+def create_channel_connection_request(
+    user_id: int,
+    telegram_chat_id: str,
+    channel_title: str,
+    channel_type: str,
+    channel_category: str,
+    member_count: int,
+    bot_admin_status: str,
+    user_admin_status: str
+) -> dict:
+    chat_id_str = str(telegram_chat_id).strip()
+    with db() as conn:
+        # Check if there is already an active pending request for this channel
+        existing = conn.execute(
+            """
+            SELECT * FROM channel_connection_requests
+            WHERE telegram_chat_id = ? AND approval_status = 'pending_approval'
+            ORDER BY id DESC LIMIT 1
+            """,
+            (chat_id_str,)
+        ).fetchone()
+        if existing:
+            return {"ok": False, "error": "A connection request for this channel is already pending admin approval.", "request": dict(existing)}
+
+        now = utcnow()
+        cur = conn.execute(
+            """
+            INSERT INTO channel_connection_requests (
+                user_id, telegram_chat_id, channel_title, channel_type,
+                channel_category, member_count, bot_admin_status, user_admin_status,
+                approval_status, rejection_reason, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending_approval', '', ?, ?)
+            """,
+            (
+                user_id, chat_id_str, channel_title, channel_type,
+                channel_category, int(member_count), bot_admin_status, user_admin_status,
+                now, now
+            )
+        )
+        req_id = cur.lastrowid
+        row = conn.execute("SELECT * FROM channel_connection_requests WHERE id = ?", (req_id,)).fetchone()
+        return {"ok": True, "request": dict(row)}
+
+
+def get_channel_connection_requests(status: str | None = None) -> list[dict]:
+    with db() as conn:
+        if status:
+            rows = conn.execute(
+                """
+                SELECT r.*, u.username as owner_username, u.telegram_id as owner_telegram_id
+                FROM channel_connection_requests r
+                LEFT JOIN users u ON r.user_id = u.id
+                WHERE r.approval_status = ?
+                ORDER BY r.id DESC
+                """,
+                (status,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT r.*, u.username as owner_username, u.telegram_id as owner_telegram_id
+                FROM channel_connection_requests r
+                LEFT JOIN users u ON r.user_id = u.id
+                ORDER BY r.id DESC
+                """
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_channel_connection_request_by_id(req_id: int) -> dict | None:
+    with db() as conn:
+        row = conn.execute(
+            """
+            SELECT r.*, u.username as owner_username, u.telegram_id as owner_telegram_id
+            FROM channel_connection_requests r
+            LEFT JOIN users u ON r.user_id = u.id
+            WHERE r.id = ?
+            """,
+            (req_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def get_channel_connection_request_by_chat_id(telegram_chat_id: str, status: str = "pending_approval") -> dict | None:
+    with db() as conn:
+        row = conn.execute(
+            """
+            SELECT * FROM channel_connection_requests
+            WHERE telegram_chat_id = ? AND approval_status = ?
+            ORDER BY id DESC LIMIT 1
+            """,
+            (str(telegram_chat_id).strip(), status)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def approve_channel_connection_request(req_id: int, approved_by: str = "admin") -> dict:
+    with db() as conn:
+        row = conn.execute("SELECT * FROM channel_connection_requests WHERE id = ?", (req_id,)).fetchone()
+        if not row:
+            return {"ok": False, "error": "Approval request not found."}
+
+        now = utcnow()
+        conn.execute(
+            """
+            UPDATE channel_connection_requests
+            SET approval_status = 'approved', approved_at = ?, approved_by = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (now, approved_by, now, req_id)
+        )
+
+        # Also activate/approve the channel in connected_channels
+        conn.execute(
+            """
+            UPDATE connected_channels
+            SET status = 'approved'
+            WHERE channel_id = ? OR channel_id = ? OR channel_username = ?
+            """,
+            (row["telegram_chat_id"], f"@{row['telegram_chat_id'].lstrip('@')}", row["telegram_chat_id"].lstrip("@"))
+        )
+
+        updated = conn.execute("SELECT * FROM channel_connection_requests WHERE id = ?", (req_id,)).fetchone()
+        return {"ok": True, "message": f"Channel '{row['channel_title']}' approved successfully.", "request": dict(updated)}
+
+
+def reject_channel_connection_request(req_id: int, rejection_reason: str = "", rejected_by: str = "admin") -> dict:
+    with db() as conn:
+        row = conn.execute("SELECT * FROM channel_connection_requests WHERE id = ?", (req_id,)).fetchone()
+        if not row:
+            return {"ok": False, "error": "Approval request not found."}
+
+        now = utcnow()
+        conn.execute(
+            """
+            UPDATE channel_connection_requests
+            SET approval_status = 'rejected', rejection_reason = ?, approved_by = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            (rejection_reason or "Rejected by administrator", rejected_by, now, req_id)
+        )
+
+        # Also mark the channel in connected_channels as rejected
+        conn.execute(
+            """
+            UPDATE connected_channels
+            SET status = 'rejected'
+            WHERE channel_id = ? OR channel_id = ? OR channel_username = ?
+            """,
+            (row["telegram_chat_id"], f"@{row['telegram_chat_id'].lstrip('@')}", row["telegram_chat_id"].lstrip("@"))
+        )
+
+        updated = conn.execute("SELECT * FROM channel_connection_requests WHERE id = ?", (req_id,)).fetchone()
+        return {"ok": True, "message": f"Channel '{row['channel_title']}' rejected.", "request": dict(updated)}
 
 
 def record_promo_invite_link(invite_link: str, promotion_id: int, source_channel_id: str) -> None:

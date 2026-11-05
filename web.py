@@ -290,6 +290,13 @@ class AdminChannelStatusRequest(BaseModel):
     status: str  # approved, rejected, banned, pending_approval
 
 
+class AdminChannelApprovalActionRequest(BaseModel):
+    request_id: Optional[int] = None
+    requestId: Optional[int] = None
+    rejection_reason: Optional[str] = ""
+    rejectionReason: Optional[str] = ""
+
+
 class ConfirmPaymentRequest(BaseModel):
     order_id: str = Field(min_length=3, max_length=100)
     amount_inr: float = Field(gt=0)
@@ -670,9 +677,9 @@ async def verify_telegram_channel_for_promotion(channel_username: str, channel_i
 async def verify_channel_for_connect(channel_username: str, channel_id: str, user_telegram_id: Optional[int]) -> dict:
     import os
     from config import BOT_TOKEN
-
-    # Check tracked bot admin channels first (vital for private invite links where chat_ref is +hash)
     from db import get_bot_admin_channel, get_active_bot_admin_channels, record_bot_admin_channel
+
+    # Check tracked bot admin channels first
     resolved_id = channel_id
     tracked_fast = get_bot_admin_channel(channel_username) or get_bot_admin_channel(channel_id)
     if tracked_fast and tracked_fast.get("is_admin"):
@@ -685,7 +692,10 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
             "title": tracked_fast.get("channel_title") if tracked_fast else f"Channel ({channel_username or channel_id})",
             "username": channel_username,
             "id": resolved_id,
-            "members_count": tracked_fast.get("member_count", 100) if tracked_fast else 100
+            "members_count": tracked_fast.get("member_count", 100) if tracked_fast else 100,
+            "bot_admin_status": "administrator",
+            "user_admin_status": "creator",
+            "channel_type": "private" if str(resolved_id).startswith("-") or not channel_username else "public"
         }
 
     if not user_telegram_id:
@@ -695,9 +705,6 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
         )
 
     chat_ref = f"@{channel_username}" if channel_username else channel_id
-
-    # Check tracked bot admin channels first (vital for private invite links where chat_ref is +hash)
-    from db import get_bot_admin_channel, get_active_bot_admin_channels, record_bot_admin_channel
     tracked = get_bot_admin_channel(chat_ref) or get_bot_admin_channel(channel_id)
     if tracked and tracked.get("is_admin"):
         chat_ref = tracked["channel_id"]
@@ -710,22 +717,43 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
             # 1. Get Bot Info to get bot's Telegram ID
-            bot_res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe")
-            bot_data = bot_res.json()
+            try:
+                bot_res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getMe")
+                bot_data = bot_res.json()
+            except httpx.TimeoutException:
+                raise HTTPException(status_code=504, detail="Telegram API timeout while verifying bot information.")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Telegram API request failed: {str(e)}")
+
             if not bot_data.get("ok"):
                 raise HTTPException(status_code=500, detail="Telegram Bot API configuration error.")
             bot_id = bot_data["result"]["id"]
 
-            # 2. Get Chat Info
             chat_data = None
-            resolved_from_pool = False
+            resolved_chat_id = None
 
-            # If chat_ref is private invite link or hash, attempt matching in bot admin channels
-            if is_private_invite and not chat_ref.startswith("-"):
+            # If chat_ref is already numeric chat_id (-100...)
+            if chat_ref.startswith("-") and chat_ref.lstrip("-").isdigit():
+                resolved_chat_id = chat_ref
+            elif not is_private_invite and chat_ref.startswith("@"):
+                # Public channel
+                try:
+                    c_res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getChat", params={"chat_id": chat_ref})
+                    c_data = c_res.json()
+                    if c_data.get("ok"):
+                        chat_data = c_data
+                        resolved_chat_id = str(c_data["result"]["id"])
+                except httpx.TimeoutException:
+                    raise HTTPException(status_code=504, detail="Telegram API timeout while resolving channel.")
+                except Exception:
+                    pass
+
+            # If private invite link / hash, NEVER pass directly to getChat/getChatMember
+            if not resolved_chat_id:
                 active_admin_chs = get_active_bot_admin_channels()
                 inv_clean = chat_ref.lstrip("+").strip()
 
-                # Strategy A: Check stored invite_link or fetch getChat invite_link
+                # Strategy A: Check stored invite_link or getChat invite_link
                 for ach in active_admin_chs:
                     cand_chat_id = ach["channel_id"]
                     try:
@@ -736,15 +764,13 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
                             ach_inv = ach.get("invite_link", "")
                             if inv_clean and (inv_clean in c_inv or inv_clean in ach_inv):
                                 chat_data = c_data
-                                chat_ref = str(c_data["result"]["id"])
-                                resolved_from_pool = True
+                                resolved_chat_id = str(c_data["result"]["id"])
                                 break
                     except Exception:
                         continue
 
-                # Strategy B: If still not matched by link, check if the connecting user is creator/admin
-                # in any bot-administered channel
-                if not chat_data:
+                # Strategy B: Check if authenticated user is creator/admin in any active bot admin channel
+                if not resolved_chat_id:
                     for ach in active_admin_chs:
                         cand_chat_id = ach["channel_id"]
                         try:
@@ -758,9 +784,7 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
                                 c_data = c_res.json()
                                 if c_data.get("ok"):
                                     chat_data = c_data
-                                    chat_ref = str(c_data["result"]["id"])
-                                    resolved_from_pool = True
-                                    # Update record with the invite link so next lookups are instant
+                                    resolved_chat_id = str(c_data["result"]["id"])
                                     record_bot_admin_channel(
                                         channel_id=cand_chat_id,
                                         channel_title=c_data["result"].get("title") or ach.get("channel_title", ""),
@@ -773,33 +797,62 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
                         except Exception:
                             continue
 
-            if not chat_data:
-                chat_res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getChat", params={"chat_id": chat_ref})
-                chat_data = chat_res.json()
-
-            if not chat_data.get("ok"):
-                err_desc = chat_data.get("description", "")
-                # If private link or bot not in chat yet
-                if chat_ref.startswith("+") or is_private_invite or "chat not found" in err_desc.lower():
+            # If still unresolved and it's a private invite or not numeric
+            if not resolved_chat_id:
+                if is_private_invite:
                     raise HTTPException(
                         status_code=400,
-                        detail="Bot is not an administrator in this channel. Please add the bot as an administrator in your channel first, then try connecting again."
+                        detail=(
+                            "Channel could not be identified from this private invite link. "
+                            "Please post a message in your channel, forward a post to the bot, "
+                            "or enter your numeric Telegram Channel ID (-100...)."
+                        )
                     )
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Channel not found. Please enter a valid channel link or @username. ({err_desc})"
-                )
+                # Try direct getChat for public @handle
+                try:
+                    chat_res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getChat", params={"chat_id": chat_ref})
+                    chat_data = chat_res.json()
+                except httpx.TimeoutException:
+                    raise HTTPException(status_code=504, detail="Telegram API timeout while contacting Telegram.")
+                except Exception as e:
+                    raise HTTPException(status_code=400, detail=f"Telegram API error: {str(e)}")
+
+                if not chat_data or not chat_data.get("ok"):
+                    err_desc = chat_data.get("description", "") if chat_data else ""
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Channel not found. Please enter a valid channel link or @username. ({err_desc})"
+                    )
+                resolved_chat_id = str(chat_data["result"]["id"])
+
+            if not chat_data:
+                try:
+                    c_res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getChat", params={"chat_id": resolved_chat_id})
+                    chat_data = c_res.json()
+                except Exception:
+                    pass
+
+            if not chat_data or not chat_data.get("ok"):
+                raise HTTPException(status_code=400, detail="Could not retrieve Telegram channel information.")
+
             chat = chat_data["result"]
             real_chat_id = str(chat["id"])
             real_title = chat.get("title") or chat.get("first_name") or chat_ref
             real_username = chat.get("username") or channel_username
+            channel_type = "private" if real_chat_id.startswith("-") and not chat.get("username") else "public"
 
             # 3. Verify Bot is Admin in Channel
-            bot_member_res = await client.get(
-                f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember",
-                params={"chat_id": real_chat_id, "user_id": bot_id}
-            )
-            bot_member_data = bot_member_res.json()
+            try:
+                bot_member_res = await client.get(
+                    f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember",
+                    params={"chat_id": real_chat_id, "user_id": bot_id}
+                )
+                bot_member_data = bot_member_res.json()
+            except httpx.TimeoutException:
+                raise HTTPException(status_code=504, detail="Telegram API timeout while verifying bot admin permissions.")
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Failed to check bot status: {str(e)}")
+
             bot_status = bot_member_data.get("result", {}).get("status") if bot_member_data.get("ok") else None
             if bot_status not in ("administrator", "creator"):
                 raise HTTPException(
@@ -808,11 +861,17 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
                 )
 
             # 4. Verify User is Owner/Admin in Channel
-            user_member_res = await client.get(
-                f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember",
-                params={"chat_id": real_chat_id, "user_id": user_telegram_id}
-            )
-            user_member_data = user_member_res.json()
+            try:
+                user_member_res = await client.get(
+                    f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember",
+                    params={"chat_id": real_chat_id, "user_id": user_telegram_id}
+                )
+                user_member_data = user_member_res.json()
+            except httpx.TimeoutException:
+                raise HTTPException(status_code=504, detail="Telegram API timeout while verifying your channel permissions.")
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Failed to verify your channel status: {str(e)}")
+
             user_status = user_member_data.get("result", {}).get("status") if user_member_data.get("ok") else None
             if user_status not in ("creator", "administrator"):
                 raise HTTPException(
@@ -821,16 +880,23 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
                 )
 
             # 5. Verify Member Count >= 100
-            count_res = await client.get(
-                f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMemberCount",
-                params={"chat_id": real_chat_id}
-            )
-            count_data = count_res.json()
+            try:
+                count_res = await client.get(
+                    f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMemberCount",
+                    params={"chat_id": real_chat_id}
+                )
+                count_data = count_res.json()
+            except httpx.TimeoutException:
+                raise HTTPException(status_code=504, detail="Telegram API timeout while verifying channel members count.")
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Failed to count channel members: {str(e)}")
+
             raw_count = count_data.get("result", 0) if count_data.get("ok") else 0
             try:
                 members_count = int(raw_count)
             except (ValueError, TypeError):
                 members_count = 0
+
             if members_count < 100:
                 raise HTTPException(
                     status_code=400,
@@ -842,7 +908,10 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
                 "title": real_title,
                 "username": real_username,
                 "id": real_chat_id,
-                "members_count": members_count
+                "members_count": members_count,
+                "bot_admin_status": bot_status,
+                "user_admin_status": user_status,
+                "channel_type": channel_type
             }
     except HTTPException:
         raise
@@ -1399,7 +1468,9 @@ async def user_connect_channel(body: ConnectChannelRequest, user: dict = Depends
 
     url = clean_url or raw_input
     c_id = body.channel_id or body.channelId or channel_id or url
-    c_username = body.channel_username or body.channelUsername or channel_username or url.split("t.me/")[-1]
+    c_username = body.channel_username or body.channelUsername or channel_username
+    if not c_username and url and "t.me/" in url and not ("+" in url or "joinchat" in url):
+        c_username = url.split("t.me/")[-1].strip("/")
     category = body.category or "General"
 
     # Perform channel verification (ownership, bot admin status, min 100 members)
@@ -1410,6 +1481,31 @@ async def user_connect_channel(body: ConnectChannelRequest, user: dict = Depends
     c_title = verified.get("title") or body.channel_title or body.channelTitle or f"Channel ({c_id})"
     c_username = verified.get("username") or c_username
     m_count = int(verified.get("members_count") or 0)
+
+    # Record channel connection request in database
+    from db import (
+        create_channel_connection_request,
+        get_channel_connection_requests,
+        approve_channel_connection_request,
+        reject_channel_connection_request,
+    )
+
+    chan_type = verified.get("channel_type") or ("private" if not c_username or str(c_id).startswith("-") else "public")
+    bot_status = verified.get("bot_admin_status") or "administrator"
+    user_status = verified.get("user_admin_status") or "creator"
+
+    req_res = create_channel_connection_request(
+        user_id=user["id"],
+        telegram_chat_id=c_id,
+        channel_title=c_title,
+        channel_type=chan_type,
+        channel_category=category,
+        member_count=m_count,
+        bot_admin_status=bot_status,
+        user_admin_status=user_status
+    )
+    if not req_res.get("ok"):
+        raise HTTPException(status_code=400, detail=req_res.get("error", "Duplicate pending connection request for this channel."))
 
     ch = connect_channel(
         owner_user_id=user["id"],
@@ -1423,7 +1519,7 @@ async def user_connect_channel(body: ConnectChannelRequest, user: dict = Depends
 
     # If it's a private channel (no public username or negative channel_id / invite link),
     # send a 1-second "testing" message and delete it
-    is_private = not c_username or c_id.startswith("-") or "+" in str(raw_input)
+    is_private = chan_type == "private" or not c_username or str(c_id).startswith("-") or "+" in str(raw_input)
     if is_private:
         asyncio.create_task(send_and_delete_test_message(c_id))
 
@@ -1485,9 +1581,52 @@ async def user_connect_channel(body: ConnectChannelRequest, user: dict = Depends
 
     return {
         "ok": True,
-        "message": f"Channel '{c_title}' ({category}) submitted! It will be activated after Admin approval.",
+        "message": "Your channel has been successfully verified and submitted for admin approval.",
         "channel": ch,
+        "request_id": req_res.get("request", {}).get("id"),
+        "verification": {
+            "channel_title": c_title,
+            "channel_id": c_id,
+            "members_count": m_count,
+            "bot_admin_status": bot_status,
+            "user_admin_status": user_status,
+            "channel_type": chan_type,
+            "category": category
+        }
     }
+
+
+# Admin Channel Approval Requests Endpoints
+@app.get("/api/admin/channel-requests")
+async def admin_get_channel_requests(status: Optional[str] = None, _: bool = Depends(require_admin)) -> dict:
+    from db import get_channel_connection_requests
+    requests = get_channel_connection_requests(status)
+    return {"ok": True, "requests": requests}
+
+
+@app.post("/api/admin/channel-requests/approve")
+async def admin_approve_channel_request_endpoint(body: AdminChannelApprovalActionRequest, _: bool = Depends(require_admin)) -> dict:
+    from db import approve_channel_connection_request
+    r_id = body.request_id or body.requestId
+    if not r_id:
+        raise HTTPException(status_code=400, detail="request_id is required.")
+    res = approve_channel_connection_request(r_id, approved_by="admin")
+    if not res.get("ok"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Failed to approve request."))
+    return res
+
+
+@app.post("/api/admin/channel-requests/reject")
+async def admin_reject_channel_request_endpoint(body: AdminChannelApprovalActionRequest, _: bool = Depends(require_admin)) -> dict:
+    from db import reject_channel_connection_request
+    r_id = body.request_id or body.requestId
+    if not r_id:
+        raise HTTPException(status_code=400, detail="request_id is required.")
+    reason = body.rejection_reason or body.rejectionReason or "Rejected by administrator"
+    res = reject_channel_connection_request(r_id, rejection_reason=reason, rejected_by="admin")
+    if not res.get("ok"):
+        raise HTTPException(status_code=400, detail=res.get("error", "Failed to reject request."))
+    return res
 
 
 @app.get("/api/channels/my")

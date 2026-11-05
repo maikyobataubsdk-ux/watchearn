@@ -1067,8 +1067,30 @@
               </select>
             </div>
 
-            <button type="submit" class="btn btn-primary" style="white-space: nowrap;"><i class="fa-solid fa-plug"></i> Connect & Verify Admin</button>
+            <button type="submit" id="connectChannelSubmitBtn" class="btn btn-primary" style="white-space: nowrap;"><i class="fa-solid fa-plug"></i> Connect & Verify Admin</button>
           </form>
+
+          <!-- Connection & Verification Progress Feedback -->
+          <div id="connectProgressContainer" class="glass hidden" style="padding: 16px; margin-top: 15px; border-left: 4px solid var(--neon-cyan); background: rgba(0, 229, 255, 0.05);">
+            <div style="font-size: 13px; font-weight: bold; color: var(--neon-cyan); margin-bottom: 8px;">
+              <i class="fa-solid fa-spinner fa-spin"></i> <span id="connectProgressTitle">Verifying Channel...</span>
+            </div>
+            <div id="connectProgressSteps" style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--text-muted);">
+              <div id="connStep1"><i class="fa-regular fa-circle text-muted"></i> Step 1: Identifying Channel</div>
+              <div id="connStep2"><i class="fa-regular fa-circle text-muted"></i> Step 2: Verifying Bot Administrator</div>
+              <div id="connStep3"><i class="fa-regular fa-circle text-muted"></i> Step 3: Verifying Channel Ownership</div>
+              <div id="connStep4"><i class="fa-regular fa-circle text-muted"></i> Step 4: Checking Members (Min 100)</div>
+              <div id="connStep5"><i class="fa-regular fa-circle text-muted"></i> Step 5: Submitting Approval Request</div>
+            </div>
+            <div id="connSummaryBox" class="hidden" style="margin-top: 12px; padding: 10px; background: rgba(0, 255, 136, 0.08); border-radius: 6px; font-size: 12px; color: #fff;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                <div>Channel Members: <strong id="connSummaryMembers" class="text-green">-</strong></div>
+                <div>Bot Status: <strong id="connSummaryBot" class="text-green">Verified</strong></div>
+                <div>Your Status: <strong id="connSummaryUser" class="text-green">Administrator</strong></div>
+                <div>Eligibility: <strong id="connSummaryElig" class="text-green">Qualified</strong></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- My Connected Channels Table -->
@@ -1174,6 +1196,7 @@
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_tasks" onclick="switchAdminTab('tasks')"><i class="fa-solid fa-list-check"></i> Tasks</button>
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_promos" onclick="switchAdminTab('promos')"><i class="fa-solid fa-bullhorn"></i> Promotions</button>
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_users" onclick="switchAdminTab('users')"><i class="fa-solid fa-users"></i> Users & VIP</button>
+          <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_channel_requests" onclick="switchAdminTab('channel_requests')"><i class="fa-solid fa-clipboard-check"></i> Channel Approval Requests</button>
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_channels" onclick="switchAdminTab('channels')"><i class="fa-solid fa-tv"></i> Connected Channels</button>
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_withdraws" onclick="switchAdminTab('withdraws')"><i class="fa-solid fa-wallet"></i> Withdrawals</button>
           <button class="btn btn-secondary admin-tab-btn" id="admTabBtn_adcodes" onclick="switchAdminTab('adcodes')"><i class="fa-solid fa-code"></i> Ad Codes</button>
@@ -1384,6 +1407,42 @@
                 </thead>
                 <tbody id="adminUsersTableBody">
                   <tr><td colspan="7" class="text-muted">Loading users...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBTAB: Channel Approval Requests Manager (Admin) -->
+        <div id="adminSubtab_channel_requests" class="admin-subtab hidden">
+          <div class="glass" style="padding: 25px; margin-bottom: 25px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+              <h3 style="margin: 0;"><i class="fa-solid fa-clipboard-check text-cyan"></i> Earn Program → Channel Approval Requests</h3>
+              <div style="display: flex; gap: 8px;">
+                <button class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="loadAdminChannelRequests('pending_approval')"><i class="fa-solid fa-clock"></i> Pending Only</button>
+                <button class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="loadAdminChannelRequests()"><i class="fa-solid fa-list"></i> All Requests</button>
+              </div>
+            </div>
+            <div style="overflow-x: auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Req ID</th>
+                    <th>Channel Name</th>
+                    <th>Channel ID</th>
+                    <th>Category</th>
+                    <th>Members</th>
+                    <th>Owner / User ID</th>
+                    <th>Date</th>
+                    <th>Bot Status</th>
+                    <th>User Status</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="adminChannelRequestsTableBody">
+                  <tr><td colspan="12" class="text-muted">Loading channel requests...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -2653,6 +2712,102 @@
       }
     }
 
+    async function loadAdminChannelRequests(statusFilter = '') {
+      const tbody = document.getElementById('adminChannelRequestsTableBody');
+      if (!tbody) return;
+      try {
+        const endpoint = statusFilter ? `/api/admin/channel-requests?status=${encodeURIComponent(statusFilter)}` : '/api/admin/channel-requests';
+        const res = await apiCall(endpoint);
+        tbody.innerHTML = '';
+        if (res.requests && res.requests.length > 0) {
+          res.requests.forEach(r => {
+            const tr = document.createElement('tr');
+            let stColor = 'var(--gold)';
+            let stText = 'PENDING APPROVAL';
+            if (r.approval_status === 'approved') {
+              stColor = 'var(--neon-green)';
+              stText = 'APPROVED';
+            } else if (r.approval_status === 'rejected') {
+              stColor = 'var(--error)';
+              stText = 'REJECTED';
+            }
+
+            let chUrl = '#';
+            if (r.telegram_chat_id) {
+              if (r.telegram_chat_id.startsWith('@')) {
+                chUrl = `https://t.me/${r.telegram_chat_id.replace('@', '')}`;
+              } else if (r.telegram_chat_id.startsWith('+') || r.telegram_chat_id.startsWith('https://')) {
+                chUrl = r.telegram_chat_id.startsWith('https://') ? r.telegram_chat_id : `https://t.me/${r.telegram_chat_id}`;
+              }
+            }
+
+            tr.innerHTML = `
+              <td>#${r.id}</td>
+              <td><strong>${r.channel_title}</strong></td>
+              <td>
+                <a href="${chUrl}" target="_blank" class="btn btn-outline" style="font-size:11px; padding:2px 6px; border-color:var(--neon-green); color:var(--neon-green); text-decoration:none;">
+                  <i class="fa-solid fa-arrow-up-right-from-square"></i> ${r.telegram_chat_id}
+                </a>
+              </td>
+              <td>${r.channel_category || 'General'}</td>
+              <td class="text-green"><strong>${Number(r.member_count || 0).toLocaleString()}</strong></td>
+              <td>${r.owner_username ? `@${r.owner_username}` : 'User #' + r.user_id} ${r.owner_telegram_id ? `(TG: ${r.owner_telegram_id})` : ''}</td>
+              <td style="font-size:11px; color:var(--text-muted);">${(r.created_at || '').slice(0, 16)}</td>
+              <td><span class="badge" style="background:rgba(0,255,136,0.15); color:var(--neon-green); font-size:11px;">${r.bot_admin_status || 'Verified'}</span></td>
+              <td><span class="badge" style="background:rgba(0,229,255,0.15); color:var(--neon-cyan); font-size:11px;">${r.user_admin_status || 'Owner'}</span></td>
+              <td><span style="font-size:11px; text-transform:uppercase; color:#9ca3af;">${r.channel_type || 'channel'}</span></td>
+              <td><span style="color:${stColor}; font-weight:bold; font-size:11px;">${stText}</span></td>
+              <td>
+                <div style="display:flex; gap:4px; flex-wrap:wrap;">
+                  ${r.approval_status === 'pending_approval' ? `
+                    <button class="btn btn-primary" style="padding:3px 8px; font-size:11px;" onclick="adminApproveChannelRequest(${r.id})">
+                      <i class="fa-solid fa-check"></i> Approve
+                    </button>
+                    <button class="btn btn-danger" style="padding:3px 8px; font-size:11px;" onclick="adminRejectChannelRequest(${r.id})">
+                      <i class="fa-solid fa-xmark"></i> Reject
+                    </button>
+                  ` : ''}
+                  <button class="btn btn-outline" style="padding:3px 8px; font-size:11px;" onclick="alert('Channel Details:\\n\\nTitle: ${r.channel_title}\\nID: ${r.telegram_chat_id}\\nMembers: ${r.member_count}\\nStatus: ${r.approval_status}\\nRejection Reason: ${r.rejection_reason || 'N/A'}\\nSubmitted: ${r.created_at}')">
+                    <i class="fa-solid fa-eye"></i>
+                  </button>
+                </div>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="12" class="text-muted">No channel approval requests found.</td></tr>';
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="12" class="text-muted">Error loading channel requests: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function adminApproveChannelRequest(reqId) {
+      if (!confirm(`Are you sure you want to approve channel connection request #${reqId}? This will activate the channel and enable earnings.`)) return;
+      try {
+        const res = await apiCall('/api/admin/channel-requests/approve', 'POST', { request_id: reqId });
+        alert(res.message || 'Channel request approved successfully!');
+        loadAdminChannelRequests();
+        loadAdminDashboardData();
+      } catch (err) {
+        alert(err.message || 'Failed to approve request');
+      }
+    }
+
+    async function adminRejectChannelRequest(reqId) {
+      const reason = prompt('Please enter the rejection reason for this channel:');
+      if (reason === null) return;
+      try {
+        const res = await apiCall('/api/admin/channel-requests/reject', 'POST', { request_id: reqId, rejection_reason: reason });
+        alert(res.message || 'Channel request rejected!');
+        loadAdminChannelRequests();
+        loadAdminDashboardData();
+      } catch (err) {
+        alert(err.message || 'Failed to reject request');
+      }
+    }
+
     function startAdTimer(seconds) {
       adTimeRemaining = seconds;
       updateTimerUI(adTimeRemaining, seconds);
@@ -3105,14 +3260,82 @@
     // CONNECT CHANNEL HANDLERS
     async function handleConnectChannel(e) {
       e.preventDefault();
+      const submitBtn = document.getElementById('connectChannelSubmitBtn');
+      const progressBox = document.getElementById('connectProgressContainer');
+      const progressTitle = document.getElementById('connectProgressTitle');
+      const summaryBox = document.getElementById('connSummaryBox');
+
+      const s1 = document.getElementById('connStep1');
+      const s2 = document.getElementById('connStep2');
+      const s3 = document.getElementById('connStep3');
+      const s4 = document.getElementById('connStep4');
+      const s5 = document.getElementById('connStep5');
+
+      const setStepState = (el, iconClass, color, text) => {
+        if (!el) return;
+        el.innerHTML = `<i class="${iconClass}" style="color:${color};"></i> ${text}`;
+      };
+
+      const resetSteps = () => {
+        setStepState(s1, 'fa-solid fa-spinner fa-spin', 'var(--neon-cyan)', 'Step 1: Identifying Channel');
+        setStepState(s2, 'fa-regular fa-circle', 'var(--text-muted)', 'Step 2: Verifying Bot Administrator');
+        setStepState(s3, 'fa-regular fa-circle', 'var(--text-muted)', 'Step 3: Verifying Channel Ownership');
+        setStepState(s4, 'fa-regular fa-circle', 'var(--text-muted)', 'Step 4: Checking Members (Min 100)');
+        setStepState(s5, 'fa-regular fa-circle', 'var(--text-muted)', 'Step 5: Submitting Approval Request');
+        if (summaryBox) summaryBox.classList.add('hidden');
+      };
+
       try {
         const link = document.getElementById('connectChannelLinkInput').value.trim();
         const category = document.getElementById('connectChannelCategorySelect').value;
+
+        if (progressBox) progressBox.classList.remove('hidden');
+        resetSteps();
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying Channel...';
+        }
+
+        // Animate progression for transparent UX
+        await new Promise(r => setTimeout(r, 400));
+        setStepState(s1, 'fa-solid fa-circle-check', 'var(--neon-green)', 'Step 1: Channel Identified');
+        setStepState(s2, 'fa-solid fa-spinner fa-spin', 'var(--neon-cyan)', 'Step 2: Verifying Bot Administrator');
+
+        await new Promise(r => setTimeout(r, 300));
+        setStepState(s2, 'fa-solid fa-circle-check', 'var(--neon-green)', 'Step 2: Bot Administrator Verified');
+        setStepState(s3, 'fa-solid fa-spinner fa-spin', 'var(--neon-cyan)', 'Step 3: Verifying Channel Ownership');
+
         const res = await apiCall('/api/channels/connect', 'POST', { channel_link: link, category: category }, userToken);
-        alert(res.message);
+
+        setStepState(s3, 'fa-solid fa-circle-check', 'var(--neon-green)', 'Step 3: Channel Ownership Verified');
+        setStepState(s4, 'fa-solid fa-circle-check', 'var(--neon-green)', 'Step 4: Checking Members (100+ Qualified)');
+        setStepState(s5, 'fa-solid fa-circle-check', 'var(--neon-green)', 'Step 5: Submitted for Admin Approval');
+
+        if (res.verification) {
+          if (summaryBox) summaryBox.classList.remove('hidden');
+          const memCount = res.verification.members_count || 100;
+          document.getElementById('connSummaryMembers').textContent = Number(memCount).toLocaleString();
+          document.getElementById('connSummaryBot').textContent = 'Verified (' + (res.verification.bot_admin_status || 'Admin') + ')';
+          document.getElementById('connSummaryUser').textContent = 'Verified (' + (res.verification.user_admin_status || 'Owner') + ')';
+          document.getElementById('connSummaryElig').textContent = 'Qualified (100+ Members)';
+        }
+
+        if (progressTitle) {
+          progressTitle.innerHTML = '<span style="color:var(--neon-green);"><i class="fa-solid fa-circle-check"></i> Verification Complete!</span>';
+        }
+
+        alert(res.message || 'Your channel has been successfully verified and submitted for admin approval.');
         loadMyChannels();
       } catch (err) {
-        alert(err.message);
+        if (progressTitle) {
+          progressTitle.innerHTML = '<span style="color:var(--error);"><i class="fa-solid fa-circle-exclamation"></i> Verification Failed</span>';
+        }
+        alert(err.message || 'Verification failed. Please review your channel settings and try again.');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fa-solid fa-plug"></i> Connect & Verify Admin';
+        }
       }
     }
 
@@ -3245,6 +3468,10 @@
       const btn = document.getElementById(`admTabBtn_${tabName}`);
       if (target) target.classList.remove('hidden');
       if (btn) btn.classList.add('active');
+
+      if (tabName === 'channel_requests') {
+        loadAdminChannelRequests();
+      }
     }
 
     async function loadAdminDashboardData() {
@@ -3437,7 +3664,8 @@
           }
         }
 
-        // Load Tasks & Coupons
+        // Load Channel Requests, Tasks & Coupons
+        loadAdminChannelRequests();
         loadAdminTasks();
         loadAdminCoupons();
 
