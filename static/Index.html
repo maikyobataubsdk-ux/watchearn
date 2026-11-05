@@ -879,7 +879,7 @@
             <label style="display: block; font-size: 13px; font-weight: 700; margin-bottom: 8px; color: var(--neon-cyan);">Step 1: Enter Telegram Channel Link / Username</label>
             <div style="display: flex; gap: 10px;">
               <input type="text" id="promoChannelLink" class="glass-input" placeholder="https://t.me/yourchannel or @yourchannel">
-              <button class="btn btn-cyan" onclick="analyzePromoChannel()"><i class="fa-solid fa-magnifying-glass"></i> Analyze</button>
+              <button id="promoAnalyzeBtn" class="btn btn-cyan" onclick="analyzePromoChannel()"><i class="fa-solid fa-magnifying-glass"></i> Analyze</button>
               <button type="button" id="promoResetBtn" class="btn btn-outline hidden" onclick="resetPromoChannelSearch()" style="border-color: rgba(255, 77, 77, 0.5); color: #ff6b6b;" title="Cancel / Change Channel"><i class="fa-solid fa-arrow-left"></i> Back</button>
             </div>
             <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
@@ -2978,6 +2978,13 @@
       const link = document.getElementById('promoChannelLink').value.trim();
       if (!link) return alert('Please enter a channel link or username!');
 
+      const btn = document.getElementById('promoAnalyzeBtn');
+      const origText = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
+      }
+
       try {
         const res = await apiCall('/api/promotions/analyze', 'POST', { channel_link: link }, userToken);
         currentAnalyzedChannel = res;
@@ -3005,6 +3012,11 @@
         await updatePromoPricePreview();
       } catch (err) {
         alert(err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origText;
+        }
       }
     }
 

@@ -325,6 +325,18 @@ def init_db() -> None:
 
             CREATE INDEX IF NOT EXISTS idx_chan_req_status ON channel_connection_requests (approval_status);
             CREATE INDEX IF NOT EXISTS idx_chan_req_chat_user ON channel_connection_requests (telegram_chat_id, user_id);
+
+            CREATE TABLE IF NOT EXISTS channel_verification_tokens (
+                token TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                channel_identifier TEXT NOT NULL,
+                channel_id TEXT DEFAULT '',
+                is_verified INTEGER DEFAULT 0,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_chan_verif_user ON channel_verification_tokens (user_id);
+            CREATE INDEX IF NOT EXISTS idx_chan_verif_ident ON channel_verification_tokens (channel_identifier);
             """
         )
 
@@ -998,6 +1010,62 @@ def get_all_connected_channels() -> list[dict]:
             """
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+def create_channel_verification_token(user_id: int, channel_identifier: str, expires_in_minutes: int = 15) -> str:
+    """Creates a temporary verification token for linking a private channel."""
+    import secrets
+    from datetime import datetime, timezone, timedelta
+    token = f"verify_{secrets.token_hex(6)}"
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(minutes=expires_in_minutes)
+
+    with db() as conn:
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO channel_verification_tokens (token, user_id, channel_identifier, channel_id, is_verified, created_at, expires_at)
+            VALUES (?, ?, ?, '', 0, ?, ?)
+            """,
+            (token, user_id, channel_identifier.strip(), now.isoformat(), expires.isoformat())
+        )
+    return token
+
+
+def get_channel_verification_token(token: str) -> dict | None:
+    with db() as conn:
+        row = conn.execute(
+            "SELECT * FROM channel_verification_tokens WHERE token = ?",
+            (token.strip(),)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def mark_channel_verification_token_used(token: str, channel_id: str) -> bool:
+    with db() as conn:
+        cursor = conn.execute(
+            """
+            UPDATE channel_verification_tokens
+            SET is_verified = 1, channel_id = ?
+            WHERE token = ? AND is_verified = 0
+            """,
+            (str(channel_id), token.strip())
+        )
+        return cursor.rowcount > 0
+
+
+def find_verified_channel_by_user(user_id: int, channel_identifier: str) -> str | None:
+    """Finds resolved channel_id for a user's recent verification token."""
+    with db() as conn:
+        row = conn.execute(
+            """
+            SELECT channel_id FROM channel_verification_tokens
+            WHERE user_id = ? AND channel_identifier = ? AND is_verified = 1 AND channel_id != ''
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            (user_id, channel_identifier.strip())
+        ).fetchone()
+        return row["channel_id"] if row else None
 
 
 # Channel Connection Approval Requests CRUD

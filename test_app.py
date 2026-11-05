@@ -1713,6 +1713,278 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
             row = conn.execute("SELECT status FROM connected_channels WHERE channel_id='-100888999111'").fetchone()
             self.assertEqual(row["status"], "rejected")
 
+    def test_32_promotion_channel_admin_verification_all_scenarios(self):
+        """
+        Covers the 10 required verification scenarios for Promote -> Paid Channel Promotion:
+        1. Public channel with bot already admin.
+        2. Private channel with bot already admin.
+        3. Private channel with bot added as admin recently (via verification token / channel_post).
+        4. Bot is not an administrator (member).
+        5. Bot is removed from the channel (kicked/left).
+        6. Invalid channel username.
+        7. Expired private invite link / unresolvable without token.
+        8. Telegram API timeout.
+        9. User is not an administrator.
+        10. Existing promotion analysis works after successful verification.
+        """
+        import asyncio
+        from unittest.mock import patch, AsyncMock, MagicMock
+        import httpx
+        from aiogram.types import Message, Chat
+        import bot
+        import config
+
+        class MockResp:
+            def __init__(self, data):
+                self._data = data
+            def json(self):
+                return self._data
+
+        # Register user
+        reg_res = self.client.post("/api/auth/telegram-mini-app", json={
+            "telegram_id": 99112233,
+            "username": "promo_verif_tester"
+        })
+        token = reg_res.json()["token"]
+        user_tg_id = 99112233
+        user_db_id = reg_res.json()["user"]["id"]
+
+        with patch("config.BOT_TOKEN", "999:TEST_BOT_TOKEN"), patch.dict("os.environ", {"TESTING": "0"}):
+
+            # Scenario 1: Public channel with bot already admin
+            async def mock_tg_public_admin(url, params=None):
+                params = params or {}
+                if "getMe" in url:
+                    return MockResp({"ok": True, "result": {"id": 999, "is_bot": True}})
+                if "getChatMemberCount" in url:
+                    return MockResp({"ok": True, "result": 1250})
+                if "getChatMember" in url:
+                    return MockResp({"ok": True, "result": {"status": "administrator"}})
+                if "getChat" in url:
+                    return MockResp({"ok": True, "result": {
+                        "id": -100111222333,
+                        "title": "Public Tech Hub",
+                        "username": "publictechhub",
+                        "description": "Tech news"
+                    }})
+                return MockResp({"ok": False})
+
+            with patch("httpx.AsyncClient.get", side_effect=mock_tg_public_admin):
+                res1 = self.client.post("/api/promotions/analyze", json={
+                    "channel_link": "https://t.me/publictechhub"
+                }, headers={"Authorization": f"Bearer {token}"})
+                self.assertEqual(res1.status_code, 200)
+                data1 = res1.json()
+                self.assertTrue(data1["ok"])
+                self.assertEqual(data1["title"], "Public Tech Hub")
+                self.assertEqual(data1["username"], "@publictechhub")
+                self.assertTrue(data1["bot_is_admin"])
+
+            # Scenario 2: Private channel with bot already admin
+            db.record_bot_admin_channel(
+                channel_id="-100444555666",
+                channel_title="Private Admin VIP",
+                invite_link="https://t.me/+PrivateVipLink",
+                is_admin=True,
+                member_count=500
+            )
+
+            async def mock_tg_private_admin(url, params=None):
+                params = params or {}
+                if "getMe" in url:
+                    return MockResp({"ok": True, "result": {"id": 999, "is_bot": True}})
+                if "getChatMemberCount" in url:
+                    return MockResp({"ok": True, "result": 500})
+                if "getChatMember" in url:
+                    return MockResp({"ok": True, "result": {"status": "administrator"}})
+                if "getChat" in url:
+                    return MockResp({"ok": True, "result": {
+                        "id": -100444555666,
+                        "title": "Private Admin VIP",
+                        "invite_link": "https://t.me/+PrivateVipLink"
+                    }})
+                return MockResp({"ok": False})
+
+            with patch("httpx.AsyncClient.get", side_effect=mock_tg_private_admin):
+                res2 = self.client.post("/api/promotions/analyze", json={
+                    "channel_link": "https://t.me/+PrivateVipLink"
+                }, headers={"Authorization": f"Bearer {token}"})
+                self.assertEqual(res2.status_code, 200)
+                data2 = res2.json()
+                self.assertTrue(data2["ok"])
+                self.assertEqual(data2["channel_id"], "-100444555666")
+                self.assertEqual(data2["title"], "Private Admin VIP")
+                self.assertTrue(data2["bot_is_admin"])
+
+            # Scenario 3: Private channel with bot added as admin recently (linked via verification token in channel_post)
+            v_tok = db.create_channel_verification_token(user_db_id, "+RecentPrivateHash")
+            mock_post_msg = MagicMock(spec=Message)
+            mock_post_msg.chat = MagicMock(spec=Chat)
+            mock_post_msg.chat.id = -100777888999
+            mock_post_msg.chat.title = "Recently Added Channel"
+            mock_post_msg.chat.username = None
+            mock_post_msg.text = f"Linking verification {v_tok}"
+            mock_post_msg.caption = None
+
+            with patch("bot.bot") as mock_bot:
+                mock_bot.get_me = AsyncMock(return_value=MagicMock(id=999))
+                mock_bot.get_chat_member = AsyncMock(return_value=MagicMock(status="administrator"))
+                mock_bot.get_chat_member_count = AsyncMock(return_value=300)
+                mock_bot.export_chat_invite_link = AsyncMock(return_value="https://t.me/+RecentPrivateHash")
+                asyncio.run(bot.channel_post_handler(mock_post_msg))
+
+            tok_info = db.get_channel_verification_token(v_tok)
+            self.assertEqual(tok_info["is_verified"], 1)
+            self.assertEqual(tok_info["channel_id"], "-100777888999")
+
+            async def mock_tg_recent(url, params=None):
+                params = params or {}
+                if "getMe" in url:
+                    return MockResp({"ok": True, "result": {"id": 999, "is_bot": True}})
+                if "getChatMemberCount" in url:
+                    return MockResp({"ok": True, "result": 300})
+                if "getChatMember" in url:
+                    return MockResp({"ok": True, "result": {"status": "administrator"}})
+                if "getChat" in url:
+                    return MockResp({"ok": True, "result": {
+                        "id": -100777888999,
+                        "title": "Recently Added Channel"
+                    }})
+                return MockResp({"ok": False})
+
+            with patch("httpx.AsyncClient.get", side_effect=mock_tg_recent):
+                res3 = self.client.post("/api/promotions/analyze", json={
+                    "channel_link": "https://t.me/+RecentPrivateHash"
+                }, headers={"Authorization": f"Bearer {token}"})
+                self.assertEqual(res3.status_code, 200)
+                self.assertEqual(res3.json()["channel_id"], "-100777888999")
+
+            # Scenario 4: Bot is not an administrator (normal member)
+            async def mock_tg_bot_normal_member(url, params=None):
+                params = params or {}
+                if "getMe" in url:
+                    return MockResp({"ok": True, "result": {"id": 999, "is_bot": True}})
+                if "getChatMemberCount" in url:
+                    return MockResp({"ok": True, "result": 100})
+                if "getChatMember" in url:
+                    return MockResp({"ok": True, "result": {"status": "member"}})
+                if "getChat" in url:
+                    return MockResp({"ok": True, "result": {
+                        "id": -100123123123,
+                        "title": "Not Admin Channel",
+                        "username": "notadminchan"
+                    }})
+                return MockResp({"ok": False})
+
+            with patch("httpx.AsyncClient.get", side_effect=mock_tg_bot_normal_member):
+                res4 = self.client.post("/api/promotions/analyze", json={
+                    "channel_link": "@notadminchan"
+                }, headers={"Authorization": f"Bearer {token}"})
+                self.assertEqual(res4.status_code, 400)
+                self.assertIn("Bot is not an administrator in this channel", res4.json()["detail"])
+
+            # Scenario 5: Bot is removed from the channel (kicked or left)
+            async def mock_tg_bot_kicked(url, params=None):
+                params = params or {}
+                if "getMe" in url:
+                    return MockResp({"ok": True, "result": {"id": 999, "is_bot": True}})
+                if "getChatMemberCount" in url:
+                    return MockResp({"ok": True, "result": 100})
+                if "getChatMember" in url:
+                    return MockResp({"ok": True, "result": {"status": "kicked"}})
+                if "getChat" in url:
+                    return MockResp({"ok": True, "result": {
+                        "id": -100123123123,
+                        "title": "Kicked Channel",
+                        "username": "kickedchan"
+                    }})
+                return MockResp({"ok": False})
+
+            with patch("httpx.AsyncClient.get", side_effect=mock_tg_bot_kicked):
+                res5 = self.client.post("/api/promotions/analyze", json={
+                    "channel_link": "@kickedchan"
+                }, headers={"Authorization": f"Bearer {token}"})
+                self.assertEqual(res5.status_code, 400)
+                self.assertIn("The bot has been removed", res5.json()["detail"])
+
+            # Scenario 6: Invalid channel username
+            async def mock_tg_invalid_user(url, params=None):
+                params = params or {}
+                if "getMe" in url:
+                    return MockResp({"ok": True, "result": {"id": 999, "is_bot": True}})
+                if "getChat" in url:
+                    return MockResp({"ok": False, "description": "Chat not found"})
+                return MockResp({"ok": False})
+
+            with patch("httpx.AsyncClient.get", side_effect=mock_tg_invalid_user):
+                res6 = self.client.post("/api/promotions/analyze", json={
+                    "channel_link": "@nonexistent_channel_xyz_999"
+                }, headers={"Authorization": f"Bearer {token}"})
+                self.assertEqual(res6.status_code, 400)
+                self.assertIn("Valid channel not found", res6.json()["detail"])
+
+            # Scenario 7: Expired / unknown private invite link returns helpful linking instructions
+            async def mock_tg_expired_invite(url, params=None):
+                if "getMe" in url:
+                    return MockResp({"ok": True, "result": {"id": 999, "is_bot": True}})
+                return MockResp({"ok": False})
+
+            with patch("httpx.AsyncClient.get", side_effect=mock_tg_expired_invite):
+                res7 = self.client.post("/api/promotions/analyze", json={
+                    "channel_link": "https://t.me/+UnknownExpiredHash"
+                }, headers={"Authorization": f"Bearer {token}"})
+                self.assertEqual(res7.status_code, 400)
+                self.assertIn("Private channel could not be identified automatically", res7.json()["detail"])
+                self.assertIn("verification code", res7.json()["detail"])
+
+            # Scenario 8: Telegram API timeout
+            with patch("httpx.AsyncClient.get", side_effect=httpx.TimeoutException("Connection timed out")):
+                res8 = self.client.post("/api/promotions/analyze", json={
+                    "channel_link": "@timeoutchannel"
+                }, headers={"Authorization": f"Bearer {token}"})
+                self.assertEqual(res8.status_code, 504)
+                self.assertIn("timeout", res8.json()["detail"].lower())
+
+            # Scenario 9: User is not an administrator in target channel
+            async def mock_tg_user_not_admin(url, params=None):
+                params = params or {}
+                if "getMe" in url:
+                    return MockResp({"ok": True, "result": {"id": 999, "is_bot": True}})
+                if "getChatMemberCount" in url:
+                    return MockResp({"ok": True, "result": 100})
+                if "getChatMember" in url:
+                    uid = params.get("user_id")
+                    if str(uid) == "999":
+                        return MockResp({"ok": True, "result": {"status": "administrator"}})
+                    # user is normal member
+                    return MockResp({"ok": True, "result": {"status": "member"}})
+                if "getChat" in url:
+                    return MockResp({"ok": True, "result": {
+                        "id": -10099887766,
+                        "title": "Restricted User Channel",
+                        "username": "restrictedchannel"
+                    }})
+                return MockResp({"ok": False})
+
+            with patch("httpx.AsyncClient.get", side_effect=mock_tg_user_not_admin):
+                res9 = self.client.post("/api/promotions/analyze", json={
+                    "channel_link": "@restrictedchannel"
+                }, headers={"Authorization": f"Bearer {token}"})
+                self.assertEqual(res9.status_code, 403)
+                self.assertIn("You are not an administrator", res9.json()["detail"])
+
+            # Scenario 10: Existing promotion analysis works after successful verification
+            with patch("httpx.AsyncClient.get", side_effect=mock_tg_public_admin):
+                res10 = self.client.post("/api/promotions/analyze", json={
+                    "channel_link": "-100111222333"
+                }, headers={"Authorization": f"Bearer {token}"})
+                self.assertEqual(res10.status_code, 200)
+                data10 = res10.json()
+                self.assertTrue(data10["ok"])
+                self.assertEqual(data10["channel_id"], "-100111222333")
+                self.assertEqual(data10["title"], "Public Tech Hub")
+                self.assertTrue(data10["bot_is_admin"])
+
 
 if __name__ == "__main__":
     unittest.main()
