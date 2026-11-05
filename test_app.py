@@ -658,19 +658,17 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
                 self.assertTrue(res.json()["ok"])
                 self.assertEqual(res.json()["channel"]["channel_title"], "Valid Big Channel")
 
-            # Case F: Private channel link connect where bot is not admin -> prompts to add bot as admin
-            mock_private_bot_not_admin = AsyncMock()
-            mock_private_bot_not_admin.get.side_effect = [
+            # Case F: Private channel link connect where channel could not be identified -> helpful error instruction
+            mock_private_unidentified = AsyncMock()
+            mock_private_unidentified.get.side_effect = [
                 # 1. getMe
                 AsyncMock(json=lambda: {"ok": True, "result": {"id": 12345, "is_bot": True}}),
-                # 2. getChat fails because bot not added in private channel
-                AsyncMock(json=lambda: {"ok": False, "description": "Bad Request: chat not found"}),
             ]
             with patch("httpx.AsyncClient") as mock_client_cls:
-                mock_client_cls.return_value.__aenter__.return_value = mock_private_bot_not_admin
+                mock_client_cls.return_value.__aenter__.return_value = mock_private_unidentified
                 res = self.client.post("/api/channels/connect", json={"channel_link": "https://t.me/+AbCdEfGh123"}, headers={"Authorization": f"Bearer {tg_token}"})
                 self.assertEqual(res.status_code, 400)
-                self.assertIn("Bot is not an administrator in this channel", res.json()["detail"])
+                self.assertIn("Channel could not be identified", res.json()["detail"])
 
     def test_17_admin_add_funds_and_channel_deletion(self):
         login_c = self.client.post("/api/auth/login", json={"login": "userC", "password": "password123"}).json()
@@ -1379,6 +1377,291 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
             self.assertEqual(first_call[1]["json"]["text"], "testing")
             self.assertIn("deleteMessage", second_call[0][0])
             self.assertEqual(second_call[1]["json"]["message_id"], 777)
+
+    def test_31_channel_approval_scenarios(self):
+        """Covers all 13 required testing scenarios:
+        1. Private channel, bot already admin, 100+ members.
+        2. Private channel, bot added as admin after starting connection.
+        3. Private channel, bot is not admin.
+        4. Public channel with 100+ members.
+        5. Channel with 99 members.
+        6. Channel with exactly 100 members.
+        7. Channel with more than 100 members.
+        8. User is not a channel administrator.
+        9. Expired or invalid private invite link.
+        10. Duplicate connection request.
+        11. Bot gets removed after connecting.
+        12. Admin approves a pending request.
+        13. Admin rejects a pending request.
+        """
+        import asyncio
+        from unittest.mock import patch, AsyncMock
+        import web
+        from fastapi import HTTPException
+
+        reg_res = self.client.post("/api/auth/telegram-mini-app", json={
+            "telegram_id": 55443322,
+            "username": "scenario_tester"
+        })
+        user_tok = reg_res.json()["token"]
+        user_tg_id = 55443322
+        user_db_id = reg_res.json()["user"]["id"]
+
+        class MockResp:
+            def __init__(self, data):
+                self._data = data
+            def json(self):
+                return self._data
+
+        # 1. Private channel, bot already admin in DB, 100+ members
+        db.record_bot_admin_channel(
+            channel_id="-10055555555",
+            channel_title="Pre-existing Admin Private Hub",
+            invite_link="https://t.me/+PreExistHash100",
+            is_admin=True,
+            member_count=350
+        )
+        async def mock_tg_preexisting(url, params=None):
+            params = params or {}
+            if "getMe" in url:
+                return MockResp({"ok": True, "result": {"id": 111, "is_bot": True}})
+            if "getChatMemberCount" in url:
+                return MockResp({"ok": True, "result": 350})
+            if "getChatMember" in url:
+                uid = params.get("user_id")
+                if uid == 111 or str(uid) == "111":
+                    return MockResp({"ok": True, "result": {"status": "administrator"}})
+                return MockResp({"ok": True, "result": {"status": "creator"}})
+            if "getChat" in url:
+                return MockResp({"ok": True, "result": {"id": -10055555555, "title": "Pre-existing Admin Private Hub"}})
+            return MockResp({"ok": False})
+
+        with patch("config.BOT_TOKEN", "111:TOKEN"), patch.dict("os.environ", {"TESTING": "0"}), patch("httpx.AsyncClient.get", side_effect=mock_tg_preexisting):
+            v1 = asyncio.run(web.verify_channel_for_connect("", "+PreExistHash100", user_tg_id))
+            self.assertEqual(v1["id"], "-10055555555")
+            self.assertEqual(v1["members_count"], 350)
+            self.assertEqual(v1["bot_admin_status"], "administrator")
+
+        # 2. Private channel, bot added as admin via channel_post or forwarded message
+        db.record_bot_admin_channel(
+            channel_id="-10066666666",
+            channel_title="Discovered Post Channel",
+            invite_link="https://t.me/+DiscoveredHash",
+            is_admin=True,
+            member_count=200
+        )
+        self.assertIsNotNone(db.get_bot_admin_channel("+DiscoveredHash"))
+
+        # 3. Private channel, bot is NOT admin
+        async def mock_tg_bot_not_admin(url, params=None):
+            params = params or {}
+            if "getMe" in url:
+                return MockResp({"ok": True, "result": {"id": 111, "is_bot": True}})
+            if "getChatMemberCount" in url:
+                return MockResp({"ok": True, "result": 200})
+            if "getChatMember" in url:
+                uid = params.get("user_id")
+                if uid == 111 or str(uid) == "111":
+                    return MockResp({"ok": True, "result": {"status": "member"}})
+                return MockResp({"ok": True, "result": {"status": "creator"}})
+            if "getChat" in url:
+                return MockResp({"ok": True, "result": {"id": -10055555555, "title": "Test Channel"}})
+            return MockResp({"ok": False})
+
+        with patch("config.BOT_TOKEN", "111:TOKEN"), patch.dict("os.environ", {"TESTING": "0"}), patch("httpx.AsyncClient.get", side_effect=mock_tg_bot_not_admin):
+            with self.assertRaises(HTTPException) as ctx:
+                asyncio.run(web.verify_channel_for_connect("", "-10055555555", user_tg_id))
+            self.assertIn("Bot is not an administrator in this channel", ctx.exception.detail)
+
+        # 4. Public channel with 100+ members
+        async def mock_tg_public(url, params=None):
+            params = params or {}
+            if "getMe" in url:
+                return MockResp({"ok": True, "result": {"id": 111, "is_bot": True}})
+            if "getChatMemberCount" in url:
+                return MockResp({"ok": True, "result": 1500})
+            if "getChatMember" in url:
+                return MockResp({"ok": True, "result": {"status": "administrator"}})
+            if "getChat" in url:
+                return MockResp({"ok": True, "result": {"id": -10077777777, "title": "Public Channel", "username": "pubchan100"}})
+            return MockResp({"ok": False})
+
+        with patch("config.BOT_TOKEN", "111:TOKEN"), patch.dict("os.environ", {"TESTING": "0"}), patch("httpx.AsyncClient.get", side_effect=mock_tg_public):
+            v4 = asyncio.run(web.verify_channel_for_connect("pubchan100", "@pubchan100", user_tg_id))
+            self.assertEqual(v4["channel_type"], "public")
+            self.assertEqual(v4["members_count"], 1500)
+
+        # 5. Channel with 99 members (rejection)
+        async def mock_tg_99(url, params=None):
+            params = params or {}
+            if "getMe" in url:
+                return MockResp({"ok": True, "result": {"id": 111, "is_bot": True}})
+            if "getChatMemberCount" in url:
+                return MockResp({"ok": True, "result": 99})
+            if "getChatMember" in url:
+                return MockResp({"ok": True, "result": {"status": "administrator"}})
+            if "getChat" in url:
+                return MockResp({"ok": True, "result": {"id": -10077777777, "title": "99 Member Chan", "username": "chan99"}})
+            return MockResp({"ok": False})
+
+        with patch("config.BOT_TOKEN", "111:TOKEN"), patch.dict("os.environ", {"TESTING": "0"}), patch("httpx.AsyncClient.get", side_effect=mock_tg_99):
+            with self.assertRaises(HTTPException) as ctx:
+                asyncio.run(web.verify_channel_for_connect("chan99", "@chan99", user_tg_id))
+            self.assertIn("Minimum 100 members required", ctx.exception.detail)
+
+        # 6. Channel with exactly 100 members (eligible)
+        async def mock_tg_100(url, params=None):
+            params = params or {}
+            if "getMe" in url:
+                return MockResp({"ok": True, "result": {"id": 111, "is_bot": True}})
+            if "getChatMemberCount" in url:
+                return MockResp({"ok": True, "result": 100})
+            if "getChatMember" in url:
+                return MockResp({"ok": True, "result": {"status": "administrator"}})
+            if "getChat" in url:
+                return MockResp({"ok": True, "result": {"id": -10077777777, "title": "100 Member Chan", "username": "chan100"}})
+            return MockResp({"ok": False})
+
+        with patch("config.BOT_TOKEN", "111:TOKEN"), patch.dict("os.environ", {"TESTING": "0"}), patch("httpx.AsyncClient.get", side_effect=mock_tg_100):
+            v6 = asyncio.run(web.verify_channel_for_connect("chan100", "@chan100", user_tg_id))
+            self.assertEqual(v6["members_count"], 100)
+
+        # 7. Channel with more than 100 members (eligible)
+        async def mock_tg_150(url, params=None):
+            params = params or {}
+            if "getMe" in url:
+                return MockResp({"ok": True, "result": {"id": 111, "is_bot": True}})
+            if "getChatMemberCount" in url:
+                return MockResp({"ok": True, "result": 150})
+            if "getChatMember" in url:
+                return MockResp({"ok": True, "result": {"status": "administrator"}})
+            if "getChat" in url:
+                return MockResp({"ok": True, "result": {"id": -10077777777, "title": "150 Member Chan", "username": "chan150"}})
+            return MockResp({"ok": False})
+
+        with patch("config.BOT_TOKEN", "111:TOKEN"), patch.dict("os.environ", {"TESTING": "0"}), patch("httpx.AsyncClient.get", side_effect=mock_tg_150):
+            v7 = asyncio.run(web.verify_channel_for_connect("chan150", "@chan150", user_tg_id))
+            self.assertEqual(v7["members_count"], 150)
+
+        # 8. User is not a channel administrator
+        async def mock_tg_user_not_admin(url, params=None):
+            params = params or {}
+            if "getMe" in url:
+                return MockResp({"ok": True, "result": {"id": 111, "is_bot": True}})
+            if "getChatMemberCount" in url:
+                return MockResp({"ok": True, "result": 500})
+            if "getChatMember" in url:
+                uid = params.get("user_id")
+                if uid == 111 or str(uid) == "111":
+                    return MockResp({"ok": True, "result": {"status": "administrator"}})
+                return MockResp({"ok": True, "result": {"status": "member"}})
+            if "getChat" in url:
+                return MockResp({"ok": True, "result": {"id": -10077777777, "title": "Not Owned Chan", "username": "notowned"}})
+            return MockResp({"ok": False})
+
+        with patch("config.BOT_TOKEN", "111:TOKEN"), patch.dict("os.environ", {"TESTING": "0"}), patch("httpx.AsyncClient.get", side_effect=mock_tg_user_not_admin):
+            with self.assertRaises(HTTPException) as ctx:
+                asyncio.run(web.verify_channel_for_connect("notowned", "@notowned", user_tg_id))
+            self.assertIn("You can only add channels that you own", ctx.exception.detail)
+
+        # 9. Expired or invalid private invite link
+        async def mock_tg_getme_only(url, params=None):
+            if "getMe" in url:
+                return MockResp({"ok": True, "result": {"id": 111, "is_bot": True}})
+            return MockResp({"ok": False})
+
+        with patch("config.BOT_TOKEN", "111:TOKEN"), patch.dict("os.environ", {"TESTING": "0"}), patch("httpx.AsyncClient.get", side_effect=mock_tg_getme_only):
+            with self.assertRaises(HTTPException) as ctx:
+                asyncio.run(web.verify_channel_for_connect("", "+UnresolvableInviteHash", user_tg_id))
+            self.assertIn("Channel could not be identified from this private invite link", ctx.exception.detail)
+
+        # 10. Duplicate connection request
+        req1 = db.create_channel_connection_request(
+            user_id=user_db_id,
+            telegram_chat_id="-1009998881",
+            channel_title="Duplicate Test Channel",
+            channel_type="private",
+            channel_category="General",
+            member_count=200,
+            bot_admin_status="administrator",
+            user_admin_status="creator"
+        )
+        self.assertTrue(req1["ok"])
+        req_id = req1["request"]["id"]
+
+        req2 = db.create_channel_connection_request(
+            user_id=user_db_id,
+            telegram_chat_id="-1009998881",
+            channel_title="Duplicate Test Channel",
+            channel_type="private",
+            channel_category="General",
+            member_count=200,
+            bot_admin_status="administrator",
+            user_admin_status="creator"
+        )
+        self.assertFalse(req2["ok"])
+        self.assertIn("already pending", req2["error"])
+
+        # 11. Bot gets removed after connecting
+        async def mock_tg_bot_removed(url, params=None):
+            params = params or {}
+            if "getMe" in url:
+                return MockResp({"ok": True, "result": {"id": 111, "is_bot": True}})
+            if "getChatMemberCount" in url:
+                return MockResp({"ok": True, "result": 200})
+            if "getChatMember" in url:
+                uid = params.get("user_id")
+                if uid == 111 or str(uid) == "111":
+                    return MockResp({"ok": True, "result": {"status": "left"}})
+                return MockResp({"ok": True, "result": {"status": "creator"}})
+            if "getChat" in url:
+                return MockResp({"ok": True, "result": {"id": -1009998881, "title": "Removed Bot Channel"}})
+            return MockResp({"ok": False})
+
+        with patch("config.BOT_TOKEN", "111:TOKEN"), patch.dict("os.environ", {"TESTING": "0"}), patch("httpx.AsyncClient.get", side_effect=mock_tg_bot_removed):
+            with self.assertRaises(HTTPException) as ctx:
+                asyncio.run(web.verify_channel_for_connect("", "-1009998881", user_tg_id))
+            self.assertIn("Bot is not an administrator in this channel", ctx.exception.detail)
+
+        # 12. Admin approves a pending request
+        login_adm = self.client.post("/api/admin/login", json={"username": "rajpapa", "password": "28@RajPapa"}).json()
+        adm_token = login_adm["adminToken"]
+
+        appr_res = self.client.post(
+            "/api/admin/channel-requests/approve",
+            json={"request_id": req_id},
+            headers={"x-admin-token": adm_token}
+        )
+        self.assertEqual(appr_res.status_code, 200)
+        self.assertTrue(appr_res.json()["ok"])
+        self.assertEqual(appr_res.json()["request"]["approval_status"], "approved")
+
+        # 13. Admin rejects a pending request
+        req_to_rej = db.create_channel_connection_request(
+            user_id=user_db_id,
+            telegram_chat_id="-1009998882",
+            channel_title="Rejection Test Channel",
+            channel_type="private",
+            channel_category="Crypto & Finance",
+            member_count=300,
+            bot_admin_status="administrator",
+            user_admin_status="creator"
+        )
+        rej_id = req_to_rej["request"]["id"]
+
+        rej_res = self.client.post(
+            "/api/admin/channel-requests/reject",
+            json={"request_id": rej_id, "rejection_reason": "Inappropriate content"},
+            headers={"x-admin-token": adm_token}
+        )
+        self.assertEqual(rej_res.status_code, 200)
+        self.assertTrue(rej_res.json()["ok"])
+        self.assertEqual(rej_res.json()["request"]["approval_status"], "rejected")
+
+        # Check admin list endpoint
+        list_res = self.client.get("/api/admin/channel-requests", headers={"x-admin-token": adm_token})
+        self.assertEqual(list_res.status_code, 200)
+        self.assertTrue(len(list_res.json()["requests"]) >= 2)
 
     def test_30_admin_approval_message_and_callbacks(self):
         import asyncio

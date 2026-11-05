@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-11-02T07:14:51+00:00",
+  "updated_at": "2026-11-05T15:18:58+00:00",
   "users": [
     {
       "id": 1,
@@ -10,7 +10,7 @@
       "total_ads_watched": 1,
       "is_premium": 1,
       "is_banned": 0,
-      "created_at": "2026-11-02T07:14:43+00:00"
+      "created_at": "2026-11-05T15:18:50+00:00"
     },
     {
       "id": 2,
@@ -21,7 +21,7 @@
       "total_ads_watched": 1,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-11-02T07:14:43+00:00"
+      "created_at": "2026-11-05T15:18:50+00:00"
     },
     {
       "id": 3,
@@ -32,7 +32,7 @@
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-11-02T07:14:49+00:00"
+      "created_at": "2026-11-05T15:18:56+00:00"
     },
     {
       "id": 4,
@@ -43,7 +43,7 @@
       "total_ads_watched": 1,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-11-02T07:14:49+00:00"
+      "created_at": "2026-11-05T15:18:56+00:00"
     },
     {
       "id": 5,
@@ -54,7 +54,7 @@
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-11-02T07:14:49+00:00"
+      "created_at": "2026-11-05T15:18:56+00:00"
     },
     {
       "id": 6,
@@ -65,7 +65,7 @@
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-11-02T07:14:49+00:00"
+      "created_at": "2026-11-05T15:18:56+00:00"
     },
     {
       "id": 7,
@@ -76,7 +76,7 @@
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-11-02T07:14:50+00:00"
+      "created_at": "2026-11-05T15:18:57+00:00"
     },
     {
       "id": 8,
@@ -87,7 +87,7 @@
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-11-02T07:14:50+00:00"
+      "created_at": "2026-11-05T15:18:57+00:00"
     },
     {
       "id": 9,
@@ -98,10 +98,21 @@
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-11-02T07:14:50+00:00"
+      "created_at": "2026-11-05T15:18:57+00:00"
     },
     {
       "id": 10,
+      "email": "tg_55443322@telegram.org",
+      "username": "scenario_tester",
+      "balance_coins": 0.0,
+      "total_earned_coins": 0.0,
+      "total_ads_watched": 0,
+      "is_premium": 0,
+      "is_banned": 0,
+      "created_at": "2026-11-05T15:18:57+00:00"
+    },
+    {
+      "id": 11,
       "email": "stop_tester@test.com",
       "username": "stop_tester",
       "balance_coins": 0.0,
@@ -109,10 +120,10 @@
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-11-02T07:14:51+00:00"
+      "created_at": "2026-11-05T15:18:58+00:00"
     },
     {
-      "id": 11,
+      "id": 12,
       "email": "tg_88776655@telegram.org",
       "username": "promo_tester_user",
       "balance_coins": 0.0,
@@ -120,29 +131,29 @@
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-11-02T07:14:51+00:00"
-    },
-    {
-      "id": 12,
-      "email": "user_stop_6b539b@test.com",
-      "username": "stopuser_d98d73",
-      "balance_coins": 0.0,
-      "total_earned_coins": 0.0,
-      "total_ads_watched": 0,
-      "is_premium": 0,
-      "is_banned": 0,
-      "created_at": "2026-11-02T07:14:51+00:00"
+      "created_at": "2026-11-05T15:18:58+00:00"
     },
     {
       "id": 13,
-      "email": "other_ab8e4c@test.com",
-      "username": "other_a38815",
+      "email": "user_stop_38100d@test.com",
+      "username": "stopuser_1254ec",
       "balance_coins": 0.0,
       "total_earned_coins": 0.0,
       "total_ads_watched": 0,
       "is_premium": 0,
       "is_banned": 0,
-      "created_at": "2026-11-02T07:14:51+00:00"
+      "created_at": "2026-11-05T15:18:58+00:00"
+    },
+    {
+      "id": 14,
+      "email": "other_b8f122@test.com",
+      "username": "other_c30579",
+      "balance_coins": 0.0,
+      "total_earned_coins": 0.0,
+      "total_ads_watched": 0,
+      "is_premium": 0,
+      "is_banned": 0,
+      "created_at": "2026-11-05T15:18:58+00:00"
     }
   ],
   "withdrawals": [
@@ -155,13 +166,13 @@
       "method": "UPI",
       "account_details": "testuser@upi",
       "status": "pending",
-      "created_at": "2026-11-02T07:14:49+00:00"
+      "created_at": "2026-11-05T15:18:56+00:00"
     }
   ],
   "promotions": [
     {
       "id": 8,
-      "user_id": 12,
+      "user_id": 13,
       "channel_url": "https://t.me/test_stop_promo",
       "channel_id": "@test_stop_promo",
       "channel_title": "Test Stop Promo Channel",
@@ -176,13 +187,13 @@
       "is_category_specific": 0,
       "total_price_inr": 100.0,
       "ad_message": "",
-      "created_at": "2026-11-02T07:14:51+00:00",
+      "created_at": "2026-11-05T15:18:58+00:00",
       "image_url": "",
       "link_type": "direct"
     },
     {
       "id": 7,
-      "user_id": 11,
+      "user_id": 12,
       "channel_url": "https://t.me/supercoolchannel",
       "channel_id": "-100998877",
       "channel_title": "Super Cool Channel",
@@ -192,18 +203,18 @@
       "current_views": 0,
       "status": "pending_approval",
       "rejection_reason": "",
-      "transaction_ref": "PROMO-88776655-17C59542",
+      "transaction_ref": "PROMO-88776655-484136EA",
       "category": "General",
       "is_category_specific": 0,
       "total_price_inr": 100.0,
       "ad_message": "Join our channel!",
-      "created_at": "2026-11-02T07:14:51+00:00",
+      "created_at": "2026-11-05T15:18:58+00:00",
       "image_url": "",
       "link_type": "direct"
     },
     {
       "id": 6,
-      "user_id": 10,
+      "user_id": 11,
       "channel_url": "https://t.me/stop_test_channel",
       "channel_id": "@stop_test_channel",
       "channel_title": "Stop Test Channel",
@@ -218,7 +229,7 @@
       "is_category_specific": 0,
       "total_price_inr": 100.0,
       "ad_message": "Test message for stop promo",
-      "created_at": "2026-11-02T07:14:51+00:00",
+      "created_at": "2026-11-05T15:18:58+00:00",
       "image_url": "",
       "link_type": "direct"
     },
@@ -239,7 +250,7 @@
       "is_category_specific": 0,
       "total_price_inr": 100.0,
       "ad_message": "",
-      "created_at": "2026-11-02T07:14:50+00:00",
+      "created_at": "2026-11-05T15:18:57+00:00",
       "image_url": "",
       "link_type": "direct"
     },
@@ -255,12 +266,12 @@
       "current_views": 0,
       "status": "pending_approval",
       "rejection_reason": "",
-      "transaction_ref": "PROMO-6-CF9504EA",
+      "transaction_ref": "PROMO-6-CDFD3A56",
       "category": "General",
       "is_category_specific": 0,
       "total_price_inr": 90.0,
       "ad_message": "",
-      "created_at": "2026-11-02T07:14:50+00:00",
+      "created_at": "2026-11-05T15:18:57+00:00",
       "image_url": "",
       "link_type": "requested"
     },
@@ -276,12 +287,12 @@
       "current_views": 0,
       "status": "pending_approval",
       "rejection_reason": "",
-      "transaction_ref": "PROMO-6-047E7935",
+      "transaction_ref": "PROMO-6-5706C1D2",
       "category": "Tech & Coding",
       "is_category_specific": 1,
       "total_price_inr": 120.0,
       "ad_message": "Join best tech channel!",
-      "created_at": "2026-11-02T07:14:49+00:00",
+      "created_at": "2026-11-05T15:18:56+00:00",
       "image_url": "",
       "link_type": "direct"
     },
@@ -302,7 +313,7 @@
       "is_category_specific": 0,
       "total_price_inr": 50.0,
       "ad_message": "Join rejectchannel now!",
-      "created_at": "2026-11-02T07:14:43+00:00",
+      "created_at": "2026-11-05T15:18:50+00:00",
       "image_url": "",
       "link_type": "direct"
     },
@@ -323,7 +334,7 @@
       "is_category_specific": 0,
       "total_price_inr": 100.0,
       "ad_message": "Join testchannel now!",
-      "created_at": "2026-11-02T07:14:43+00:00",
+      "created_at": "2026-11-05T15:18:50+00:00",
       "image_url": "",
       "link_type": "direct"
     }
@@ -341,7 +352,7 @@
       "total_lefts": 0,
       "total_views": 0,
       "total_earned_inr": 0.0,
-      "created_at": "2026-11-02T07:14:51+00:00",
+      "created_at": "2026-11-05T15:18:57+00:00",
       "member_count": 0
     },
     {
@@ -349,14 +360,14 @@
       "owner_user_id": 9,
       "channel_id": "-100987654321",
       "channel_title": "Private VIP Trading",
-      "channel_username": "+TestInviteHash123",
+      "channel_username": "",
       "category": "Crypto & Finance",
       "status": "pending_approval",
       "total_joins": 0,
       "total_lefts": 0,
       "total_views": 0,
       "total_earned_inr": 0.0,
-      "created_at": "2026-11-02T07:14:50+00:00",
+      "created_at": "2026-11-05T15:18:57+00:00",
       "member_count": 250
     },
     {
@@ -371,7 +382,7 @@
       "total_lefts": 0,
       "total_views": 0,
       "total_earned_inr": 0.4,
-      "created_at": "2026-11-02T07:14:50+00:00",
+      "created_at": "2026-11-05T15:18:57+00:00",
       "member_count": 0
     },
     {
@@ -386,7 +397,7 @@
       "total_lefts": 0,
       "total_views": 0,
       "total_earned_inr": 0.0,
-      "created_at": "2026-11-02T07:14:50+00:00",
+      "created_at": "2026-11-05T15:18:57+00:00",
       "member_count": 1250
     },
     {
@@ -401,7 +412,7 @@
       "total_lefts": 0,
       "total_views": 0,
       "total_earned_inr": 0.0,
-      "created_at": "2026-11-02T07:14:49+00:00",
+      "created_at": "2026-11-05T15:18:56+00:00",
       "member_count": 100
     },
     {
@@ -416,7 +427,7 @@
       "total_lefts": 0,
       "total_views": 0,
       "total_earned_inr": 0.8,
-      "created_at": "2026-11-02T07:14:43+00:00",
+      "created_at": "2026-11-05T15:18:50+00:00",
       "member_count": 100
     }
   ],
@@ -424,60 +435,60 @@
     {
       "telegram_id": 555666777,
       "balance_paise": 35000,
-      "created_at": "2026-11-02T07:14:49+00:00",
-      "updated_at": "2026-11-02T07:14:49+00:00"
+      "created_at": "2026-11-05T15:18:56+00:00",
+      "updated_at": "2026-11-05T15:18:56+00:00"
     },
     {
       "telegram_id": 88776655,
       "balance_paise": 40000,
-      "created_at": "2026-11-02T07:14:51+00:00",
-      "updated_at": "2026-11-02T07:14:51+00:00"
+      "created_at": "2026-11-05T15:18:58+00:00",
+      "updated_at": "2026-11-05T15:18:58+00:00"
     },
     {
-      "telegram_id": 12,
+      "telegram_id": 13,
       "balance_paise": 26000,
-      "created_at": "2026-11-02T07:14:51+00:00",
-      "updated_at": "2026-11-02T07:14:51+00:00"
+      "created_at": "2026-11-05T15:18:58+00:00",
+      "updated_at": "2026-11-05T15:18:58+00:00"
     },
     {
-      "telegram_id": 10,
+      "telegram_id": 11,
       "balance_paise": 10000,
-      "created_at": "2026-11-02T07:14:51+00:00",
-      "updated_at": "2026-11-02T07:14:51+00:00"
+      "created_at": "2026-11-05T15:18:58+00:00",
+      "updated_at": "2026-11-05T15:18:58+00:00"
     },
     {
       "telegram_id": 6,
       "balance_paise": 44000,
-      "created_at": "2026-11-02T07:14:49+00:00",
-      "updated_at": "2026-11-02T07:14:50+00:00"
+      "created_at": "2026-11-05T15:18:56+00:00",
+      "updated_at": "2026-11-05T15:18:57+00:00"
     },
     {
       "telegram_id": 1,
       "balance_paise": 10000,
-      "created_at": "2026-11-02T07:14:43+00:00",
-      "updated_at": "2026-11-02T07:14:43+00:00"
+      "created_at": "2026-11-05T15:18:50+00:00",
+      "updated_at": "2026-11-05T15:18:50+00:00"
     }
   ],
   "wallet_transactions": [
     {
       "id": 17,
-      "telegram_id": 12,
+      "telegram_id": 13,
       "type": "refund",
       "amount_paise": 6000,
       "utr": "PROMO_STOP_REFUND",
-      "order_id": "REFUND-STOP-8-97E021",
+      "order_id": "REFUND-STOP-8-ECAD22",
       "description": "Refund for Stopped Promotion #8 (Spent: \u20b940.00, Refunded: \u20b960.00)",
-      "created_at": "2026-11-02T07:14:51+00:00"
+      "created_at": "2026-11-05T15:18:58+00:00"
     },
     {
       "id": 16,
-      "telegram_id": 12,
+      "telegram_id": 13,
       "type": "admin_credit",
       "amount_paise": 20000,
       "utr": "ADMIN_GRANT",
-      "order_id": "ADMIN-12-655FCDB5",
+      "order_id": "ADMIN-13-576CC684",
       "description": "Initial Test Balance",
-      "created_at": "2026-11-02T07:14:51+00:00"
+      "created_at": "2026-11-05T15:18:58+00:00"
     },
     {
       "id": 15,
@@ -485,9 +496,9 @@
       "type": "debit",
       "amount_paise": 10000,
       "utr": null,
-      "order_id": "PROMO-88776655-17C59542",
+      "order_id": "PROMO-88776655-484136EA",
       "description": "Promotion Payment: Super Cool Channel (General)",
-      "created_at": "2026-11-02T07:14:51+00:00"
+      "created_at": "2026-11-05T15:18:58+00:00"
     },
     {
       "id": 14,
@@ -495,19 +506,19 @@
       "type": "admin_credit",
       "amount_paise": 50000,
       "utr": "ADMIN_GRANT",
-      "order_id": "ADMIN-88776655-465EF5C5",
+      "order_id": "ADMIN-88776655-D1A306B8",
       "description": "Promotion test balance",
-      "created_at": "2026-11-02T07:14:51+00:00"
+      "created_at": "2026-11-05T15:18:58+00:00"
     },
     {
       "id": 13,
-      "telegram_id": 10,
+      "telegram_id": 11,
       "type": "refund",
       "amount_paise": 10000,
       "utr": "PROMO_STOP_REFUND",
-      "order_id": "REFUND-STOP-6-4F31F1",
+      "order_id": "REFUND-STOP-6-512E3E",
       "description": "Refund for Stopped Promotion #6 (Spent: \u20b90.00, Refunded: \u20b9100.00)",
-      "created_at": "2026-11-02T07:14:51+00:00"
+      "created_at": "2026-11-05T15:18:58+00:00"
     },
     {
       "id": 12,
@@ -515,9 +526,9 @@
       "type": "debit",
       "amount_paise": 9000,
       "utr": null,
-      "order_id": "PROMO-6-CF9504EA",
+      "order_id": "PROMO-6-CDFD3A56",
       "description": "Promotion Payment: Verified Channel (customratechan) (General)",
-      "created_at": "2026-11-02T07:14:50+00:00"
+      "created_at": "2026-11-05T15:18:57+00:00"
     },
     {
       "id": 11,
@@ -527,7 +538,7 @@
       "utr": "GST_TEST_UTR",
       "order_id": "GST_ORDER_100",
       "description": "Topup 100 INR",
-      "created_at": "2026-11-02T07:14:50+00:00"
+      "created_at": "2026-11-05T15:18:56+00:00"
     },
     {
       "id": 10,
@@ -535,9 +546,9 @@
       "type": "admin_debit",
       "amount_paise": 10000,
       "utr": "ADMIN_DEDUCTION",
-      "order_id": "ADMIN-DEBIT-6-AA5272FF",
+      "order_id": "ADMIN-DEBIT-6-4B13D329",
       "description": "Correction Deduction by Admin",
-      "created_at": "2026-11-02T07:14:49+00:00"
+      "created_at": "2026-11-05T15:18:56+00:00"
     },
     {
       "id": 9,
@@ -545,9 +556,9 @@
       "type": "admin_credit",
       "amount_paise": 50000,
       "utr": "ADMIN_GRANT",
-      "order_id": "ADMIN-6-AE311ECC",
+      "order_id": "ADMIN-6-A4B3F53B",
       "description": "Bonus Grant from Master Admin",
-      "created_at": "2026-11-02T07:14:49+00:00"
+      "created_at": "2026-11-05T15:18:56+00:00"
     },
     {
       "id": 8,
@@ -555,9 +566,9 @@
       "type": "debit",
       "amount_paise": 12000,
       "utr": null,
-      "order_id": "PROMO-6-047E7935",
+      "order_id": "PROMO-6-5706C1D2",
       "description": "Promotion Payment: Verified Channel (techchannel) (Tech & Coding)",
-      "created_at": "2026-11-02T07:14:49+00:00"
+      "created_at": "2026-11-05T15:18:56+00:00"
     },
     {
       "id": 7,
@@ -567,7 +578,7 @@
       "utr": "TEST_DEPOSIT_C",
       "order_id": "ORDER_C_15",
       "description": "Topup 150 INR",
-      "created_at": "2026-11-02T07:14:49+00:00"
+      "created_at": "2026-11-05T15:18:56+00:00"
     },
     {
       "id": 6,
@@ -577,7 +588,7 @@
       "utr": "UTR_CONFIRM_99",
       "order_id": "WALLET-555666777-CONFIRM1",
       "description": "YOUPI PG Wallet Topup (UTR: UTR_CONFIRM_99)",
-      "created_at": "2026-11-02T07:14:49+00:00"
+      "created_at": "2026-11-05T15:18:56+00:00"
     },
     {
       "id": 5,
@@ -587,7 +598,7 @@
       "utr": "UTR1122334455",
       "order_id": "WALLET-555666777-998877",
       "description": "YOUPI PG Wallet Topup (UTR: UTR1122334455) - WalletTester (9876543210)",
-      "created_at": "2026-11-02T07:14:49+00:00"
+      "created_at": "2026-11-05T15:18:56+00:00"
     },
     {
       "id": 4,
@@ -595,9 +606,9 @@
       "type": "refund",
       "amount_paise": 5000,
       "utr": "PROMO_REFUND",
-      "order_id": "REFUND-PROMO-2-0469C0",
+      "order_id": "REFUND-PROMO-2-93FCA5",
       "description": "Refund for Rejected Promotion #2: Invalid or spam channel content",
-      "created_at": "2026-11-02T07:14:43+00:00"
+      "created_at": "2026-11-05T15:18:50+00:00"
     },
     {
       "id": 3,
@@ -605,9 +616,9 @@
       "type": "debit",
       "amount_paise": 5000,
       "utr": null,
-      "order_id": "PROMO-1-A8DE36D4",
+      "order_id": "PROMO-1-6BDEFA48",
       "description": "Promotion Payment: Verified Channel (rejectchannel) (General)",
-      "created_at": "2026-11-02T07:14:43+00:00"
+      "created_at": "2026-11-05T15:18:50+00:00"
     },
     {
       "id": 2,
@@ -615,9 +626,9 @@
       "type": "debit",
       "amount_paise": 10000,
       "utr": null,
-      "order_id": "PROMO-1-3AF73E6D",
+      "order_id": "PROMO-1-F1F9DADD",
       "description": "Promotion Payment: Verified Channel (testchannel) (General)",
-      "created_at": "2026-11-02T07:14:43+00:00"
+      "created_at": "2026-11-05T15:18:50+00:00"
     },
     {
       "id": 1,
@@ -627,7 +638,7 @@
       "utr": "TEST_DEPOSIT",
       "order_id": "TEST_ORDER_06",
       "description": "Test deposit for promo",
-      "created_at": "2026-11-02T07:14:43+00:00"
+      "created_at": "2026-11-05T15:18:50+00:00"
     }
   ],
   "settings": {
@@ -653,7 +664,7 @@
     "maintenance_promote": "0",
     "maintenance_earnings": "0",
     "maintenance_withdraw": "0",
-    "admin_sessions": "fd2135f400fe52cf5e4e55fae645bed0e35e80637a343043,34411332427d254371c6ac32ef51bdb6bef320ab07304705,e5e4ef7f8a8f876373d03651f3d0f2fac0645a4c16d9c362,98bcdce851285a68d2952d33e5d84342f6d5d604b0159a9e,ef4b2bd0d21b1477d10bfb268ca475dac84d7ed056a6b517,ef03231f38909e8ae8955e92e13768b3851a7ec252367f07,17e9dde702a0af40c24244942c42ad0f215639f994e4ad0b,e25d06ba928d30a5db0d1cd2a41756b8bb9ff20f3c52dad2",
+    "admin_sessions": "4b0257f35b98cb4b823cff399d9ecd383f18b8cb87eb5cdb,22a66add9105c0c7c79a4b96ab8a1b5ee4563477e892b230,09dd626e8a3a5e9864dc1f7032ed4de0789e9756838fa331,28c46fd207518321a9b05d43107b9092f9e53430eba29db9,53154860121f913cab151e6d367ed23aa14faa9fde1820b0,15e22cf69dc7fb41b3390a730056b7c760140446608b6669,5719ea423dcfe595979949a1f0a66a644b711859af8c3a5a,08a1e4e0064598c8c699f824c1956a8a36445e0e0f665fc0,6329f1b0a10cee9e0e47fdaa8825d4d3c57cced873eee8b3",
     "force_chat_title": "Test Force Channel",
     "target_invite_mode": "request"
   },
