@@ -569,8 +569,8 @@
       </div>
 
       <!-- Banner Ad Slot -->
-      <div class="glass" style="padding: 15px; margin: 25px 0; text-align: center;" id="homepageBannerSlot">
-        <!-- Injected via JS -->
+      <div class="glass hidden" style="padding: 15px; margin: 25px 0; text-align: center;" id="homepageBannerSlot">
+        <!-- Injected via JS if configured -->
       </div>
 
       <!-- How It Works -->
@@ -824,7 +824,7 @@
             <i class="fa-solid fa-play"></i> <span data-i18n="startAdBtn">Start Viewing Ad</span>
           </button>
 
-          <a id="openSmartlinkBtn" href="https://tq.gentlywarrant.com/iHwent5Php6qgc/160357" target="_blank" rel="noopener noreferrer" class="btn btn-purple hidden" onclick="handleSmartlinkClick(event)">
+          <a id="openSmartlinkBtn" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-purple hidden" onclick="handleSmartlinkClick(event)">
             <i class="fa-solid fa-arrow-up-right-from-square"></i> <span>Open Sponsor Link</span>
           </a>
 
@@ -2315,11 +2315,17 @@
         } else if (isAdminPath) {
           document.getElementById('fullSiteMaintenanceOverlay')?.classList.add('hidden');
         }
-        if (config.adCodes && config.adCodes.banner) {
-          const slot = document.getElementById('homepageBannerSlot');
-          if (slot) executeHtmlWithScripts(slot, config.adCodes.banner);
+        const bannerSlot = document.getElementById('homepageBannerSlot');
+        if (config.adCodes && config.adCodes.banner && config.adCodes.banner.trim()) {
+          if (bannerSlot) {
+            bannerSlot.classList.remove('hidden');
+            executeHtmlWithScripts(bannerSlot, config.adCodes.banner);
+          }
+        } else if (bannerSlot) {
+          bannerSlot.classList.add('hidden');
+          bannerSlot.innerHTML = '';
         }
-        if (config.adCodes && config.adCodes.popunder) {
+        if (config.adCodes && config.adCodes.popunder && config.adCodes.popunder.trim()) {
           const div = document.createElement('div');
           div.style.display = 'none';
           document.body.appendChild(div);
@@ -2634,7 +2640,8 @@
       if (e) e.preventDefault();
       const smartlinkUrl = (currentAdSession && currentAdSession.adCodes && currentAdSession.adCodes.direct_link)
         || (siteConfig && siteConfig.adCodes && siteConfig.adCodes.direct_link)
-        || 'https://tq.gentlywarrant.com/iHwent5Php6qgc/160357';
+        || '';
+      if (!smartlinkUrl) return;
       if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openLink === 'function') {
         window.Telegram.WebApp.openLink(smartlinkUrl);
       } else {
@@ -2673,37 +2680,43 @@
         document.getElementById('adPlaceholderText').classList.add('hidden');
         document.getElementById('adTimerSection').classList.remove('hidden');
 
-        // 1. Render Shuffle Box Script / Ad into dynamic slot
+        // 1. Render Shuffle Box Script / Ad into dynamic slot (if configured)
         const adSlot = document.getElementById('dynamicAdInjectSlot');
-        const defaultShuffleBox = '<script data-cfasync="false" async type="text/javascript" src="//kp.delugedkeens.com/s5w2hv4XgHOiXV2n/160356"><' + '/script>';
-        const shuffleBoxCode = (res.adCodes && (res.adCodes.interstitial || res.adCodes.banner)) || defaultShuffleBox;
-        executeHtmlWithScripts(adSlot, shuffleBoxCode);
+        const shuffleBoxCode = (res.adCodes && (res.adCodes.interstitial || res.adCodes.banner)) || '';
+        if (shuffleBoxCode && shuffleBoxCode.trim()) {
+          executeHtmlWithScripts(adSlot, shuffleBoxCode);
+        } else {
+          adSlot.innerHTML = '';
+        }
 
-        // 2. Trigger Pop-up Script
-        const defaultPopup = '<script data-cfasync="false" async type="text/javascript" src="//le.scarreddeponer.com/rDW1972G9j7x4/160355"><' + '/script>';
-        const popupCode = (res.adCodes && res.adCodes.popunder) || defaultPopup;
-        if (popupCode) {
+        // 2. Trigger Pop-up Script (if configured)
+        const popupCode = (res.adCodes && res.adCodes.popunder) || '';
+        if (popupCode && popupCode.trim()) {
           const popupHolder = document.createElement('div');
           popupHolder.style.display = 'none';
           document.body.appendChild(popupHolder);
           executeHtmlWithScripts(popupHolder, popupCode);
         }
 
-        // 3. Trigger Smartlink
-        const smartlinkUrl = (res.adCodes && res.adCodes.direct_link) || 'https://tq.gentlywarrant.com/iHwent5Php6qgc/160357';
+        // 3. Trigger Smartlink (if configured)
+        const smartlinkUrl = (res.adCodes && res.adCodes.direct_link) || '';
         const smartlinkBtn = document.getElementById('openSmartlinkBtn');
-        if (smartlinkBtn) {
-          smartlinkBtn.href = smartlinkUrl;
-          smartlinkBtn.classList.remove('hidden');
-        }
-        try {
-          if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openLink === 'function') {
-            window.Telegram.WebApp.openLink(smartlinkUrl);
-          } else {
-            window.open(smartlinkUrl, '_blank');
+        if (smartlinkUrl && smartlinkUrl.trim()) {
+          if (smartlinkBtn) {
+            smartlinkBtn.href = smartlinkUrl;
+            smartlinkBtn.classList.remove('hidden');
           }
-        } catch (e) {
-          console.warn('Direct popup blocked or unavailable, button ready for user:', e);
+          try {
+            if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openLink === 'function') {
+              window.Telegram.WebApp.openLink(smartlinkUrl);
+            } else {
+              window.open(smartlinkUrl, '_blank');
+            }
+          } catch (e) {
+            console.warn('Direct popup blocked or unavailable, button ready for user:', e);
+          }
+        } else if (smartlinkBtn) {
+          smartlinkBtn.classList.add('hidden');
         }
 
         startAdTimer(res.timerSeconds);

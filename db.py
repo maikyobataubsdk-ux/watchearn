@@ -435,13 +435,18 @@ def init_db() -> None:
 
         # Default ad codes placeholders
         default_ad_codes = {
-            "interstitial": '<script data-cfasync="false" async type="text/javascript" src="//kp.delugedkeens.com/s5w2hv4XgHOiXV2n/160356"></script>',
-            "popunder": '<script data-cfasync="false" async type="text/javascript" src="//le.scarreddeponer.com/rDW1972G9j7x4/160355"></script>',
-            "banner": '<script data-cfasync="false" async type="text/javascript" src="//kp.delugedkeens.com/s5w2hv4XgHOiXV2n/160356"></script>',
-            "direct_link": "https://tq.gentlywarrant.com/iHwent5Php6qgc/160357"
+            "interstitial": "",
+            "popunder": "",
+            "banner": "",
+            "direct_link": ""
         }
         for k, v in default_ad_codes.items():
             conn.execute("INSERT OR IGNORE INTO ad_codes (key, value) VALUES (?, ?)", (k, v))
+
+        # Clear any legacy third-party ad network URLs/scripts
+        legacy_domains = ["delugedkeens.com", "scarreddeponer.com", "gentlywarrant.com"]
+        for domain in legacy_domains:
+            conn.execute("UPDATE ad_codes SET value='' WHERE value LIKE ?", (f"%{domain}%",))
 
 
 # Settings & Ad Codes Functions
