@@ -956,6 +956,19 @@ def update_connected_channel_status(channel_id: str, status: str) -> dict:
         if not row:
             return {"ok": False, "error": "Channel not found."}
         conn.execute("UPDATE connected_channels SET status=? WHERE id=?", (status, row["id"]))
+
+        # Also synchronize matching channel_connection_requests approval_status
+        req_status = "approved" if status in ("approved", "active") else ("rejected" if status in ("rejected", "banned") else "pending_approval")
+        now = utcnow()
+        conn.execute(
+            """
+            UPDATE channel_connection_requests
+            SET approval_status = ?, updated_at = ?
+            WHERE telegram_chat_id = ? OR telegram_chat_id = ?
+            """,
+            (req_status, now, row["channel_id"], clean_id)
+        )
+
         updated = conn.execute("SELECT * FROM connected_channels WHERE id=?", (row["id"],)).fetchone()
         return {"ok": True, "message": f"Channel '{row['channel_title']}' status set to {status}.", "channel": dict(updated)}
 

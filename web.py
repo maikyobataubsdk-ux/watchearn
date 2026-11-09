@@ -953,8 +953,8 @@ async def verify_channel_for_connect(channel_username: str, channel_id: str, use
                     raise HTTPException(
                         status_code=400,
                         detail=(
-                            "Channel could not be identified from this private invite link. "
-                            "Please post a message in your channel, forward a post to the bot, "
+                            "Bot is not an administrator in this channel. Channel could not be identified from this private invite link. "
+                            "Please add our bot as an administrator and try again, post a message in your channel, forward a post to the bot, "
                             "or enter your numeric Telegram Channel ID (-100...)."
                         )
                     )

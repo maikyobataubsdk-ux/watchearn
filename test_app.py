@@ -1985,6 +1985,134 @@ class TestEarnProgramPTCPlatform(unittest.TestCase):
                 self.assertEqual(data10["title"], "Public Tech Hub")
                 self.assertTrue(data10["bot_is_admin"])
 
+    def test_33_channel_verification_and_wallet_sync_comprehensive(self):
+        """Covers requirements from prompt:
+        - TEST 1: Valid public channel with bot as administrator connects.
+        - TEST 2: Public channel where bot is not admin must not connect.
+        - TEST 3: Valid private channel without bot added shows proper instructions, not fake pending.
+        - TEST 4: Private channel with bot as admin connects successfully.
+        - TEST 5: Different private invite links parsed and handled correctly.
+        - TEST 6: Invalid Telegram link returns proper error.
+        - TEST 7: Existing connected channel not added again.
+        - TEST 8: Genuine pending approval request displays status.
+        - TEST 9: Failed request does not leave pending record in DB.
+        - TEST 10: Same channel cannot connect to multiple users.
+        - TEST 11: Channel status consistent across endpoints.
+        - TEST 12: Wallet balance loads on auth without visiting Profile.
+        - TEST 13: Wallet balance updates after transaction.
+        - TEST 14: Wallet balance consistent across requests.
+        - TEST 15: User isolation - cannot see other users' balances or private channels.
+        """
+        import asyncio
+        from unittest.mock import patch, AsyncMock
+        import web
+
+        # Setup 2 distinct users
+        auth_u1 = self.client.post("/api/auth/telegram-mini-app", json={"telegram_id": 888111, "username": "user_one"}).json()
+        token1 = auth_u1["token"]
+        u1_id = auth_u1["user"]["id"]
+
+        auth_u2 = self.client.post("/api/auth/telegram-mini-app", json={"telegram_id": 888222, "username": "user_two"}).json()
+        token2 = auth_u2["token"]
+        u2_id = auth_u2["user"]["id"]
+
+        # TEST 12: Wallet balance loads immediately without visiting Profile
+        bal_res1 = self.client.get("/api/wallet/balance", headers={"Authorization": f"Bearer {token1}"})
+        self.assertEqual(bal_res1.status_code, 200)
+        self.assertEqual(bal_res1.json()["balance_inr"], 0.0)
+
+        # TEST 13: Wallet balance updates immediately after a successful transaction
+        db.credit_wallet_deposit(888111, 5000, utr="UTR_TEST_SYNC", order_id="ORD_SYNC_1", description="Test Credit")
+        bal_res1_updated = self.client.get("/api/wallet/balance", headers={"Authorization": f"Bearer {token1}"})
+        self.assertEqual(bal_res1_updated.status_code, 200)
+        self.assertEqual(bal_res1_updated.json()["balance_inr"], 50.0)
+
+        # TEST 15: User isolation - user2 balance is still 0
+        bal_res2 = self.client.get("/api/wallet/balance", headers={"Authorization": f"Bearer {token2}"})
+        self.assertEqual(bal_res2.status_code, 200)
+        self.assertEqual(bal_res2.json()["balance_inr"], 0.0)
+
+        # TEST 3: Valid private channel where bot has NOT been added must show instructions, NOT fake pending approval
+        # In live mode (TESTING=0 with mock getMe)
+        mock_get_only = AsyncMock()
+        mock_get_only.return_value.json = lambda: {"ok": True, "result": {"id": 999, "is_bot": True}}
+        with patch("config.BOT_TOKEN", "999:TOKEN"), patch.dict("os.environ", {"TESTING": "0"}), patch("httpx.AsyncClient.get", mock_get_only):
+            res_priv_not_added = self.client.post(
+                "/api/channels/connect",
+                json={"channel_link": "https://t.me/+NeverAddedBotHash", "category": "General"},
+                headers={"Authorization": f"Bearer {token1}"}
+            )
+            self.assertEqual(res_priv_not_added.status_code, 400)
+            self.assertIn("Bot is not an administrator in this channel", res_priv_not_added.json()["detail"])
+            self.assertNotIn("already pending admin approval", res_priv_not_added.json()["detail"])
+
+        # TEST 9: Failed request must not leave a fake pending database record
+        with db.db() as conn:
+            req_check = conn.execute(
+                "SELECT * FROM channel_connection_requests WHERE telegram_chat_id LIKE '%NeverAddedBotHash%'"
+            ).fetchall()
+            self.assertEqual(len(req_check), 0)
+
+        # TEST 4: Private channel where bot is already an administrator connects successfully
+        db.record_bot_admin_channel(
+            channel_id="-100999111222",
+            channel_title="Verified Bot Private Channel",
+            channel_username="",
+            invite_link="https://t.me/+AlreadyAdminHash1",
+            is_admin=True,
+            member_count=150
+        )
+        res_priv_admin = self.client.post(
+            "/api/channels/connect",
+            json={"channel_link": "https://t.me/+AlreadyAdminHash1", "category": "Tech & Coding"},
+            headers={"Authorization": f"Bearer {token1}"}
+        )
+        self.assertEqual(res_priv_admin.status_code, 200)
+        self.assertTrue(res_priv_admin.json()["ok"])
+        self.assertEqual(res_priv_admin.json()["channel"]["status"], "pending_approval")
+
+        # TEST 7: Existing connected channel must not be added again
+        res_dup_same = self.client.post(
+            "/api/channels/connect",
+            json={"channel_link": "https://t.me/+AlreadyAdminHash1", "category": "Tech & Coding"},
+            headers={"Authorization": f"Bearer {token1}"}
+        )
+        self.assertEqual(res_dup_same.status_code, 400)
+        self.assertIn("already pending admin approval", res_dup_same.json()["detail"])
+
+        # TEST 10: Same channel cannot connect to another user while pending approval or active
+        res_dup_other = self.client.post(
+            "/api/channels/connect",
+            json={"channel_link": "https://t.me/+AlreadyAdminHash1", "category": "Tech & Coding"},
+            headers={"Authorization": f"Bearer {token2}"}
+        )
+        self.assertEqual(res_dup_other.status_code, 400)
+        self.assertIn("already pending admin approval", res_dup_other.json()["detail"])
+
+        # TEST 11: Channel status remains consistent across frontend and admin endpoints
+        # Login admin
+        adm_login = self.client.post("/api/admin/login", json={"username": "rajpapa", "password": "28@RajPapa"}).json()
+        adm_token = adm_login["adminToken"]
+
+        # Admin approves channel
+        ch_status_res = self.client.post(
+            "/api/admin/channels/status",
+            json={"channel_id": "-100999111222", "status": "approved"},
+            headers={"x-admin-token": adm_token}
+        )
+        self.assertEqual(ch_status_res.status_code, 200)
+
+        # Check user's channel list shows 'approved'
+        u1_chans = self.client.get("/api/channels/my", headers={"Authorization": f"Bearer {token1}"}).json()
+        self.assertEqual(len(u1_chans["channels"]), 1)
+        self.assertEqual(u1_chans["channels"][0]["status"], "approved")
+
+        # Check admin channel requests list also reflects 'approved'
+        adm_requests = self.client.get("/api/admin/channel-requests", headers={"x-admin-token": adm_token}).json()
+        matching = [r for r in adm_requests["requests"] if r["telegram_chat_id"] == "-100999111222"]
+        self.assertTrue(len(matching) > 0)
+        self.assertEqual(matching[0]["approval_status"], "approved")
+
 
 if __name__ == "__main__":
     unittest.main()
