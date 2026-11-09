@@ -2108,6 +2108,9 @@
           document.getElementById('adminDashboardView').classList.add('hidden');
         }
       }
+      if (userToken) {
+        syncUserBalances();
+      }
       window.scrollTo(0, 0);
     }
 
@@ -2202,6 +2205,8 @@
         localStorage.setItem('adEarnUserToken', userToken);
         currentUser = authRes.user;
         updateHeaderProfileUI(currentUser);
+        initCentralizedWalletSync();
+        syncUserBalances();
 
         // Check if coming via bot campaign link
         if (activeCampaignToken) {
@@ -2334,13 +2339,21 @@
       } catch (e) {}
     }
 
-    // Wallet UI & YOUPI PG Functions
-    async function refreshWalletBalance() {
-      if (!userToken) return;
+    // Centralized Live Wallet & Coins Balance Manager
+    let walletSyncInterval = null;
+    let isSyncingBalance = false;
+
+    async function syncUserBalances() {
+      if (!userToken || isSyncingBalance) return;
+      isSyncingBalance = true;
       try {
-        const res = await apiCall('/api/wallet/balance', 'GET', null, userToken);
-        if (res.ok) {
-          const formattedInr = res.balance_inr.toFixed(2);
+        const [walRes, userRes] = await Promise.all([
+          apiCall('/api/wallet/balance', 'GET', null, userToken).catch(() => null),
+          apiCall('/api/auth/me', 'GET', null, userToken).catch(() => null)
+        ]);
+
+        if (walRes && walRes.ok) {
+          const formattedInr = walRes.balance_inr.toFixed(2);
           const navElem = document.getElementById('userNavWalletBalance');
           if (navElem) navElem.textContent = formattedInr;
 
@@ -2348,11 +2361,54 @@
           if (dashInrElem) dashInrElem.textContent = formattedInr;
 
           const dashPaiseElem = document.getElementById('dashWalletPaise');
-          if (dashPaiseElem) dashPaiseElem.textContent = res.balance_paise;
+          if (dashPaiseElem) dashPaiseElem.textContent = walRes.balance_paise;
+        }
+
+        if (userRes && userRes.ok && userRes.user) {
+          currentUser = userRes.user;
+          updateHeaderProfileUI(currentUser);
+          if (document.getElementById('dashBalanceCoins')) {
+            document.getElementById('dashBalanceCoins').textContent = currentUser.balanceCoins.toFixed(1);
+          }
+          if (document.getElementById('dashBalanceUsd')) {
+            document.getElementById('dashBalanceUsd').textContent = (currentUser.balanceCoins / 100.0).toFixed(2);
+          }
+          if (document.getElementById('dashBalanceInr')) {
+            document.getElementById('dashBalanceInr').textContent = ((currentUser.balanceCoins / 100.0) * 80.0).toFixed(2);
+          }
         }
       } catch (e) {
-        console.error('Error refreshing wallet balance:', e);
+        console.error('Error syncing user balances:', e);
+      } finally {
+        isSyncingBalance = false;
       }
+    }
+
+    async function refreshWalletBalance() {
+      await syncUserBalances();
+    }
+
+    function initCentralizedWalletSync() {
+      if (walletSyncInterval) clearInterval(walletSyncInterval);
+
+      // Periodic poll every 25s when app is active
+      walletSyncInterval = setInterval(() => {
+        if (!document.hidden) {
+          syncUserBalances();
+        }
+      }, 25000);
+
+      // Sync on focus / visibility change
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && userToken) {
+          syncUserBalances();
+        }
+      });
+      window.addEventListener('focus', () => {
+        if (userToken) {
+          syncUserBalances();
+        }
+      });
     }
 
     async function openGstInvoiceModal(txnId) {
